@@ -1,70 +1,76 @@
-# Mon Application Flutter
+# 📱 Mon Application Flutter
 
 Bienvenue sur le dépôt de mon application mobile développée avec **Flutter**.  
 Ce projet est une démonstration technique incluant une interface utilisateur moderne et réactive.
 
-## Démarrage rapide
+---
 
-### Pré-requis
+## 🚀 Démarrage rapide
+
+### 🔧 Pré-requis
 Assurez-vous d’avoir installé le **Flutter SDK** sur votre machine.
 
-### 1) Cloner le projet
+---
+
+## 📥 Installation
+
+### 1️⃣ Cloner le projet
 ```bash
 git clone <votre-lien-repo-git>
 cd mon_app_bonjour
 
-2) Installer les dépendances
-flutter pub get
+2️⃣ Installer les dépendances : flutter pub get
 
-3) Lancer l'application
-Assurez-vous d’avoir un émulateur ouvert ou un téléphone connecté, puis lancez :
+3️⃣ Lancer l’application
+Assurez-vous d’avoir un émulateur ouvert ou un téléphone connecté :
 flutter run
 
-Contrôles en cours d’exécution
-Une fois l’application lancée dans le terminal, utilisez ces touches :
+⌨️ Contrôles en cours d’exécution
 
-| Touche | Action      | Description                                      |
-| ------ | ----------- | ------------------------------------------------ |
-| r      | Hot Reload  | Met à jour l'UI rapidement sans redémarrer l'app |
-| R      | Hot Restart | Redémarre l'app depuis zéro                      |
-| q      | Quitter     | Arrête l'exécution                               |
+Une fois l’application lancée dans le terminal :
+| Touche | Action      | Description                                   |
+| -----: | ----------- | --------------------------------------------- |
+|      r | Hot Reload  | Met à jour l'UI sans redémarrer l'application |
+|      R | Hot Restart | Redémarre l'app depuis zéro                   |
+|      q | Quitter     | Arrête l'exécution                            |
 
-Commandes essentielles
+🧰 Commandes essentielles
 Nettoyer le projet (en cas de bug)
-Si le projet refuse de compiler ou se comporte bizarrement, lancez ce “combo” :
 
+Si le projet refuse de compiler ou se comporte bizarrement :
 flutter clean
 flutter pub get
 flutter run
 
 Vérifier l’environnement
-Pour vérifier que tout est bien installé (Android Studio, SDK, etc.) :
-flutter create mon_nouveau_projet
 
-Configuration émulateur (Android)
-Si aucun appareil n’est détecté (“No device found”) :
+Pour vérifier que tout est correctement installé : flutter create mon_nouveau_projet
 
-1. Ouvrez Android Studio.
+🤖 Configuration de l’émulateur Android
 
-2. Allez dans Virtual Device Manager (ou Device Manager).
+Si aucun appareil n’est détecté (No device found) :
 
-3. Créez un nouveau device (ex: Pixel 6).
+1. Ouvrez Android Studio
 
-4. Lancez-le avec le bouton Play (▶).
+2. Allez dans Virtual Device Manager
 
-5. Réessayez :
-flutter run
+3. Créez un nouveau device (ex : Pixel 6)
 
+4. Lancez-le avec le bouton ▶
 
-Structure des fichiers
-- lib/ : Contient tout le code source Dart.
+5. Relancez : flutter run
 
-- lib/main.dart : Point d’entrée de l’application.
+📂 Structure des fichiers
 
-- pubspec.yaml : Gestion des dépendances (librairies) et assets (images/polices).
+- lib/ → Contient tout le code source Dart
 
-- android/ : Code natif Android.
+- lib/main.dart → Point d’entrée de l’application
 
-- ios/ : Code natif iOS.
+- pubspec.yaml → Dépendances et assets (images, polices…)
 
-- test/ : Tests unitaires et tests de widgets.
+- android/ → Code natif Android
+
+- ios/ → Code natif iOS
+
+- test/ → Tests unitaires et tests de widgets
+
