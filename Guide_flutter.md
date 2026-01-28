@@ -25,10 +25,9 @@ Une fois l’application lancée dans le terminal, utilisez ces touches :
 
 | Touche | Action      | Description                                      |
 | ------ | ----------- | ------------------------------------------------ |
-| r      | Hot Reload  | Met à jour l’UI rapidement sans redémarrer l’app |
-| R      | Hot Restart | Redémarre l’app depuis zéro                      |
-| q      | Quitter     | Arrête l’exécution                               |
-
+| r      | Hot Reload  | Met à jour l'UI rapidement sans redémarrer l'app |
+| R      | Hot Restart | Redémarre l'app depuis zéro                      |
+| q      | Quitter     | Arrête l'exécution                               |
 
 Commandes essentielles
 Nettoyer le projet (en cas de bug)
