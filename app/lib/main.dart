@@ -1,62 +1,82 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const ClickerApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class ClickerApp extends StatelessWidget {
+  const ClickerApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Hello App',
-      home: const HelloPage(),
+      title: 'Compteur Coloré',
+      home: const ClickerPage(),
     );
   }
 }
 
-class HelloPage extends StatefulWidget {
-  const HelloPage({super.key});
+class ClickerPage extends StatefulWidget {
+  const ClickerPage({super.key});
 
   @override
-  State<HelloPage> createState() => _HelloPageState();
+  State<ClickerPage> createState() => _ClickerPageState();
 }
 
-class _HelloPageState extends State<HelloPage> {
-  String greeting = '';
+class _ClickerPageState extends State<ClickerPage> {
+  int count = 0;
+  Color color = Colors.black;
 
-  final controller = TextEditingController();
+  final Random random = Random();
 
-  void sayHello() {
+  void increment() {
     setState(() {
-      greeting = 'Bonjour, ${controller.text} !';
+      count++;
+      color = Color.fromARGB(
+        255,
+        random.nextInt(256),
+        random.nextInt(256),
+        random.nextInt(256),
+      );
+    });
+  }
+
+  void reset() {
+    setState(() {
+      count = 0;
+      color = Colors.black;
     });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Hello App')),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
+      appBar: AppBar(title: const Text('Compteur Coloré')),
+      body: Center(
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            TextField(
-              controller: controller,
-              decoration: const InputDecoration(
-                labelText: 'Entrez votre nom',
+            Text(
+              '$count',
+              style: TextStyle(fontSize: 60, fontWeight: FontWeight.bold, color: color),
+            ),
+            const SizedBox(height: 30),
+            ElevatedButton(
+              onPressed: increment,
+              child: const Text('Cliquez-moi !'),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
+                textStyle: const TextStyle(fontSize: 20),
               ),
             ),
             const SizedBox(height: 10),
-            ElevatedButton(
-              onPressed: sayHello,
-              child: const Text('Dire Bonjour'),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              greeting,
-              style: const TextStyle(fontSize: 24),
+            TextButton(
+              onPressed: reset,
+              child: const Text('Réinitialiser'),
+              style: TextButton.styleFrom(
+                textStyle: const TextStyle(fontSize: 18, color: Colors.red),
+              ),
             ),
           ],
         ),
