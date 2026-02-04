@@ -1,100 +1,91 @@
-import 'dart:async';
-import 'dart:math';
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 void main() {
-  runApp(const TapGameApp());
+  runApp(const WeatherApp());
 }
 
-class TapGameApp extends StatelessWidget {
-  const TapGameApp({super.key});
+class WeatherApp extends StatelessWidget {
+  const WeatherApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return const MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: TapGamePage(),
+      home: WeatherPage(),
     );
   }
 }
 
-class TapGamePage extends StatefulWidget {
-  const TapGamePage({super.key});
+class WeatherPage extends StatefulWidget {
+  const WeatherPage({super.key});
 
   @override
-  State<TapGamePage> createState() => _TapGamePageState();
+  State<WeatherPage> createState() => _WeatherPageState();
 }
 
-class _TapGamePageState extends State<TapGamePage> {
-  final Random random = Random();
+class _WeatherPageState extends State<WeatherPage> {
+  final TextEditingController cityController = TextEditingController();
 
-  int score = 0;
-  int timeLeft = 30;
+  static const String apiKey = '937ee9f29655fadcad8c6a7dc5d00a69';
 
-  double x = 100;
-  double y = 100;
-  double size = 80;
-  Color color = Colors.blue;
+  String city = '';
+  String description = '';
+  String icon = '';
+  double? temperature;
+  bool loading = false;
+  String error = '';
 
-  Timer? timer;
+  Future<void> fetchWeather() async {
+    final cityName = cityController.text.trim();
+    if (cityName.isEmpty) return;
 
-  @override
-  void initState() {
-    super.initState();
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      startGame();
+    setState(() {
+      loading = true;
+      error = '';
     });
-  }
 
+    final url = Uri.parse(
+      'https://api.openweathermap.org/data/2.5/weather'
+      '?q=$cityName'
+      '&appid=$apiKey'
+      '&units=metric'
+      '&lang=fr',
+    );
 
-  void startGame() {
-    score = 0;
-    timeLeft = 30;
-    moveSquare();
+    try {
+      final response = await http.get(url);
+      final data = json.decode(response.body);
 
-    timer?.cancel();
-    timer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (response.statusCode == 200) {
+        setState(() {
+          city = data['name'];
+          temperature = data['main']['temp'].toDouble();
+          description = data['weather'][0]['description'];
+          icon = data['weather'][0]['icon'];
+        });
+      } else {
+        setState(() {
+          error = 'Ville introuvable';
+          temperature = null;
+        });
+      }
+    } catch (e) {
       setState(() {
-        if (timeLeft > 0) {
-          timeLeft--;
-        } else {
-          t.cancel();
-        }
+        error = 'Erreur réseau';
+        temperature = null;
       });
-    });
-  }
-
-  void moveSquare() {
-    final screen = MediaQuery.of(context).size;
-    final appBarHeight = kToolbarHeight + MediaQuery.of(context).padding.top;
-
-    y = random.nextDouble() * (screen.height - size - appBarHeight - 20);
-
+    }
 
     setState(() {
-      size = random.nextInt(50) + 50; // 50 → 100
-      x = random.nextDouble() * (screen.width - size);
-      y = random.nextDouble() * (screen.height - size - 150);
-      color = Color.fromARGB(
-        255,
-        random.nextInt(256),
-        random.nextInt(256),
-        random.nextInt(256),
-      );
+      loading = false;
     });
-  }
-
-  void tapSquare() {
-    setState(() {
-      score++;
-    });
-    moveSquare();
   }
 
   @override
   void dispose() {
-    timer?.cancel();
+    cityController.dispose();
     super.dispose();
   }
 
@@ -102,65 +93,64 @@ class _TapGamePageState extends State<TapGamePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('🎮 Tap Game Fun'),
+        title: const Text('🌤️ Météo en temps réel'),
         centerTitle: true,
       ),
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          Positioned(
-            top: 10,
-            left: 20,
-            child: Text('Score : $score', style: const TextStyle(fontSize: 20)),
-          ),
-          Positioned(
-            top: 10,
-            right: 20,
-            child: Text('Temps : $timeLeft', style: const TextStyle(fontSize: 20)),
-          ),
-
-          if (timeLeft > 0)
-            AnimatedPositioned(
-              duration: const Duration(milliseconds: 300),
-              left: x,
-              top: y,
-              child: GestureDetector(
-                onTap: tapSquare,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  width: size,
-                  height: size,
-                  decoration: BoxDecoration(
-                    color: color,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+      body: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            TextField(
+              controller: cityController,
+              decoration: InputDecoration(
+                labelText: 'Entrer une ville',
+                border: const OutlineInputBorder(),
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.search),
+                  onPressed: fetchWeather,
                 ),
               ),
+              onSubmitted: (_) => fetchWeather(),
             ),
 
-          if (timeLeft == 0)
-            Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+            const SizedBox(height: 30),
+
+            if (loading)
+              const CircularProgressIndicator(),
+
+            if (error.isNotEmpty)
+              Text(
+                error,
+                style: const TextStyle(color: Colors.red, fontSize: 18),
+              ),
+
+            if (temperature != null && !loading)
+              Column(
                 children: [
-                  const Text(
-                    'GAME OVER',
-                    style: TextStyle(fontSize: 40, color: Colors.red),
-                  ),
-                  const SizedBox(height: 20),
                   Text(
-                    'Score final : $score',
-                    style: const TextStyle(fontSize: 30),
+                    city,
+                    style: const TextStyle(
+                      fontSize: 30,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                  const SizedBox(height: 20),
-                  ElevatedButton(
-                    onPressed: startGame,
-                    child: const Text('Rejouer'),
+                  const SizedBox(height: 10),
+                  Image.network(
+                    'https://openweathermap.org/img/wn/$icon@2x.png',
+                  ),
+                  Text(
+                    '${temperature!.round()} °C',
+                    style: const TextStyle(fontSize: 40),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    description,
+                    style: const TextStyle(fontSize: 22),
                   ),
                 ],
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
