@@ -67,6 +67,10 @@ class _TapGamePageState extends State<TapGamePage> {
 
   void moveSquare() {
     final screen = MediaQuery.of(context).size;
+    final appBarHeight = kToolbarHeight + MediaQuery.of(context).padding.top;
+
+    y = random.nextDouble() * (screen.height - size - appBarHeight - 20);
+
 
     setState(() {
       size = random.nextInt(50) + 50; // 50 → 100
@@ -102,6 +106,7 @@ class _TapGamePageState extends State<TapGamePage> {
         centerTitle: true,
       ),
       body: Stack(
+        fit: StackFit.expand,
         children: [
           Positioned(
             top: 10,
