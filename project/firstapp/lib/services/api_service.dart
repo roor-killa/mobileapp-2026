@@ -1,64 +1,87 @@
 import 'dart:convert';
-import 'dart:async';
+import 'package:http/http.dart' as http;
 import '../models/transfer_response.dart';
 
 class ApiService {
-  // URL de base de l'API (à modifier pour la vraie API)
-  static const String baseUrl = 'http://localhost:8000/api';
-  
-  // Simulation d'un solde en base de données
-  static double _soldeBDD = 1500.50; // Montant initial dans wallet
-  
-  /// SIMULATION : Simule l'appel API avec délai
-  /// Cette fonction sera remplacée par un vrai appel HTTP
+  static const String baseUrl = 'http://localhost:8001/api/products';
+
+  /// Appel réel à l'API Laravel pour récupérer le prix du premier produit
+  /// et l'utiliser comme nouveau solde du wallet
   Future<TransferResponse> transfererMontant(double montant) async {
     print('📤 ÉTAPE 2 : Envoi de la requête API...');
     print('💰 Montant à transférer : $montant €');
-    
-    // Simuler le délai réseau (1-2 secondes)
-    await Future.delayed(const Duration(seconds: 2));
-    
-    print('⚙️  ÉTAPE 3 : Traitement côté serveur...');
-    
-    // SIMULATION du traitement serveur
-    // En réalité, cela se passe dans Laravel + PostgreSQL
-    final montantTotal = _soldeBDD;
-    final nouveauSolde = montantTotal - montant;
-    
-    // Vérification de solde suffisant
-    if (nouveauSolde < 0) {
+
+    try {
+      print('⚙️  ÉTAPE 3 : Appel GET $baseUrl...');
+      final response = await http.get(Uri.parse(baseUrl));
+
+      if (response.statusCode != 200) {
+        return TransferResponse(
+          success: false,
+          montantTotal: 0,
+          montantTransfere: 0,
+          nouveauSolde: 0,
+          message: 'Erreur API : status ${response.statusCode}',
+        );
+      }
+
+      print('📥 ÉTAPE 4 : Réception du JSON :');
+      print(response.body);
+
+      final data = json.decode(response.body);
+
+      // Récupérer la liste de produits (gère les deux formats possibles)
+      final List<dynamic> products = data is List ? data : (data['data'] ?? data['products'] ?? []);
+
+      if (products.isEmpty) {
+        return TransferResponse(
+          success: false,
+          montantTotal: 0,
+          montantTransfere: 0,
+          nouveauSolde: 0,
+          message: 'Aucun produit trouvé',
+        );
+      }
+
+      // Récupérer le product_price du premier produit
+      final premierProduit = products[0];
+      final double productPrice = double.parse(premierProduit['product_price'].toString());
+
+      print('🔄 ÉTAPE 5 : product_price du premier produit = $productPrice');
+
+      return TransferResponse(
+        success: true,
+        montantTotal: productPrice,
+        montantTransfere: montant,
+        nouveauSolde: productPrice,
+        message: 'Solde mis à jour depuis l\'API (prix du 1er produit)',
+      );
+    } catch (e) {
+      print('❌ Erreur lors de l\'appel API : $e');
       return TransferResponse(
         success: false,
-        montantTotal: montantTotal,
+        montantTotal: 0,
         montantTransfere: 0,
-        nouveauSolde: montantTotal,
-        message: 'Solde insuffisant',
+        nouveauSolde: 0,
+        message: 'Erreur de connexion : $e',
       );
     }
-    
-    // Mise à jour du solde simulé
-    _soldeBDD = nouveauSolde;
-    
-    // ÉTAPE 4 : Construction du JSON de réponse (simulé)
-    final jsonResponse = {
-      'success': true,
-      'montant_total': montantTotal,
-      'montant_transfere': montant,
-      'nouveau_solde': nouveauSolde,
-      'message': 'Transfert effectué avec succès',
-    };
-    
-    print('📥 ÉTAPE 4 : Réception du JSON :');
-    print(json.encode(jsonResponse));
-    
-    // ÉTAPE 5 : Conversion JSON -> Objet Dart
-    print('🔄 ÉTAPE 5 : Parsing du JSON...');
-    return TransferResponse.fromJson(jsonResponse);
   }
-  
-  /// Récupérer le solde actuel (pour affichage)
+
+  /// Récupérer le solde actuel depuis l'API (prix du premier produit)
   Future<double> getSoldeActuel() async {
-    await Future.delayed(const Duration(milliseconds: 500));
-    return _soldeBDD;
+    try {
+      final response = await http.get(Uri.parse(baseUrl));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final List<dynamic> products = data is List ? data : (data['data'] ?? data['products'] ?? []);
+        if (products.isNotEmpty) {
+          return double.parse(products[0]['product_price'].toString());
+        }
+      }
+    } catch (e) {
+      print('❌ Erreur getSoldeActuel : $e');
+    }
+    return 0;
   }
 }
