@@ -616,7 +616,10 @@ class _ChatbotPageState extends State<ChatbotPage> {
   final ScrollController scrollController = ScrollController();
   bool isLoading = false;
 
-  static const String groqApiKey = 'CLE_API_GROK';
+  // URL de votre API Laravel
+  // Pour Android Emulator : utilisez 10.0.2.2 au lieu de localhost
+  // Pour appareil physique : utilisez l'IP de votre machine (ex: 192.168.1.x)
+  static const String apiUrl = 'http://10.0.2.2:8000/api/chatbot';
 
   @override
   void initState() {
@@ -655,53 +658,32 @@ class _ChatbotPageState extends State<ChatbotPage> {
     scrollToBottom();
 
     try {
-      String contextMeteo = '';
-      if (widget.city.isNotEmpty && widget.temperature != null) {
-        contextMeteo = '''
-Contexte météorologique actuel :
-- Ville : ${widget.city}, ${widget.country}
-- Température : ${widget.temperature?.round()}°C
-- Conditions : ${widget.description}
-
-''';
-      }
-
       final response = await http.post(
-        Uri.parse('https://api.groq.com/openai/v1/chat/completions'),
+        Uri.parse(apiUrl),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer $groqApiKey',
+          'Accept': 'application/json',
         },
         body: json.encode({
-          'model': 'llama-3.3-70b-versatile',
-          'messages': [
-            {
-              'role': 'system',
-              'content': 'Tu es un expert en météorologie. Réponds de manière TRÈS COURTE et CONCISE (maximum 3-4 phrases). Utilise des emojis météo. Sois direct et va à l\'essentiel.'
-            },
-            {
-              'role': 'user',
-              'content': '$contextMeteo Question : $userMessage'
-            }
-          ],
-          'temperature': 0.7,
-          'max_tokens': 300,
+          'message': userMessage,
+          'city': widget.city,
+          'temperature': widget.temperature,
+          'description': widget.description,
         }),
       );
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        final assistantMessage = data['choices'][0]['message']['content'];
+        final assistantMessage = data['response'];
 
         setState(() {
           messages.add(ChatMessage(text: assistantMessage, isUser: false));
         });
         scrollToBottom();
       } else {
-        final errorData = json.decode(response.body);
         setState(() {
           messages.add(ChatMessage(
-            text: 'Erreur ${response.statusCode}: ${errorData['error']?['message'] ?? 'Veuillez réessayer'}',
+            text: '❌ Erreur ${response.statusCode}: Impossible de contacter le serveur',
             isUser: false,
           ));
         });
@@ -709,7 +691,7 @@ Contexte météorologique actuel :
     } catch (e) {
       setState(() {
         messages.add(ChatMessage(
-          text: 'Erreur de connexion: $e',
+          text: '❌ Erreur de connexion: Vérifiez que votre serveur Laravel est démarré',
           isUser: false,
         ));
       });
