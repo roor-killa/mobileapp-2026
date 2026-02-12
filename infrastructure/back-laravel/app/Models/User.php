@@ -6,6 +6,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class User extends Authenticatable
 {
@@ -21,6 +22,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'balance',
     ];
 
     /**
@@ -43,6 +45,23 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'balance' => 'decimal:2',
         ];
+    }
+
+    /**
+     * Transferts effectués par cet utilisateur
+     */
+    public function sentTransfers(): HasMany
+    {
+        return $this->hasMany(Transfer::class, 'from_user_id');
+    }
+
+    /**
+     * Transferts reçus par cet utilisateur
+     */
+    public function receivedTransfers(): HasMany
+    {
+        return $this->hasMany(Transfer::class, 'to_user_id');
     }
 }

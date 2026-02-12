@@ -1,34 +1,47 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/transfer_response.dart';
+import '../models/user.dart';
+import '../models/transfer.dart';
 import '../services/api_service.dart';
+import '../services/auth_service.dart';
 
 class TransferScreen extends StatefulWidget {
-  const TransferScreen({super.key});
+  final Function() onLogout;
+
+  const TransferScreen({super.key, required this.onLogout});
 
   @override
   State<TransferScreen> createState() => _TransferScreenState();
 }
 
 class _TransferScreenState extends State<TransferScreen> {
-  // Contrôleur pour le champ de saisie
   final TextEditingController _montantController = TextEditingController();
-  
-  // Service API
+  final TextEditingController _descriptionController = TextEditingController();
   final ApiService _apiService = ApiService();
   
-  // État de l'application
-  bool _isLoading = false; // Chargement en cours ?
-  TransferResponse? _lastResponse; // Dernière réponse reçue
-  double? _soldeActuel; // Solde actuel
+  bool _isLoading = false;
+  bool _isLoadingUsers = true;
+  TransferResponse? _lastResponse;
+  double? _soldeActuel;
+  List<User> _availableUsers = [];
+  User? _selectedUser;
+  List<Transfer> _transferHistory = [];
   
   @override
   void initState() {
     super.initState();
-    _chargerSoldeInitial();
+    _chargerDonnees();
   }
   
-  /// Charge le solde au démarrage
+  Future<void> _chargerDonnees() async {
+    await Future.wait([
+      _chargerSoldeInitial(),
+      _chargerUtilisateurs(),
+      _chargerHistorique(),
+    ]);
+  }
+  
   Future<void> _chargerSoldeInitial() async {
     final solde = await _apiService.getSoldeActuel();
     setState(() {
@@ -36,9 +49,25 @@ class _TransferScreenState extends State<TransferScreen> {
     });
   }
   
-  /// ÉTAPE 1 : Action déclenchée par le bouton "Transférer"
+  Future<void> _chargerUtilisateurs() async {
+    final users = await _apiService.getAvailableUsers();
+    setState(() {
+      _availableUsers = users;
+      _isLoadingUsers = false;
+      if (users.isNotEmpty) {
+        _selectedUser = users.first;
+      }
+    });
+  }
+  
+  Future<void> _chargerHistorique() async {
+    final history = await _apiService.getTransferHistory();
+    setState(() {
+      _transferHistory = history;
+    });
+  }
+  
   Future<void> _effectuerTransfert() async {
-    // Validation de la saisie
     final montantText = _montantController.text.trim();
     if (montantText.isEmpty) {
       _afficherErreur('Veuillez entrer un montant');
@@ -50,40 +79,54 @@ class _TransferScreenState extends State<TransferScreen> {
       _afficherErreur('Montant invalide');
       return;
     }
+
+    if (_selectedUser == null) {
+      _afficherErreur('Veuillez selectionner un destinataire');
+      return;
+    }
+
+    if (_soldeActuel! < montant) {
+      _afficherErreur('Solde insuffisant');
+      return;
+    }
     
-    print('🚀 ÉTAPE 1 : Bouton "Transférer" pressé');
-    print('💵 Montant saisi : $montant €');
-    
-    // Active le loader
     setState(() {
       _isLoading = true;
       _lastResponse = null;
     });
     
     try {
-      // ÉTAPES 2-5 : Appel API et récupération du JSON
-      final response = await _apiService.transfererMontant(montant);
+      final response = await _apiService.transfererMontant(
+        montant,
+        _selectedUser!.id,
+        _descriptionController.text.isEmpty ? null : _descriptionController.text,
+      );
       
-      // ÉTAPE 6 : Mise à jour de l'interface avec les données
-      print('✅ ÉTAPE 6 : Affichage des données');
       setState(() {
         _lastResponse = response;
-        _soldeActuel = response.nouveauSolde;
+        if (response.success) {
+          _soldeActuel = response.nouveauSolde;
+          _montantController.clear();
+          _descriptionController.clear();
+        }
         _isLoading = false;
       });
-      
-      // Vider le champ après succès
+
       if (response.success) {
-        _montantController.clear();
+        await _chargerHistorique();
       }
       
     } catch (e) {
-      print('❌ Erreur : $e');
       setState(() {
         _isLoading = false;
       });
       _afficherErreur('Erreur lors du transfert');
     }
+  }
+  
+  Future<void> _handleLogout() async {
+    await AuthService().logout();
+    widget.onLogout();
   }
   
   void _afficherErreur(String message) {
@@ -101,39 +144,62 @@ class _TransferScreenState extends State<TransferScreen> {
       appBar: AppBar(
         title: const Text('Transfert d\'argent'),
         backgroundColor: Colors.blue,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Se deconnecter',
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (BuildContext context) {
+                  return AlertDialog(
+                    title: const Text('Deconnexion'),
+                    content: const Text('Etes-vous sur de vouloir vous deconnecter ?'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Annuler'),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _handleLogout();
+                        },
+                        child: const Text('Deconnecter'),
+                      ),
+                    ],
+                  );
+                },
+              );
+            },
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Affichage du solde actuel
             _buildSoldeCard(),
-            
             const SizedBox(height: 30),
-            
-            // ÉTAPE 0 : Champ de saisie du montant
-            _buildMontantInput(),
-            
+            _buildDestinatairesSection(),
             const SizedBox(height: 20),
-            
-            // ÉTAPE 1 : Bouton de transfert
+            _buildMontantInput(),
+            const SizedBox(height: 20),
+            _buildDescriptionInput(),
+            const SizedBox(height: 20),
             _buildTransferButton(),
-            
             const SizedBox(height: 30),
-            
-            // ÉTAPE 6 : Affichage du résultat
             if (_lastResponse != null) _buildResultCard(),
-            
-            // Indicateur de chargement
             if (_isLoading) _buildLoadingIndicator(),
+            const SizedBox(height: 30),
+            if (_transferHistory.isNotEmpty) _buildHistoriqueSection(),
           ],
         ),
       ),
     );
   }
   
-  /// Card affichant le solde actuel
   Widget _buildSoldeCard() {
     return Card(
       elevation: 4,
@@ -152,7 +218,7 @@ class _TransferScreenState extends State<TransferScreen> {
             const SizedBox(height: 10),
             Text(
               _soldeActuel != null 
-                  ? '${_soldeActuel!.toStringAsFixed(2)} €'
+                  ? '${_soldeActuel!.toStringAsFixed(2)} EUR'
                   : 'Chargement...',
               style: const TextStyle(
                 fontSize: 32,
@@ -166,7 +232,64 @@ class _TransferScreenState extends State<TransferScreen> {
     );
   }
   
-  /// ÉTAPE 0 : Champ de saisie du montant
+  Widget _buildDestinatairesSection() {
+    if (_isLoadingUsers) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_availableUsers.isEmpty) {
+      return const Card(
+        color: Colors.orange,
+        child: Padding(
+          padding: EdgeInsets.all(16.0),
+          child: Text(
+            'Aucun utilisateur disponible',
+            style: TextStyle(color: Colors.white),
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Destinataire',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 10),
+        DropdownButton<User>(
+          isExpanded: true,
+          value: _selectedUser,
+          items: _availableUsers.map((User user) {
+            return DropdownMenuItem<User>(
+              value: user,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(user.name),
+                  Text(
+                    '${user.balance.toStringAsFixed(2)} EUR',
+                    style: const TextStyle(color: Colors.grey, fontSize: 12),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+          onChanged: (User? newValue) {
+            setState(() {
+              _selectedUser = newValue;
+            });
+          },
+        ),
+      ],
+    );
+  }
+  
   Widget _buildMontantInput() {
     return TextField(
       controller: _montantController,
@@ -175,10 +298,10 @@ class _TransferScreenState extends State<TransferScreen> {
         FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
       ],
       decoration: InputDecoration(
-        labelText: 'Montant à transférer',
+        labelText: 'Montant a transferer',
         hintText: 'Ex: 50.00',
         prefixIcon: const Icon(Icons.euro),
-        suffixText: '€',
+        suffixText: 'EUR',
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
         ),
@@ -189,7 +312,23 @@ class _TransferScreenState extends State<TransferScreen> {
     );
   }
   
-  /// ÉTAPE 1 : Bouton de transfert
+  Widget _buildDescriptionInput() {
+    return TextField(
+      controller: _descriptionController,
+      maxLines: 2,
+      decoration: InputDecoration(
+        labelText: 'Description (optionnel)',
+        hintText: 'Ex: Remboursement...',
+        prefixIcon: const Icon(Icons.description),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        filled: true,
+        fillColor: Colors.grey.shade100,
+      ),
+    );
+  }
+  
   Widget _buildTransferButton() {
     return ElevatedButton(
       onPressed: _isLoading ? null : _effectuerTransfert,
@@ -201,7 +340,7 @@ class _TransferScreenState extends State<TransferScreen> {
         ),
       ),
       child: const Text(
-        'Transférer',
+        'Transferer',
         style: TextStyle(
           fontSize: 18,
           fontWeight: FontWeight.bold,
@@ -211,7 +350,6 @@ class _TransferScreenState extends State<TransferScreen> {
     );
   }
   
-  /// Indicateur de chargement (étapes 2-5)
   Widget _buildLoadingIndicator() {
     return const Column(
       children: [
@@ -225,7 +363,6 @@ class _TransferScreenState extends State<TransferScreen> {
     );
   }
   
-  /// ÉTAPE 6 : Affichage du résultat
   Widget _buildResultCard() {
     final response = _lastResponse!;
     final isSuccess = response.success;
@@ -260,9 +397,9 @@ class _TransferScreenState extends State<TransferScreen> {
             ),
             if (isSuccess) ...[
               const Divider(height: 30),
-              _buildDetailRow('Solde initial', '${response.montantTotal.toStringAsFixed(2)} €'),
-              _buildDetailRow('Montant transféré', '- ${response.montantTransfere.toStringAsFixed(2)} €'),
-              _buildDetailRow('Nouveau solde', '${response.nouveauSolde.toStringAsFixed(2)} €', isBold: true),
+              _buildDetailRow('Ancien solde', '${(response.montantTotal).toStringAsFixed(2)} EUR'),
+              _buildDetailRow('Montant transfére', '- ${response.montantTransfere.toStringAsFixed(2)} EUR'),
+              _buildDetailRow('Nouveau solde', '${response.nouveauSolde.toStringAsFixed(2)} EUR', isBold: true),
             ],
           ],
         ),
@@ -297,9 +434,92 @@ class _TransferScreenState extends State<TransferScreen> {
     );
   }
   
+  Widget _buildHistoriqueSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Historique des transferts',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 10),
+        ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: _transferHistory.length,
+          itemBuilder: (context, index) {
+            final transfer = _transferHistory[index];
+            final isOutgoing = transfer.fromUserId == ApiService.currentUserId;
+            
+            return Card(
+              margin: const EdgeInsets.symmetric(vertical: 5),
+              child: Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            isOutgoing ? 'Envoye a' : 'Recu de',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey,
+                            ),
+                          ),
+                          Text(
+                            isOutgoing 
+                              ? (transfer.toUserId.toString())
+                              : (transfer.fromUserId.toString()),
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          isOutgoing
+                            ? '- ${transfer.amount.toStringAsFixed(2)} EUR'
+                            : '+ ${transfer.amount.toStringAsFixed(2)} EUR',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: isOutgoing ? Colors.red : Colors.green,
+                          ),
+                        ),
+                        Text(
+                          transfer.createdAt.toString().substring(0, 16),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+  
   @override
   void dispose() {
     _montantController.dispose();
+    _descriptionController.dispose();
     super.dispose();
   }
 }
