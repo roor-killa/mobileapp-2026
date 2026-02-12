@@ -20,6 +20,18 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  // Fonction simulée pour l'authentification (remplacez par un appel API réel)
+  Future<void> _login() async {
+    // Simulation d'une authentification
+    if (_emailController.text == 'test@example.com' && _passwordController.text == 'password') {
+      Navigator.pushReplacementNamed(context, '/home');
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Email ou mot de passe incorrect')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -31,7 +43,6 @@ class _LoginScreenState extends State<LoginScreen> {
             children: [
               const SizedBox(height: 40),
               
-              // Logo BKN
               Center(
                 child: Container(
                   width: 100,
@@ -78,7 +89,6 @@ class _LoginScreenState extends State<LoginScreen> {
               
               const SizedBox(height: 40),
               
-              // Formulaire
               Form(
                 key: _formKey,
                 child: Column(
@@ -96,6 +106,11 @@ class _LoginScreenState extends State<LoginScreen> {
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Email requis';
+                        }
+                        // Validation du format email
+                        final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
+                        if (!emailRegex.hasMatch(value)) {
+                          return 'Format d\'email invalide';
                         }
                         return null;
                       },
@@ -125,6 +140,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         if (value == null || value.isEmpty) {
                           return 'Mot de passe requis';
                         }
+                        if (value.length < 6) {
+                          return 'Le mot de passe doit contenir au moins 6 caractères';
+                        }
                         return null;
                       },
                     ),
@@ -134,11 +152,12 @@ class _LoginScreenState extends State<LoginScreen> {
               
               const SizedBox(height: 12),
               
-              // Mot de passe oublié
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
-                  onPressed: () {},
+                  onPressed: () {
+                    Navigator.pushNamed(context, '/forgot_password'); // Navigation vers une page oubliée
+                  },
                   child: const Text(
                     'Mot de passe oublié ?',
                     style: TextStyle(color: Color(0xFF0A2472)),
@@ -148,14 +167,13 @@ class _LoginScreenState extends State<LoginScreen> {
               
               const SizedBox(height: 24),
               
-              // Bouton connexion
               SizedBox(
                 width: double.infinity,
                 height: 55,
                 child: ElevatedButton(
-                  onPressed: () {
+                  onPressed: () async {
                     if (_formKey.currentState!.validate()) {
-                      Navigator.pushReplacementNamed(context, '/home');
+                      await _login(); // Appel à la fonction d'authentification
                     }
                   },
                   child: const Text(
@@ -167,7 +185,6 @@ class _LoginScreenState extends State<LoginScreen> {
               
               const SizedBox(height: 24),
               
-              // Lien inscription
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [

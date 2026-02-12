@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:app_bkn/widgets/balance_card.dart';
 import 'package:app_bkn/widgets/action_grid.dart';
 import 'package:app_bkn/widgets/recent_transactions.dart';
+import 'package:app_bkn/screens/profile_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -41,6 +42,7 @@ class _HomeScreenState extends State<HomeScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.help_outline),
+            tooltip: 'Félicité',
             onPressed: () => Navigator.pushNamed(context, '/chatbot'),
           ),
         ],
@@ -60,7 +62,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-// ==================== PAGE ACCUEIL ====================
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
@@ -112,7 +113,6 @@ class HomePage extends StatelessWidget {
   }
 }
 
-// ==================== PAGE ACTUS ====================
 class NewsScreen extends StatelessWidget {
   const NewsScreen({super.key});
 
@@ -167,7 +167,6 @@ class NewsScreen extends StatelessWidget {
   }
 }
 
-// ==================== PAGE EVENTS ====================
 class EventsScreen extends StatelessWidget {
   const EventsScreen({super.key});
 
@@ -213,21 +212,6 @@ class EventsScreen extends StatelessWidget {
           ),
         );
       },
-    );
-  }
-}
-
-// ==================== PAGE PROFIL ====================
-class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Text(
-        'Félicité - Profil',
-        style: TextStyle(fontSize: 18, color: Color(0xFF0A2472)),
-      ),
     );
   }
 }

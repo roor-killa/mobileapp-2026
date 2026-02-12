@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'screens/home_screen.dart' hide ProfileScreen;
+import 'screens/home_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/buy_screen.dart';
@@ -24,7 +24,7 @@ class BKNApp extends StatelessWidget {
       title: 'BKN - Paiement étudiant',
       debugShowCheckedModeBanner: false,
       theme: _buildTheme(),
-      initialRoute: '/home', // Direct au home avec bottom nav
+      initialRoute: '/login',
       routes: {
         '/home': (context) => const HomeScreen(),
         '/register': (context) => const RegisterScreen(),
@@ -48,7 +48,7 @@ class BKNApp extends StatelessWidget {
       useMaterial3: true,
       fontFamily: 'Inter',
       colorScheme: ColorScheme.fromSeed(
-        seedColor: const Color(0xFF0A2472), // Bleu foncé Izly-like
+        seedColor: const Color(0xFF0A2472),
         brightness: Brightness.light,
       ).copyWith(
         primary: const Color(0xFF0A2472),

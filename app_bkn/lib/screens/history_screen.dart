@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 class HistoryScreen extends StatelessWidget {
   const HistoryScreen({super.key});
 
-  // Données EXACTEMENT comme ton storyboard
   final List<Map<String, dynamic>> _transactions = const [
     {
       'date': '02/02/2024 - 01:00',

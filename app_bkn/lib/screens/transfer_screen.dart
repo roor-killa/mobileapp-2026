@@ -34,7 +34,6 @@ class _TransferScreenState extends State<TransferScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Carte solde
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
@@ -60,7 +59,6 @@ class _TransferScreenState extends State<TransferScreen> {
               
               const SizedBox(height: 24),
               
-              // Destinataire
               const Text(
                 'Destinataire',
                 style: TextStyle(
@@ -89,7 +87,6 @@ class _TransferScreenState extends State<TransferScreen> {
               
               const SizedBox(height: 20),
               
-              // Montant
               const Text(
                 'Montant en BKN',
                 style: TextStyle(
@@ -137,7 +134,6 @@ class _TransferScreenState extends State<TransferScreen> {
               
               const SizedBox(height: 32),
               
-              // Bouton transférer
               SizedBox(
                 width: double.infinity,
                 height: 55,

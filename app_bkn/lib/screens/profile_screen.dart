@@ -4,7 +4,6 @@ import '../models/user.dart';
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
-  // Utilisateur exemple
   static final User currentUser = User(
     id: '1',
     lastName: 'Doe',
@@ -25,7 +24,6 @@ class ProfileScreen extends StatelessWidget {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // Header avec photo
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(24),
@@ -67,7 +65,6 @@ class ProfileScreen extends StatelessWidget {
             
             const SizedBox(height: 24),
             
-            // Informations
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Column(
@@ -94,7 +91,6 @@ class ProfileScreen extends StatelessWidget {
             
             const SizedBox(height: 32),
             
-            // Paramètres
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Column(

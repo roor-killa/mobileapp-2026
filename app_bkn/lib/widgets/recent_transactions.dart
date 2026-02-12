@@ -11,7 +11,7 @@ class RecentTransactions extends StatelessWidget {
     },
     {
       'date': '04/02/2024 - 04:00',
-      'montant': 200,
+      'montant': 1600,
       'type': 'vente',
     },
   ];

@@ -15,7 +15,6 @@ class QrReceiveScreen extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // QR Code
               Container(
                 width: 250,
                 height: 250,
@@ -42,7 +41,6 @@ class QrReceiveScreen extends StatelessWidget {
               
               const SizedBox(height: 30),
               
-              // Pseudo utilisateur
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
@@ -70,7 +68,6 @@ class QrReceiveScreen extends StatelessWidget {
               
               const SizedBox(height: 30),
               
-              // Instructions
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -93,7 +90,6 @@ class QrReceiveScreen extends StatelessWidget {
               
               const SizedBox(height: 40),
               
-              // Bouton partager
               OutlinedButton.icon(
                 onPressed: () {
                   ScaffoldMessenger.of(context).showSnackBar(

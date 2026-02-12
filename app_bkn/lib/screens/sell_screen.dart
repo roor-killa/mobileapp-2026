@@ -14,7 +14,6 @@ class SellScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Carte vente
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(20),
@@ -53,7 +52,6 @@ class SellScreen extends StatelessWidget {
 
             const SizedBox(height: 24),
 
-            // Solution de disposition (exactement le storyboard)
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(20),
@@ -79,12 +77,12 @@ class SellScreen extends StatelessWidget {
                     style: TextStyle(fontSize: 16, color: Colors.black87),
                   ),
                   const SizedBox(height: 4),
-                  Text(
+                  const Text(
                     '100 € de bonus disponible',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: const Color(0xFF00C9A7),
+                      color: Color(0xFF00C9A7),
                     ),
                   ),
                 ],
@@ -93,7 +91,6 @@ class SellScreen extends StatelessWidget {
 
             const SizedBox(height: 32),
 
-            // Bouton Valider
             SizedBox(
               width: double.infinity,
               height: 55,

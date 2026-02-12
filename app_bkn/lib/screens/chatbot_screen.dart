@@ -15,11 +15,10 @@ class ChatbotScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Aide & Félicité'),
+        title: const Text('Félicité - Aide'),
       ),
       body: Column(
         children: [
-          // Header chatbot
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
@@ -67,7 +66,6 @@ class ChatbotScreen extends StatelessWidget {
             ),
           ),
           
-          // Liste FAQ
           Expanded(
             child: ListView.builder(
               padding: const EdgeInsets.all(16),
@@ -109,7 +107,6 @@ class ChatbotScreen extends StatelessWidget {
             ),
           ),
           
-          // Input message
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(

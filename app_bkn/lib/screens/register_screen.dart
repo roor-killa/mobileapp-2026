@@ -38,7 +38,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
             children: [
               const SizedBox(height: 20),
               
-              // Nom
               const Text('Nom', style: TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               TextFormField(
@@ -53,7 +52,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
               
               const SizedBox(height: 16),
               
-              // Prénom
               const Text('Prénom', style: TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               TextFormField(
@@ -68,7 +66,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
               
               const SizedBox(height: 16),
               
-              // Email
               const Text('Email', style: TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               TextFormField(
@@ -84,7 +81,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
               
               const SizedBox(height: 16),
               
-              // Téléphone
               const Text('Téléphone', style: TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               TextFormField(
@@ -100,7 +96,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
               
               const SizedBox(height: 32),
               
-              // Bouton ENVOYER (comme storyboard)
               SizedBox(
                 width: double.infinity,
                 height: 55,

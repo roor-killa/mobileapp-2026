@@ -15,7 +15,6 @@ class ScanScreen extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Zone de scan
               Container(
                 width: 250,
                 height: 250,
@@ -38,7 +37,6 @@ class ScanScreen extends StatelessWidget {
               
               const SizedBox(height: 40),
               
-              // Utilisateur / Scan (EXACTEMENT le storyboard)
               const Text(
                 'Utilisateur / Scan',
                 style: TextStyle(fontSize: 18, color: Colors.black87),
@@ -57,7 +55,6 @@ class ScanScreen extends StatelessWidget {
               
               const SizedBox(height: 40),
               
-              // Bouton VALIDER (exactement comme storyboard)
               SizedBox(
                 width: 200,
                 height: 50,
