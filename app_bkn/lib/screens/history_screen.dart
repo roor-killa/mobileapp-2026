@@ -1,131 +1,375 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:app_bkn/theme/app_theme.dart';
+import 'package:app_bkn/providers/transaction_provider.dart';
+import 'package:app_bkn/services/api_service.dart';
 
-class HistoryScreen extends StatelessWidget {
+class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
 
-  final List<Map<String, dynamic>> _transactions = const [
-    {
-      'date': '02/02/2024 - 01:00',
-      'montant': 1800,
-      'type': 'achat',
-    },
-    {
-      'date': '04/02/2024 - 04:00',
-      'montant': 1600,
-      'type': 'vente',
-    },
-    {
-      'date': '05/02/2024 - 14:30',
-      'montant': 500,
-      'type': 'transfert',
-    },
-    {
-      'date': '06/02/2024 - 10:15',
-      'montant': 300,
-      'type': 'reception',
-    },
-  ];
+  @override
+  State<HistoryScreen> createState() => _HistoryScreenState();
+}
+
+class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _loadTransactions();
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadTransactions() async {
+    if (ApiService.currentUserId != null) {
+      await context.read<TransactionProvider>().loadTransactions(
+        ApiService.currentUserId!,
+        limit: 50,
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Historique'),
+        bottom: TabBar(
+          controller: _tabController,
+          indicatorColor: AppTheme.primaryBlue,
+          labelColor: AppTheme.primaryBlue,
+          unselectedLabelColor: AppTheme.textSecondary,
+          tabs: const [
+            Tab(text: 'TRANSACTIONS'),
+            Tab(text: 'ANALYTIQUE'),
+          ],
+        ),
       ),
-      body: ListView.separated(
-        padding: const EdgeInsets.all(16),
-        itemCount: _transactions.length,
-        separatorBuilder: (_, __) => const Divider(height: 1),
-        itemBuilder: (context, index) {
-          final transaction = _transactions[index];
-          final isPositive = transaction['type'] == 'achat' || transaction['type'] == 'reception';
-          
-          return ListTile(
-            contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-            leading: Container(
-              width: 45,
-              height: 45,
-              decoration: BoxDecoration(
-                color: isPositive 
-                  ? const Color(0xFF00C9A7).withOpacity(0.1)
-                  : const Color(0xFFFF6B6B).withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                _getIcon(transaction['type']),
-                color: isPositive ? const Color(0xFF00C9A7) : const Color(0xFFFF6B6B),
-                size: 22,
-              ),
-            ),
-            title: Text(
-              _getTitle(transaction['type']),
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 16,
-              ),
-            ),
-            subtitle: Text(
-              transaction['date'],
-              style: const TextStyle(
-                color: Colors.grey,
-                fontSize: 13,
-              ),
-            ),
-            trailing: Column(
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: AppTheme.backgroundGradient,
+        ),
+        child: TabBarView(
+          controller: _tabController,
+          children: [
+            _buildTransactionsView(),
+            _buildAnalyticsView(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTransactionsView() {
+    return Consumer<TransactionProvider>(
+      builder: (context, provider, child) {
+        if (provider.isLoading) {
+          return const Center(
+            child: CircularProgressIndicator(color: AppTheme.primaryBlue),
+          );
+        }
+
+        if (provider.transactions.isEmpty) {
+          return Center(
+            child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
+                Icon(
+                  Icons.history,
+                  size: 80,
+                  color: Colors.grey.shade300,
+                ),
+                const SizedBox(height: 16),
                 Text(
-                  '${isPositive ? '+' : '-'}${transaction['montant']} BKN',
+                  'Aucune transaction',
                   style: TextStyle(
-                    color: isPositive ? const Color(0xFF00C9A7) : const Color(0xFFFF6B6B),
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
+                    fontSize: 18,
+                    color: Colors.grey.shade600,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 8),
                 Text(
-                  '≈ ${transaction['montant']} €',
-                  style: const TextStyle(
-                    color: Colors.grey,
-                    fontSize: 12,
+                  'Vos transactions apparaîtront ici',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey.shade500,
                   ),
                 ),
               ],
             ),
           );
-        },
+        }
+
+        return ListView.builder(
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.all(16),
+          itemCount: provider.transactions.length,
+          itemBuilder: (context, index) {
+            final t = provider.transactions[index];
+            final isEnvoi = t['expediteur_pseudo'] == ApiService.currentUserPseudo;
+            
+            return _buildTransactionCard(t, isEnvoi, index)
+                .animate()
+                .fadeIn(duration: 400.ms, delay: (index * 50).ms)
+                .slideX(begin: 0.1, end: 0);
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildTransactionCard(Map<String, dynamic> t, bool isEnvoi, int index) {
+    final date = DateTime.parse(t['date']);
+    final formattedDate = DateFormat('dd/MM/yyyy - HH:mm').format(date);
+    final montant = t['montant'].toDouble();
+    
+    Color getColor() {
+      if (t['type'] == 'achat' || t['type'] == 'reception') {
+        return AppTheme.secondaryGreen;
+      }
+      return AppTheme.errorRed;
+    }
+
+    IconData getIcon() {
+      switch (t['type']) {
+        case 'achat':
+          return Icons.shopping_cart;
+        case 'vente':
+          return Icons.monetization_on;
+        case 'transfert':
+          return isEnvoi ? Icons.arrow_upward : Icons.arrow_downward;
+        case 'reception':
+          return Icons.qr_code;
+        default:
+          return Icons.swap_horiz;
+      }
+    }
+
+    String getTitle() {
+      if (t['type'] == 'transfert') {
+        return isEnvoi 
+            ? 'Envoi à ${t['destinataire_pseudo'] ?? '?'}'
+            : 'Réception de ${t['expediteur_pseudo'] ?? '?'}';
+      } else if (t['type'] == 'achat') {
+        return 'Achat BKN';
+      } else if (t['type'] == 'vente') {
+        return 'Vente BKN';
+      } else if (t['type'] == 'reception') {
+        return 'Réception BKN';
+      }
+      return 'Transaction';
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha:0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            // Icon
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: getColor().withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(
+                getIcon(),
+                color: getColor(),
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 16),
+            
+            // Details
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    getTitle(),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    formattedDate,
+                    style: const TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 13,
+                    ),
+                  ),
+                  if (t['description'] != null && t['description'].isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      t['description'],
+                      style: const TextStyle(
+                        color: AppTheme.textSecondary,
+                        fontSize: 12,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            
+            // Montant
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  '${isEnvoi ? '-' : '+'}${montant.toStringAsFixed(0)}',
+                  style: TextStyle(
+                    color: isEnvoi ? AppTheme.errorRed : AppTheme.secondaryGreen,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '≈ ${montant.toStringAsFixed(0)} €',
+                    style: const TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  IconData _getIcon(String type) {
-    switch (type) {
-      case 'achat':
-        return Icons.shopping_cart;
-      case 'vente':
-        return Icons.attach_money;
-      case 'transfert':
-        return Icons.send;
-      case 'reception':
-        return Icons.qr_code;
-      default:
-        return Icons.swap_horiz;
-    }
+  Widget _buildAnalyticsView() {
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        children: [
+          _buildStatCard(
+            'Volume total',
+            '24 500 BKN',
+            Icons.trending_up,
+            AppTheme.primaryBlue,
+          )
+          .animate()
+          .fadeIn(duration: 400.ms)
+          .slideX(begin: -0.1, end: 0),
+          
+          const SizedBox(height: 16),
+          
+          _buildStatCard(
+            'Transactions',
+            '156',
+            Icons.swap_horiz,
+            AppTheme.accentPurple,
+          )
+          .animate()
+          .fadeIn(duration: 400.ms, delay: 100.ms)
+          .slideX(begin: -0.1, end: 0),
+          
+          const SizedBox(height: 16),
+          
+          _buildStatCard(
+            'Moyenne',
+            '157 BKN',
+            Icons.calculate,
+            AppTheme.secondaryGreen,
+          )
+          .animate()
+          .fadeIn(duration: 400.ms, delay: 200.ms)
+          .slideX(begin: -0.1, end: 0),
+        ],
+      ),
+    );
   }
 
-  String _getTitle(String type) {
-    switch (type) {
-      case 'achat':
-        return 'Achat BKN';
-      case 'vente':
-        return 'Vente BKN';
-      case 'transfert':
-        return 'Transfert vers @john';
-      case 'reception':
-        return 'Reçu de @marie';
-      default:
-        return 'Transaction';
-    }
+  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Icon(icon, color: color, size: 24),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: AppTheme.textSecondary,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

@@ -22,7 +22,7 @@ class ChatbotScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: const Color(0xFF0A2472).withOpacity(0.05),
+              color: const Color(0xFF0A2472).withValues(alpha: 0.05),
               border: Border(
                 bottom: BorderSide(color: Colors.grey.shade200),
               ),
@@ -77,7 +77,7 @@ class ChatbotScreen extends StatelessWidget {
                     leading: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF0A2472).withOpacity(0.1),
+                        color: const Color(0xFF0A2472).withValues(alpha: 0.1),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(

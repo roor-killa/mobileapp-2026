@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:app_bkn/theme/app_theme.dart';
 
 class ActionGrid extends StatelessWidget {
   const ActionGrid({super.key});
 
   final List<Map<String, dynamic>> actions = const [
-    {'icon': Icons.add_shopping_cart, 'label': 'Acheter', 'route': '/buy'},
-    {'icon': Icons.monetization_on, 'label': 'Vendre', 'route': '/sell'},
-    {'icon': Icons.send, 'label': 'Transférer', 'route': '/transfer'},
-    {'icon': Icons.qr_code, 'label': 'Recevoir', 'route': '/qr_receive'},
-    {'icon': Icons.history, 'label': 'Historique', 'route': '/history'},
-    {'icon': Icons.chat, 'label': 'Chatbot', 'route': '/chatbot'},
+    {'icon': Icons.add_shopping_cart, 'label': 'Acheter', 'route': '/buy', 'color': Color(0xFF007AFF)},
+    {'icon': Icons.monetization_on, 'label': 'Vendre', 'route': '/sell', 'color': Color(0xFFFF3B30)},
+    {'icon': Icons.send, 'label': 'Transférer', 'route': '/transfer', 'color': Color(0xFF5856D6)},
+    {'icon': Icons.qr_code, 'label': 'Recevoir', 'route': '/qr_receive', 'color': Color(0xFF34C759)},
+    {'icon': Icons.history, 'label': 'Historique', 'route': '/history', 'color': Color(0xFFFF9500)},
+    {'icon': Icons.chat, 'label': 'Chatbot', 'route': '/chatbot', 'color': Color(0xFF64D2FF)},
   ];
 
   @override
@@ -19,9 +20,9 @@ class ActionGrid extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
-        childAspectRatio: 1,
-        mainAxisSpacing: 12,
-        crossAxisSpacing: 12,
+        childAspectRatio: 0.9,
+        mainAxisSpacing: 16,
+        crossAxisSpacing: 16,
       ),
       itemCount: actions.length,
       itemBuilder: (context, index) {
@@ -31,6 +32,7 @@ class ActionGrid extends StatelessWidget {
           icon: action['icon'],
           label: action['label'],
           route: action['route'],
+          color: action['color'],
         );
       },
     );
@@ -41,33 +43,49 @@ class ActionGrid extends StatelessWidget {
     required IconData icon,
     required String label,
     required String route,
+    required Color color,
   }) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: () => Navigator.pushNamed(context, route),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(20),
         child: Container(
-          padding: const EdgeInsets.all(8),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha:0.02),
+                blurRadius: 10,
+                offset: const Offset(0, 5),
+              ),
+            ],
+          ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0A2472).withOpacity(0.1),
+                  color: color.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(icon, color: const Color(0xFF0A2472), size: 28),
+                child: Icon(
+                  icon,
+                  color: color,
+                  size: 28,
+                ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               Text(
                 label,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF0A2472),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textPrimary,
                 ),
               ),
             ],

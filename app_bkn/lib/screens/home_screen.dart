@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:app_bkn/theme/app_theme.dart';
 import 'package:app_bkn/widgets/balance_card.dart';
 import 'package:app_bkn/widgets/action_grid.dart';
 import 'package:app_bkn/widgets/recent_transactions.dart';
 import 'package:app_bkn/screens/profile_screen.dart';
+import 'package:app_bkn/providers/user_provider.dart';
+import 'package:app_bkn/services/api_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -14,49 +19,153 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
 
-  static const List<Widget> _pages = [
-    HomePage(),
-    NewsScreen(),
-    EventsScreen(),
-    ProfileScreen(),
+  final List<Widget> _pages = [
+    const HomePage(),
+    const NewsScreen(),
+    const EventsScreen(),
+    const ProfileScreen(),
   ];
 
-  static const List<BottomNavigationBarItem> _navItems = [
-    BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Accueil'),
-    BottomNavigationBarItem(icon: Icon(Icons.article), label: 'Actus'),
-    BottomNavigationBarItem(icon: Icon(Icons.event), label: 'Event'),
-    BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Félicité'),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    if (ApiService.currentUserId != null) {
+      await context.read<UserProvider>().loadUser(ApiService.currentUserId!);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBody: true,
       appBar: AppBar(
-        title: const Text(
-          'BKN',
-          style: TextStyle(
-            color: Color(0xFF0A2472),
-            fontWeight: FontWeight.bold,
-          ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                gradient: AppTheme.primaryGradient,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Text(
+                'BKN',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Text(
+              'Finance',
+              style: TextStyle(
+                color: AppTheme.textPrimary,
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                letterSpacing: -0.5,
+              ),
+            ),
+          ],
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.help_outline),
-            tooltip: 'Félicité',
+            icon: Stack(
+              children: [
+                const Icon(Icons.notifications_outlined, size: 28),
+                Positioned(
+                  right: 0,
+                  top: 0,
+                  child: Container(
+                    width: 10,
+                    height: 10,
+                    decoration: const BoxDecoration(
+                      color: AppTheme.errorRed,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            onPressed: () {},
+          ),
+          IconButton(
+            icon: const Icon(Icons.help_outline, size: 28),
             onPressed: () => Navigator.pushNamed(context, '/chatbot'),
           ),
         ],
       ),
-      body: _pages[_selectedIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        items: _navItems,
-        currentIndex: _selectedIndex,
-        selectedItemColor: const Color(0xFF0A2472),
-        unselectedItemColor: Colors.grey,
-        showUnselectedLabels: true,
-        type: BottomNavigationBarType.fixed,
-        elevation: 8,
-        onTap: (index) => setState(() => _selectedIndex = index),
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: _pages,
+      ),
+      bottomNavigationBar: _buildBottomNavigationBar(),
+    );
+  }
+
+  Widget _buildBottomNavigationBar() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(30),
+          topRight: Radius.circular(30),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 20,
+            offset: const Offset(0, -5),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(30),
+          topRight: Radius.circular(30),
+        ),
+        child: BottomNavigationBar(
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.house_outlined),
+              activeIcon: Icon(Icons.house),
+              label: 'Accueil',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.newspaper_outlined),
+              activeIcon: Icon(Icons.newspaper),
+              label: 'Actus',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.calendar_month_outlined),
+              activeIcon: Icon(Icons.calendar_month),
+              label: 'Événements',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person_outlined),
+              activeIcon: Icon(Icons.person),
+              label: 'Profil',
+            ),
+          ],
+          currentIndex: _selectedIndex,
+          onTap: (index) => setState(() => _selectedIndex = index),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          selectedLabelStyle: const TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 12,
+            color: AppTheme.primaryBlue,
+          ),
+          unselectedLabelStyle: const TextStyle(
+            fontWeight: FontWeight.w500,
+            fontSize: 12,
+            color: AppTheme.textSecondary,
+          ),
+        ),
       ),
     );
   }
@@ -67,47 +176,100 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const BalanceCard(solde: 1500.0),
-          const SizedBox(height: 24),
-          const Text(
-            'Actions rapides',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF0A2472),
-            ),
-          ),
-          const SizedBox(height: 16),
-          const ActionGrid(),
-          const SizedBox(height: 24),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Historique transactions',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF0A2472),
-                ),
+    final userProvider = Provider.of<UserProvider>(context);
+    
+    return RefreshIndicator(
+      onRefresh: () async {
+        await userProvider.refreshSolde();
+      },
+      color: AppTheme.primaryBlue,
+      backgroundColor: Colors.white,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Balance Card
+            BalanceCard(solde: userProvider.solde)
+                .animate()
+                .fadeIn(duration: 500.ms)
+                .slideY(begin: 0.1, end: 0),
+            
+            const SizedBox(height: 30),
+            
+            // Quick Actions Title
+            const Text(
+              'Actions rapides',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.textPrimary,
+                letterSpacing: -0.5,
               ),
-              TextButton(
-                onPressed: () => Navigator.pushNamed(context, '/history'),
-                child: const Text(
-                  'Voir tout',
-                  style: TextStyle(color: Color(0xFF0A2472)),
+            )
+            .animate()
+            .fadeIn(duration: 500.ms, delay: 200.ms)
+            .slideX(begin: -0.1, end: 0),
+            
+            const SizedBox(height: 16),
+            
+            // Action Grid
+            const ActionGrid()
+                .animate()
+                .fadeIn(duration: 500.ms, delay: 300.ms),
+            
+            const SizedBox(height: 30),
+            
+            // Recent Transactions Header
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Transactions récentes',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.textPrimary,
+                    letterSpacing: -0.5,
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          const RecentTransactions(),
-        ],
+                TextButton(
+                  onPressed: () => Navigator.pushNamed(context, '/history'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppTheme.primaryBlue,
+                  ),
+                  child: Row(
+                    children: [
+                      const Text(
+                        'Voir tout',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      const Icon(
+                        Icons.arrow_forward_ios,
+                        size: 14,
+                        color: AppTheme.primaryBlue,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            )
+            .animate()
+            .fadeIn(duration: 500.ms, delay: 400.ms)
+            .slideX(begin: -0.1, end: 0),
+            
+            const SizedBox(height: 12),
+            
+            // Recent Transactions List
+            const RecentTransactions()
+                .animate()
+                .fadeIn(duration: 500.ms, delay: 500.ms),
+          ],
+        ),
       ),
     );
   }
@@ -121,48 +283,139 @@ class NewsScreen extends StatelessWidget {
       'title': 'Nouvelle fonctionnalité',
       'subtitle': 'Paiement par QR code disponible',
       'date': '10/02/2024',
+      'icon': Icons.qr_code,
+      'color': Color(0xFF007AFF),
     },
     {
       'title': 'Bonus de bienvenue',
       'subtitle': '100 BKN offerts pour toute inscription',
       'date': '08/02/2024',
+      'icon': Icons.card_giftcard,
+      'color': Color(0xFF34C759),
     },
     {
       'title': 'Maintenance',
       'subtitle': 'Service indisponible de 02h à 04h',
       'date': '05/02/2024',
+      'icon': Icons.build,
+      'color': Color(0xFFFF9500),
+    },
+    {
+      'title': 'Partenariat',
+      'subtitle': '20% de réduction chez Starbucks',
+      'date': '03/02/2024',
+      'icon': Icons.local_cafe,
+      'color': Color(0xFF5856D6),
     },
   ];
 
   @override
   Widget build(BuildContext context) {
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: news.length,
-      itemBuilder: (context, index) {
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          child: ListTile(
-            leading: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: const Color(0xFF0A2472).withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.article, color: Color(0xFF0A2472)),
-            ),
-            title: Text(
-              news[index]['title']!,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            subtitle: Text(news[index]['subtitle']!),
-            trailing: Text(
-              news[index]['date']!,
-              style: const TextStyle(color: Colors.grey, fontSize: 12),
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: AppTheme.backgroundGradient,
+      ),
+      child: ListView.builder(
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.all(20),
+        itemCount: news.length,
+        itemBuilder: (context, index) {
+          return _buildNewsCard(news[index])
+              .animate()
+              .fadeIn(duration: 400.ms, delay: (index * 100).ms)
+              .slideX(begin: 0.1, end: 0);
+        },
+      ),
+    );
+  }
+
+  Widget _buildNewsCard(Map<String, dynamic> item) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: () {},
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: (item['color'] as Color).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Icon(
+                    item['icon'],
+                    color: item['color'],
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item['title'],
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: AppTheme.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        item['subtitle'],
+                        style: const TextStyle(
+                          color: AppTheme.textSecondary,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        item['date'],
+                        style: const TextStyle(
+                          color: AppTheme.textSecondary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 }
@@ -173,45 +426,133 @@ class EventsScreen extends StatelessWidget {
   final List<Map<String, dynamic>> events = const [
     {
       'title': 'Soirée étudiante',
-      'subtitle': 'Paiement en BKN accepté',
-      'date': '15/02/2024',
+      'subtitle': 'Paiement en BKN accepté · 20h',
+      'date': '15 Fév',
+      'icon': Icons.nightlife,
+      'color': Color(0xFFFF3B30),
     },
     {
       'title': 'Concert',
-      'subtitle': '-20% avec BKN',
-      'date': '20/02/2024',
+      'subtitle': '-20% avec BKN · 21h',
+      'date': '20 Fév',
+      'icon': Icons.music_note,
+      'color': Color(0xFF34C759),
+    },
+    {
+      'title': 'Afterwork',
+      'subtitle': 'Networking étudiant · 18h',
+      'date': '25 Fév',
+      'icon': Icons.people,
+      'color': Color(0xFF5856D6),
     },
   ];
 
   @override
   Widget build(BuildContext context) {
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: events.length,
-      itemBuilder: (context, index) {
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          child: ListTile(
-            leading: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: const Color(0xFF00C9A7).withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.event, color: Color(0xFF00C9A7)),
-            ),
-            title: Text(
-              events[index]['title']!,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            subtitle: Text(events[index]['subtitle']!),
-            trailing: Text(
-              events[index]['date']!,
-              style: const TextStyle(color: Colors.grey, fontSize: 12),
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: AppTheme.backgroundGradient,
+      ),
+      child: ListView.builder(
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.all(20),
+        itemCount: events.length,
+        itemBuilder: (context, index) {
+          return _buildEventCard(events[index])
+              .animate()
+              .fadeIn(duration: 400.ms, delay: (index * 100).ms)
+              .slideX(begin: 0.1, end: 0);
+        },
+      ),
+    );
+  }
+
+  Widget _buildEventCard(Map<String, dynamic> event) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Colors.white, Color(0xFFF5F7FA)],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: () {},
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        event['color'],
+                        (event['color'] as Color).withValues(alpha: 0.7),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Center(
+                    child: Text(
+                      event['date'].split(' ')[0],
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        event['title'],
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: AppTheme.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        event['subtitle'],
+                        style: const TextStyle(
+                          color: AppTheme.textSecondary,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.arrow_forward_ios,
+                  size: 16,
+                  color: Colors.grey.shade400,
+                ),
+              ],
             ),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 }
