@@ -1,0 +1,6 @@
+name = "matthiasai"
+main = "src/index.ts"
+compatibility_date = "2026-02-14"
+
+[vars]
+# rien ici (les secrets vont dans wrangler secret)

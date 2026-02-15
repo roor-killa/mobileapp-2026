@@ -1,0 +1,56 @@
+name: transformation_ai
+description: Ultra modern AI photo transformation app (cartoon/anime/3D) with secure backend worker
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.11.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+
+  # Networking (binary image response)
+  http: ^1.2.2
+
+  # Pick images (camera/gallery + multi-pick for Pro)
+  image_picker: ^1.1.2
+
+  # Share output
+  share_plus: ^10.0.2
+
+  # Local directories (cache/history temp)
+  path_provider: ^2.1.4
+
+  # Fast JPG compression before upload
+  flutter_image_compress: ^2.3.0
+
+  # Hashing for cache keys
+  crypto: ^3.0.3
+
+  # Persist settings (resolution, pro mode, batch count)
+  shared_preferences: ^2.3.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+
+  # Si tu ajoutes plus tard des assets (logo, fonts), active ici :
+  # assets:
+  #   - assets/images/
+  #
+  # fonts:
+  #   - family: SFPro
+  #     fonts:
+  #       - asset: assets/fonts/SFProDisplay-Regular.ttf
+  #       - asset: assets/fonts/SFProDisplay-Medium.ttf
+  #         weight: 500
+  #       - asset: assets/fonts/SFProDisplay-Semibold.ttf
+  #         weight: 600
