@@ -24,7 +24,7 @@ class _TransferScreenState extends State<TransferScreen> {
   @override
   void initState() {
     super.initState();
-    _loadUsers();
+    _loadContacts(); // Changé de _loadUsers à _loadContacts
   }
 
   @override
@@ -34,8 +34,9 @@ class _TransferScreenState extends State<TransferScreen> {
     super.dispose();
   }
 
-  Future<void> _loadUsers() async {
-    final users = await ApiService.getUsers();
+  // Changé pour utiliser getContacts
+  Future<void> _loadContacts() async {
+    final users = await ApiService.getContacts();
     setState(() => _users = users);
   }
 
@@ -256,9 +257,10 @@ class _TransferScreenState extends State<TransferScreen> {
                 const SizedBox(height: 24),
                 
                 // Contacts rapides
-                _buildQuickContacts()
-                    .animate()
-                    .fadeIn(duration: 400.ms, delay: 600.ms),
+                if (_users.isNotEmpty)
+                  _buildQuickContacts()
+                      .animate()
+                      .fadeIn(duration: 400.ms, delay: 600.ms),
               ],
             ),
           ),
@@ -516,7 +518,9 @@ class _TransferScreenState extends State<TransferScreen> {
                         radius: 28,
                         backgroundColor: AppTheme.primaryBlue.withValues(alpha: 0.1),
                         child: Text(
-                          user['prenom'][0],
+                          user['prenom'] != null && user['prenom'].isNotEmpty
+                              ? user['prenom'][0]
+                              : '?',
                           style: const TextStyle(
                             color: AppTheme.primaryBlue,
                             fontWeight: FontWeight.bold,
@@ -526,7 +530,7 @@ class _TransferScreenState extends State<TransferScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        user['prenom'],
+                        user['prenom'] ?? '',
                         style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w500,

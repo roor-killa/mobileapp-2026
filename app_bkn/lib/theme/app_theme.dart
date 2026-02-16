@@ -45,13 +45,18 @@ class AppTheme {
     // Google Fonts INTER
     fontFamily: GoogleFonts.inter().fontFamily,
     
-    colorScheme: const ColorScheme.light(
+    // ✅ CORRECTION: Un seul paramètre surface
+    colorScheme: ColorScheme.light(
       primary: primaryBlue,
       secondary: secondaryGreen,
       tertiary: accentPurple,
       surface: surfaceWhite,
-      background: backgroundLight,
       error: errorRed,
+    ).copyWith(
+      surfaceContainerHighest: backgroundLight,
+      onSurface: textPrimary,
+      onPrimary: Colors.white,
+      onSecondary: Colors.white,
     ),
     
     scaffoldBackgroundColor: backgroundLight,
@@ -87,11 +92,10 @@ class AppTheme {
       ),
     ),
     
-    // ✅ CORRECTION: Utiliser CardThemeData au lieu de CardTheme
     cardTheme: CardThemeData(
       color: surfaceWhite,
       elevation: 0,
-      shadowColor: Colors.black.withOpacity(0.05),
+      shadowColor: Colors.black.withValues(alpha: 0.05),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
       ),

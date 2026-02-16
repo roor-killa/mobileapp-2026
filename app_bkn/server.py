@@ -8,8 +8,31 @@ import uuid
 from pydantic import BaseModel
 from typing import Optional, List
 import uvicorn
+from passlib.context import CryptContext
+import time
+
+# ==================== CONFIGURATION HACHAGE ====================
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def hash_password(password: str) -> str:
+    return pwd_context.hash(password)
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
 
 # ==================== MODÈLES ====================
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+class RegisterRequest(BaseModel):
+    email: str
+    nom: str
+    prenom: str
+    pseudo: str
+    phone: str
+    password: str
+
 class TransferRequest(BaseModel):
     expediteur_id: str
     destinataire: str
@@ -24,15 +47,8 @@ class SellRequest(BaseModel):
     user_id: str
     montant: float
 
-class CreateUserRequest(BaseModel):
-    email: str
-    nom: str
-    prenom: str
-    pseudo: str
-    phone: str
-
 # ==================== CONFIGURATION ====================
-DB_HOST = os.getenv('DB_HOST', 'localhost')
+DB_HOST = os.getenv('DB_HOST', 'postgres')
 DB_PORT = os.getenv('DB_PORT', '5432')
 DB_NAME = os.getenv('DB_NAME', 'bkn_db')
 DB_USER = os.getenv('DB_USER', 'bkn_admin')
@@ -61,10 +77,21 @@ def get_db():
 
 def init_database():
     """Initialise la base de données avec les tables et données par défaut"""
-    conn = get_db()
-    cur = conn.cursor()
+    max_attempts = 30
+    for attempt in range(max_attempts):
+        try:
+            conn = get_db()
+            cur = conn.cursor()
+            print(f"✅ Connexion à la base de données établie (tentative {attempt + 1})")
+            break
+        except Exception as e:
+            print(f"⏳ Attente de la base de données... ({attempt + 1}/{max_attempts})")
+            time.sleep(2)
+    else:
+        print("❌ Impossible de se connecter à la base de données")
+        return
     
-    # Table users
+    # Table users avec mot de passe
     cur.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id VARCHAR(50) PRIMARY KEY,
@@ -73,6 +100,7 @@ def init_database():
             prenom VARCHAR(100) NOT NULL,
             pseudo VARCHAR(50) UNIQUE NOT NULL,
             phone VARCHAR(20),
+            password_hash VARCHAR(255) NOT NULL,
             solde DECIMAL(15,2) DEFAULT 1500.00,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             verification_level VARCHAR(50) DEFAULT 'Niveau 1',
@@ -102,19 +130,21 @@ def init_database():
     # Index pour performances
     cur.execute("CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date DESC)")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_transactions_user ON transactions(expediteur_id, destinataire_id)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)")
     
-    # Insérer utilisateurs par défaut
+    # Insérer utilisateurs par défaut avec mots de passe
     cur.execute("SELECT COUNT(*) FROM users")
     if cur.fetchone()['count'] == 0:
+        default_password = hash_password("password123")
         users = [
-            ('1', 'john.doe@email.com', 'Doe', 'John', '@john', '0612345678', 5000.00, 'Niveau 2'),
-            ('2', 'jane.smith@email.com', 'Smith', 'Jane', '@jane', '0687654321', 3000.00, 'Niveau 1'),
-            ('3', 'bob.martin@email.com', 'Martin', 'Bob', '@bob', '0655555555', 2000.00, 'Niveau 1'),
-            ('4', 'alice.wonder@email.com', 'Wonder', 'Alice', '@alice', '0644444444', 4500.00, 'Niveau 2'),
+            ('1', 'john.doe@email.com', 'Doe', 'John', '@john', '0612345678', default_password, 5000.00, 'Niveau 2'),
+            ('2', 'jane.smith@email.com', 'Smith', 'Jane', '@jane', '0687654321', default_password, 3000.00, 'Niveau 1'),
+            ('3', 'bob.martin@email.com', 'Martin', 'Bob', '@bob', '0655555555', default_password, 2000.00, 'Niveau 1'),
+            ('4', 'alice.wonder@email.com', 'Wonder', 'Alice', '@alice', '0644444444', default_password, 4500.00, 'Niveau 2'),
         ]
         cur.executemany("""
-            INSERT INTO users (id, email, nom, prenom, pseudo, phone, solde, verification_level)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO users (id, email, nom, prenom, pseudo, phone, password_hash, solde, verification_level)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         """, users)
         
         # Transactions de démonstration
@@ -126,6 +156,7 @@ def init_database():
             ('TR3', 'transfert', 500, '2024-02-05 14:30:00', 'Transfert vers @jane', '1', '2'),
             ('TR4', 'reception', 300, '2024-02-06 10:15:00', 'Reçu de @bob', '3', '1')
         """)
+        print("✅ Utilisateurs par défaut créés avec mot de passe: password123")
     
     conn.commit()
     cur.close()
@@ -152,11 +183,107 @@ async def health():
     except Exception as e:
         return {"status": "unhealthy", "database": str(e)}
 
+# ================ AUTHENTIFICATION ================
+
+@app.post("/login")
+async def login(request: LoginRequest):
+    """Connexion avec email et mot de passe"""
+    conn = get_db()
+    cur = conn.cursor()
+    
+    cur.execute("""
+        SELECT id, pseudo, email, nom, prenom, password_hash, solde, verification_level, created_at
+        FROM users WHERE email = %s AND is_active = TRUE
+    """, (request.email,))
+    
+    user = cur.fetchone()
+    cur.close()
+    conn.close()
+    
+    if not user:
+        raise HTTPException(status_code=401, detail="Email ou mot de passe incorrect")
+    
+    if not verify_password(request.password, user['password_hash']):
+        raise HTTPException(status_code=401, detail="Email ou mot de passe incorrect")
+    
+    # Mettre à jour la dernière connexion
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("UPDATE users SET last_login = %s WHERE id = %s", 
+                (datetime.now(), user['id']))
+    conn.commit()
+    cur.close()
+    conn.close()
+    
+    # Ne pas renvoyer le mot de passe
+    del user['password_hash']
+    user['solde'] = float(user['solde'])
+    user['created_at'] = user['created_at'].isoformat() if user['created_at'] else None
+    
+    return {
+        "success": True,
+        "user": user
+    }
+
+@app.post("/register")
+async def register(request: RegisterRequest):
+    """Inscription avec mot de passe"""
+    conn = get_db()
+    cur = conn.cursor()
+    
+    # Vérifier si l'email ou le pseudo existe déjà
+    cur.execute("SELECT id FROM users WHERE email = %s OR pseudo = %s", 
+                (request.email, request.pseudo))
+    if cur.fetchone():
+        raise HTTPException(status_code=400, detail="Email ou pseudo déjà utilisé")
+    
+    user_id = str(uuid.uuid4())[:8]
+    pseudo = request.pseudo if request.pseudo.startswith('@') else f'@{request.pseudo}'
+    
+    try:
+        cur.execute("""
+            INSERT INTO users (id, email, nom, prenom, pseudo, phone, password_hash, solde, created_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id, pseudo, email
+        """, (
+            user_id, request.email, request.nom, request.prenom,
+            pseudo, request.phone, hash_password(request.password), 
+            100.00, datetime.now()
+        ))
+        
+        new_user = cur.fetchone()
+        
+        # Bonus de bienvenue
+        cur.execute("""
+            INSERT INTO transactions (id, type, montant, date, description, destinataire_id)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """, (
+            f"WEL{user_id}", 'reception', 100.00, datetime.now(),
+            '🎉 Bonus de bienvenue', user_id
+        ))
+        
+        conn.commit()
+        
+        return {
+            "success": True,
+            "user_id": new_user['id'],
+            "pseudo": new_user['pseudo'],
+            "email": new_user['email'],
+            "bonus": 100
+        }
+        
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        conn.close()
+
 # ================ UTILISATEURS ================
 
 @app.get("/users")
 async def get_users():
-    """Liste tous les utilisateurs actifs"""
+    """Liste tous les utilisateurs actifs (protégé, à utiliser avec précaution)"""
     conn = get_db()
     cur = conn.cursor()
     cur.execute("""
@@ -169,7 +296,7 @@ async def get_users():
     
     for user in users:
         user['solde'] = float(user['solde'])
-        user['created_at'] = user['created_at'].isoformat()
+        user['created_at'] = user['created_at'].isoformat() if user['created_at'] else None
     
     return {"users": users, "total": len(users)}
 
@@ -192,59 +319,8 @@ async def get_user(identifier: str):
         raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
     
     user['solde'] = float(user['solde'])
-    user['created_at'] = user['created_at'].isoformat()
+    user['created_at'] = user['created_at'].isoformat() if user['created_at'] else None
     return user
-
-@app.post("/users")
-async def create_user(request: CreateUserRequest):
-    """Crée un nouvel utilisateur"""
-    conn = get_db()
-    cur = conn.cursor()
-    
-    user_id = str(uuid.uuid4())[:8]
-    pseudo = request.pseudo if request.pseudo.startswith('@') else f'@{request.pseudo}'
-    
-    try:
-        cur.execute("""
-            INSERT INTO users (id, email, nom, prenom, pseudo, phone, solde, created_at)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-            RETURNING id, pseudo, email
-        """, (
-            user_id, request.email, request.nom, request.prenom,
-            pseudo, request.phone, 100.00, datetime.now()
-        ))
-        
-        new_user = cur.fetchone()
-        
-        # Bonus de bienvenue
-        cur.execute("""
-            INSERT INTO transactions (id, type, montant, date, description, destinataire_id)
-            VALUES (%s, %s, %s, %s, %s, %s)
-        """, (
-            f"WEL{user_id}", 'reception', 100.00, datetime.now(),
-            '🎉 Bonus de bienvenue', user_id
-        ))
-        
-        conn.commit()
-        return {
-            "success": True,
-            "user_id": new_user['id'],
-            "pseudo": new_user['pseudo'],
-            "email": new_user['email'],
-            "bonus": 100
-        }
-        
-    except psycopg2.IntegrityError as e:
-        conn.rollback()
-        if 'email' in str(e):
-            raise HTTPException(status_code=400, detail="Email déjà utilisé")
-        elif 'pseudo' in str(e):
-            raise HTTPException(status_code=400, detail="Pseudo déjà pris")
-        else:
-            raise HTTPException(status_code=400, detail="Erreur de création")
-    finally:
-        cur.close()
-        conn.close()
 
 @app.get("/balance/{user_id}")
 async def get_balance(user_id: str):
@@ -469,7 +545,7 @@ async def get_history(user_id: str, limit: int = Query(20, ge=1, le=100)):
     
     for t in transactions:
         t['montant'] = float(t['montant'])
-        t['date'] = t['date'].isoformat()
+        t['date'] = t['date'].isoformat() if t['date'] else None
     
     return {"transactions": transactions, "total": len(transactions)}
 
@@ -507,18 +583,6 @@ async def get_stats():
 
 # ==================== DÉMARRAGE ====================
 if __name__ == "__main__":
-    import time
-    max_attempts = 30
-    for attempt in range(max_attempts):
-        try:
-            conn = get_db()
-            conn.close()
-            print("✅ Connexion PostgreSQL établie")
-            break
-        except Exception as e:
-            print(f"⏳ Attente PostgreSQL... ({attempt + 1}/{max_attempts})")
-            time.sleep(2)
-    
     init_database()
     
     print("\n" + "="*60)
@@ -526,7 +590,9 @@ if __name__ == "__main__":
     print("="*60)
     print("📡 http://localhost:8000")
     print("📊 http://localhost:8000/docs")
-    print("📈 Adminer: http://localhost:8080")
+    print("📈 Adminer: http://localhost:8081")
+    print("="*60)
+    print("👤 Utilisateurs par défaut: john.doe@email.com / password123")
     print("="*60)
     
     uvicorn.run(app, host="0.0.0.0", port=8000)

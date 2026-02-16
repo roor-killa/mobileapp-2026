@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:app_bkn/theme/app_theme.dart';
-import 'package:app_bkn/services/api_service.dart';
+import '../theme/app_theme.dart';
+import '../services/api_service.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -17,8 +17,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _emailController = TextEditingController();
   final _telephoneController = TextEditingController();
   final _pseudoController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
   
+  bool _isPasswordVisible = false;
+  bool _isConfirmPasswordVisible = false;
   bool _isLoading = false;
+  String? _errorMessage;
 
   @override
   void dispose() {
@@ -27,34 +32,32 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _emailController.dispose();
     _telephoneController.dispose();
     _pseudoController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
   Future<void> _handleRegister() async {
     if (!_formKey.currentState!.validate()) return;
     
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
     
-    final result = await ApiService.createUser(
-      email: _emailController.text,
-      nom: _nomController.text,
-      prenom: _prenomController.text,
-      pseudo: _pseudoController.text,
-      phone: _telephoneController.text,
+    final result = await ApiService.register(
+      email: _emailController.text.trim(),
+      nom: _nomController.text.trim(),
+      prenom: _prenomController.text.trim(),
+      pseudo: _pseudoController.text.trim(),
+      phone: _telephoneController.text.trim(),
+      password: _passwordController.text,
     );
     
     if (!mounted) return;
-    setState(() => _isLoading = false);
     
     if (result['success']) {
       final data = result['data'];
-      await ApiService.saveSession(
-        data['user_id'],
-        data['pseudo'],
-        data['email'],
-      );
-      
-      if (!mounted) return;
       
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -67,20 +70,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
       );
       
-      Navigator.pushReplacementNamed(context, '/home');
+      Navigator.pushReplacementNamed(context, '/login');
     } else {
-      if (!mounted) return;
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(result['data']['error'] ?? 'Erreur lors de l\'inscription'),
-          backgroundColor: AppTheme.errorRed,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      );
+      setState(() {
+        _errorMessage = result['error'];
+        _isLoading = false;
+      });
     }
   }
 
@@ -123,98 +118,114 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 
                 const SizedBox(height: 40),
                 
-                const Text(
-                  'Nom',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.textPrimary,
+                // Message d'erreur
+                if (_errorMessage != null)
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    margin: const EdgeInsets.only(bottom: 20),
+                    decoration: BoxDecoration(
+                      color: AppTheme.errorRed.withValues(alpha: 0.1), // ✅ CORRECT
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppTheme.errorRed.withValues(alpha: 0.3)), // ✅ CORRECT
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.error_outline, color: AppTheme.errorRed),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            _errorMessage!,
+                            style: const TextStyle(color: AppTheme.errorRed),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ).animate().fadeIn(duration: 400.ms, delay: 100.ms).slideX(begin: -0.1, end: 0),
                 
+                // Nom
+                const Text('Nom', style: TextStyle(fontWeight: FontWeight.w600)),
                 const SizedBox(height: 8),
-                
                 _buildTextField(
                   controller: _nomController,
                   hint: 'Votre nom',
                   icon: Icons.person_outline,
-                ).animate().fadeIn(duration: 400.ms, delay: 200.ms).slideX(begin: -0.1, end: 0),
+                ),
                 
                 const SizedBox(height: 20),
                 
-                const Text(
-                  'Prénom',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.textPrimary,
-                  ),
-                ).animate().fadeIn(duration: 400.ms, delay: 300.ms).slideX(begin: -0.1, end: 0),
-                
+                // Prénom
+                const Text('Prénom', style: TextStyle(fontWeight: FontWeight.w600)),
                 const SizedBox(height: 8),
-                
                 _buildTextField(
                   controller: _prenomController,
                   hint: 'Votre prénom',
                   icon: Icons.person_outline,
-                ).animate().fadeIn(duration: 400.ms, delay: 400.ms).slideX(begin: -0.1, end: 0),
+                ),
                 
                 const SizedBox(height: 20),
                 
-                const Text(
-                  'Email',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.textPrimary,
-                  ),
-                ).animate().fadeIn(duration: 400.ms, delay: 500.ms).slideX(begin: -0.1, end: 0),
-                
+                // Email
+                const Text('Email', style: TextStyle(fontWeight: FontWeight.w600)),
                 const SizedBox(height: 8),
-                
                 _buildTextField(
                   controller: _emailController,
                   hint: 'exemple@email.com',
                   icon: Icons.email_outlined,
                   keyboardType: TextInputType.emailAddress,
-                ).animate().fadeIn(duration: 400.ms, delay: 600.ms).slideX(begin: -0.1, end: 0),
+                ),
                 
                 const SizedBox(height: 20),
                 
-                const Text(
-                  'Pseudo',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.textPrimary,
-                  ),
-                ).animate().fadeIn(duration: 400.ms, delay: 700.ms).slideX(begin: -0.1, end: 0),
-                
+                // Pseudo
+                const Text('Pseudo', style: TextStyle(fontWeight: FontWeight.w600)),
                 const SizedBox(height: 8),
-                
                 _buildTextField(
                   controller: _pseudoController,
                   hint: '@pseudo',
                   icon: Icons.alternate_email,
-                ).animate().fadeIn(duration: 400.ms, delay: 800.ms).slideX(begin: -0.1, end: 0),
+                ),
                 
                 const SizedBox(height: 20),
                 
-                const Text(
-                  'Téléphone',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.textPrimary,
-                  ),
-                ).animate().fadeIn(duration: 400.ms, delay: 900.ms).slideX(begin: -0.1, end: 0),
-                
+                // Téléphone
+                const Text('Téléphone', style: TextStyle(fontWeight: FontWeight.w600)),
                 const SizedBox(height: 8),
-                
                 _buildTextField(
                   controller: _telephoneController,
                   hint: '06 12 34 56 78',
                   icon: Icons.phone_outlined,
                   keyboardType: TextInputType.phone,
-                ).animate().fadeIn(duration: 400.ms, delay: 1000.ms).slideX(begin: -0.1, end: 0),
+                ),
+                
+                const SizedBox(height: 20),
+                
+                // Mot de passe
+                const Text('Mot de passe', style: TextStyle(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                _buildPasswordField(
+                  controller: _passwordController,
+                  hint: 'Minimum 6 caractères',
+                  isVisible: _isPasswordVisible,
+                  onToggleVisibility: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
+                ),
+                
+                const SizedBox(height: 20),
+                
+                // Confirmation mot de passe
+                const Text('Confirmer le mot de passe', style: TextStyle(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                _buildPasswordField(
+                  controller: _confirmPasswordController,
+                  hint: 'Retapez votre mot de passe',
+                  isVisible: _isConfirmPasswordVisible,
+                  onToggleVisibility: () => setState(() => _isConfirmPasswordVisible = !_isConfirmPasswordVisible),
+                  isConfirm: true,
+                  passwordController: _passwordController,
+                ),
                 
                 const SizedBox(height: 40),
                 
+                // Bouton d'inscription
                 Container(
                   width: double.infinity,
                   height: 55,
@@ -223,7 +234,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: AppTheme.secondaryGreen.withValues(alpha: 0.3),
+                        color: AppTheme.secondaryGreen.withValues(alpha: 0.3), // ✅ CORRECT
                         blurRadius: 15,
                         offset: const Offset(0, 8),
                       ),
@@ -256,7 +267,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             ),
                           ),
                   ),
-                ).animate().fadeIn(duration: 400.ms, delay: 1100.ms).scale(begin: const Offset(0.9, 0.9), end: const Offset(1, 1)),
+                ),
                 
                 const SizedBox(height: 24),
                 
@@ -271,7 +282,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                     ),
                   ),
-                ).animate().fadeIn(duration: 400.ms, delay: 1200.ms),
+                ),
               ],
             ),
           ),
@@ -286,37 +297,68 @@ class _RegisterScreenState extends State<RegisterScreen> {
     required IconData icon,
     TextInputType? keyboardType,
   }) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: TextFormField(
-        controller: controller,
-        keyboardType: keyboardType,
-        decoration: InputDecoration(
-          hintText: hint,
-          prefixIcon: Icon(icon, color: AppTheme.primaryBlue),
-          filled: true,
-          fillColor: Colors.white,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none,
-          ),
+    return TextFormField(
+      controller: controller,
+      keyboardType: keyboardType,
+      decoration: InputDecoration(
+        hintText: hint,
+        prefixIcon: Icon(icon, color: AppTheme.primaryBlue),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide.none,
         ),
-        validator: (value) {
-          if (value == null || value.isEmpty) {
-            return 'Ce champ est requis';
-          }
-          return null;
-        },
+        filled: true,
+        fillColor: Colors.white,
       ),
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Ce champ est requis';
+        }
+        return null;
+      },
+    );
+  }
+
+  Widget _buildPasswordField({
+    required TextEditingController controller,
+    required String hint,
+    required bool isVisible,
+    required VoidCallback onToggleVisibility,
+    bool isConfirm = false,
+    TextEditingController? passwordController,
+  }) {
+    return TextFormField(
+      controller: controller,
+      obscureText: !isVisible,
+      decoration: InputDecoration(
+        hintText: hint,
+        prefixIcon: const Icon(Icons.lock_outline, color: AppTheme.primaryBlue),
+        suffixIcon: IconButton(
+          icon: Icon(
+            isVisible ? Icons.visibility_off : Icons.visibility,
+            color: AppTheme.textSecondary,
+          ),
+          onPressed: onToggleVisibility,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide.none,
+        ),
+        filled: true,
+        fillColor: Colors.white,
+      ),
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Mot de passe requis';
+        }
+        if (!isConfirm && value.length < 6) {
+          return 'Minimum 6 caractères';
+        }
+        if (isConfirm && value != passwordController?.text) {
+          return 'Les mots de passe ne correspondent pas';
+        }
+        return null;
+      },
     );
   }
 }

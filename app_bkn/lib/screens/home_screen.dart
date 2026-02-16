@@ -52,7 +52,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Text(
-                'BKN',
+                'BKN Patoche',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 18,

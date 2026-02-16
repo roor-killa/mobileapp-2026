@@ -26,7 +26,7 @@ class QrReceiveScreen extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // QR Code
+                // QR Code avec style personnalisé
                 Container(
                   width: 280,
                   height: 280,
@@ -47,7 +47,18 @@ class QrReceiveScreen extends StatelessWidget {
                     version: QrVersions.auto,
                     size: 240,
                     backgroundColor: Colors.white,
-                    foregroundColor: AppTheme.primaryBlue, // Garder foregroundColor pour les modules
+                    
+                    // ✅ STYLE PERSONNALISÉ DES YEUX (les 3 grands carrés)
+                    eyeStyle: const QrEyeStyle(
+                      eyeShape: QrEyeShape.square, // Peut être square ou circle
+                      color: AppTheme.primaryBlue,
+                    ),
+                    
+                    // ✅ STYLE PERSONNALISÉ DES MODULES (les points)
+                    dataModuleStyle: const QrDataModuleStyle(
+                      dataModuleShape: QrDataModuleShape.square, // Peut être square ou circle
+                      color: AppTheme.primaryBlue,
+                    ),
                   ),
                 ),
                 
