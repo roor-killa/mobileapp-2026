@@ -9,24 +9,34 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  
+
+  # Icônes Apple style
   cupertino_icons: ^1.0.8
-  
+
+  # HTTP et URL
   http: ^1.2.1
   url_launcher: ^6.2.4
-  
+
+  # State management
   provider: ^6.1.2
-  
+
+  # Animations & UI
   flutter_animate: ^4.5.0
   shimmer: ^3.0.0
   google_fonts: ^6.2.1
-  
+
+  # Internationalisation et stockage local
   intl: ^0.18.0
   shared_preferences: ^2.2.2
-  
+
+  # QR code et scanner
   qr_flutter: ^4.1.0
   mobile_scanner: ^5.1.0
-  
+
+  # Découverte réseau / Bonjour pour iOS & Android
+  bonsoir: ^6.0.1
+  flutter_secure_storage: ^10.0.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
