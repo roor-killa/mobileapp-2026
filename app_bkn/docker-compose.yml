@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: bkn_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: bkn_db
+      POSTGRES_USER: bkn_admin
+      POSTGRES_PASSWORD: BknSecurePass2026!
+    ports:
+      - "5432:5432"
+    volumes:
+      - bkn_postgres_data:/var/lib/postgresql/data
+    networks:
+      - bkn_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bkn_admin -d bkn_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: .
+    container_name: bkn_api
+    restart: unless-stopped
+    ports:
+      - "8001:8000"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=bkn_db
+      - DB_USER=bkn_admin
+      - DB_PASSWORD=BknSecurePass2026!
+    volumes:
+      - ./:/app
+    networks:
+      - bkn_network
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+networks:
+  bkn_network:
+    driver: bridge
+
+volumes:
+  bkn_postgres_data:

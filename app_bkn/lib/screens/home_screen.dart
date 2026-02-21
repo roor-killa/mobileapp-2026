@@ -52,7 +52,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Text(
-                'BKN Patoche',
+                'BKN',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 18,
@@ -84,7 +84,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     width: 10,
                     height: 10,
                     decoration: const BoxDecoration(
-                      color: AppTheme.errorRed,
+                      color: AppTheme.primaryPink,
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -158,12 +158,10 @@ class _HomeScreenState extends State<HomeScreen> {
           selectedLabelStyle: const TextStyle(
             fontWeight: FontWeight.w600,
             fontSize: 12,
-            color: AppTheme.primaryBlue,
           ),
           unselectedLabelStyle: const TextStyle(
             fontWeight: FontWeight.w500,
             fontSize: 12,
-            color: AppTheme.textSecondary,
           ),
         ),
       ),
@@ -182,7 +180,7 @@ class HomePage extends StatelessWidget {
       onRefresh: () async {
         await userProvider.refreshSolde();
       },
-      color: AppTheme.primaryBlue,
+      color: AppTheme.primaryPink,
       backgroundColor: Colors.white,
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -237,7 +235,7 @@ class HomePage extends StatelessWidget {
                 TextButton(
                   onPressed: () => Navigator.pushNamed(context, '/history'),
                   style: TextButton.styleFrom(
-                    foregroundColor: AppTheme.primaryBlue,
+                    foregroundColor: AppTheme.primaryPink,
                   ),
                   child: Row(
                     children: [
@@ -251,7 +249,7 @@ class HomePage extends StatelessWidget {
                       const Icon(
                         Icons.arrow_forward_ios,
                         size: 14,
-                        color: AppTheme.primaryBlue,
+                        color: AppTheme.primaryPink,
                       ),
                     ],
                   ),
@@ -284,28 +282,28 @@ class NewsScreen extends StatelessWidget {
       'subtitle': 'Paiement par QR code disponible',
       'date': '10/02/2024',
       'icon': Icons.qr_code,
-      'color': Color(0xFF007AFF),
+      'color': AppTheme.primaryBlue,
     },
     {
       'title': 'Bonus de bienvenue',
       'subtitle': '100 BKN offerts pour toute inscription',
       'date': '08/02/2024',
       'icon': Icons.card_giftcard,
-      'color': Color(0xFF34C759),
+      'color': AppTheme.secondaryGreen,
     },
     {
       'title': 'Maintenance',
       'subtitle': 'Service indisponible de 02h à 04h',
       'date': '05/02/2024',
       'icon': Icons.build,
-      'color': Color(0xFFFF9500),
+      'color': AppTheme.warningOrange,
     },
     {
       'title': 'Partenariat',
       'subtitle': '20% de réduction chez Starbucks',
       'date': '03/02/2024',
       'icon': Icons.local_cafe,
-      'color': Color(0xFF5856D6),
+      'color': AppTheme.accentPurple,
     },
   ];
 
@@ -428,22 +426,19 @@ class EventsScreen extends StatelessWidget {
       'title': 'Soirée étudiante',
       'subtitle': 'Paiement en BKN accepté · 20h',
       'date': '15 Fév',
-      'icon': Icons.nightlife,
-      'color': Color(0xFFFF3B30),
+      'color': AppTheme.primaryPink,
     },
     {
       'title': 'Concert',
       'subtitle': '-20% avec BKN · 21h',
       'date': '20 Fév',
-      'icon': Icons.music_note,
-      'color': Color(0xFF34C759),
+      'color': AppTheme.secondaryGreen,
     },
     {
       'title': 'Afterwork',
       'subtitle': 'Networking étudiant · 18h',
       'date': '25 Fév',
-      'icon': Icons.people,
-      'color': Color(0xFF5856D6),
+      'color': AppTheme.accentPurple,
     },
   ];
 

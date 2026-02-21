@@ -1,0 +1,10 @@
+Adminer: http://localhost:8081⁠
+
+Base de Donnée Administateur 
+
+Champ	| Valeur à saisir
+Système | PostgreSQL
+Serveur	| postgres
+Utilisateur | bkn_admin
+Mot de passe	BknSecurePass2026!
+Base de données	(laisser vide)

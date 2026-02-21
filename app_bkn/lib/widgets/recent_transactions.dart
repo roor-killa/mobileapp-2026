@@ -24,10 +24,14 @@ class RecentTransactions extends StatelessWidget {
     
     if (transactions.isEmpty) {
       return Container(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(32),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Colors.white, Color(0xFFF8F9FF)],
+          ),
+          borderRadius: BorderRadius.circular(25),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.02),
@@ -38,14 +42,22 @@ class RecentTransactions extends StatelessWidget {
         ),
         child: const Column(
           children: [
-            Icon(Icons.history, size: 48, color: AppTheme.textSecondary),
-            SizedBox(height: 12),
+            Icon(Icons.history, size: 60, color: AppTheme.primaryPink),
+            SizedBox(height: 16),
             Text(
               'Aucune transaction',
               style: TextStyle(
+                color: AppTheme.textPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Vos transactions apparaîtront ici',
+              style: TextStyle(
                 color: AppTheme.textSecondary,
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
+                fontSize: 14,
               ),
             ),
           ],
@@ -66,6 +78,22 @@ class RecentTransactions extends StatelessWidget {
     final date = DateTime.parse(t['date']);
     final formattedDate = DateFormat('dd/MM/yyyy - HH:mm').format(date);
     
+    Color getColor() {
+      return isEnvoi ? AppTheme.errorRed : AppTheme.secondaryGreen;
+    }
+
+    IconData getIcon() {
+      return isEnvoi ? Icons.arrow_upward : Icons.arrow_downward;
+    }
+
+    String getTitle() {
+      if (isEnvoi) {
+        return 'Envoi à ${t['destinataire_pseudo'] ?? '?'}';
+      } else {
+        return 'Réception de ${t['expediteur_pseudo'] ?? '?'}';
+      }
+    }
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -80,22 +108,29 @@ class RecentTransactions extends StatelessWidget {
         ],
       ),
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
         leading: Container(
           width: 50,
           height: 50,
           decoration: BoxDecoration(
-            color: (isEnvoi ? AppTheme.errorRed : AppTheme.secondaryGreen).withValues(alpha: 0.1),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                getColor(),
+                getColor().withValues(alpha: 0.8),
+              ],
+            ),
             shape: BoxShape.circle,
           ),
           child: Icon(
-            isEnvoi ? Icons.arrow_upward : Icons.arrow_downward,
-            color: isEnvoi ? AppTheme.errorRed : AppTheme.secondaryGreen,
+            getIcon(),
+            color: Colors.white,
             size: 24,
           ),
         ),
         title: Text(
-          isEnvoi ? 'Envoi à ${t['destinataire_pseudo'] ?? '?'}' : 'Réception de ${t['expediteur_pseudo'] ?? '?'}',
+          getTitle(),
           style: const TextStyle(
             fontWeight: FontWeight.w600,
             fontSize: 15,
@@ -109,27 +144,35 @@ class RecentTransactions extends StatelessWidget {
             fontSize: 12,
           ),
         ),
-        trailing: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(
-              '${isEnvoi ? '-' : '+'}${montant.toStringAsFixed(0)} BKN',
-              style: TextStyle(
-                color: isEnvoi ? AppTheme.errorRed : AppTheme.secondaryGreen,
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
+        trailing: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: getColor().withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '${isEnvoi ? '-' : '+'}${montant.toStringAsFixed(0)}',
+                style: TextStyle(
+                  color: getColor(),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
               ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              '≈ ${montant.toStringAsFixed(0)} €',
-              style: const TextStyle(
-                color: AppTheme.textSecondary,
-                fontSize: 11,
+              const SizedBox(height: 2),
+              Text(
+                'BKN',
+                style: TextStyle(
+                  color: getColor().withValues(alpha: 0.7),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -15,14 +15,17 @@ class BalanceCard extends StatelessWidget {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Colors.white, Color(0xFFF5F7FA)],
+          colors: [
+            AppTheme.primaryBlue,
+            AppTheme.primaryPink,
+          ],
         ),
         borderRadius: BorderRadius.circular(32),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
+            color: AppTheme.primaryBlue.withValues(alpha: 0.3),
+            blurRadius: 30,
+            offset: const Offset(0, 15),
           ),
         ],
       ),
@@ -33,39 +36,39 @@ class BalanceCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
-                  color: AppTheme.primaryBlue.withValues(alpha: 0.1),
+                  color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(30),
                 ),
                 child: const Text(
                   '1 BKN = 1 €',
                   style: TextStyle(
-                    color: AppTheme.primaryBlue,
+                    color: Colors.white,
                     fontWeight: FontWeight.bold,
                     fontSize: 13,
                   ),
                 ),
               ),
               Container(
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: AppTheme.primaryBlue.withValues(alpha: 0.1),
+                  color: Colors.white.withValues(alpha: 0.2),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
                   Icons.account_balance_wallet,
-                  color: AppTheme.primaryBlue,
-                  size: 22,
+                  color: Colors.white,
+                  size: 24,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
           const Text(
             'Solde disponible',
             style: TextStyle(
-              color: AppTheme.textSecondary,
+              color: Colors.white70,
               fontSize: 14,
               fontWeight: FontWeight.w500,
             ),
@@ -78,9 +81,9 @@ class BalanceCard extends StatelessWidget {
               Text(
                 solde.toStringAsFixed(0),
                 style: const TextStyle(
-                  fontSize: 48,
+                  fontSize: 52,
                   fontWeight: FontWeight.bold,
-                  color: AppTheme.textPrimary,
+                  color: Colors.white,
                   letterSpacing: -1,
                 ),
               ),
@@ -89,19 +92,26 @@ class BalanceCard extends StatelessWidget {
                 'BKN',
                 style: TextStyle(
                   fontSize: 24,
-                  color: AppTheme.textSecondary,
+                  color: Colors.white70,
                   fontWeight: FontWeight.w600,
                 ),
               ),
             ],
           ),
           const SizedBox(height: 4),
-          Text(
-            '≈ ${solde.toStringAsFixed(2)} €',
-            style: const TextStyle(
-              color: AppTheme.textSecondary,
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              '≈ ${solde.toStringAsFixed(2)} €',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
         ],
