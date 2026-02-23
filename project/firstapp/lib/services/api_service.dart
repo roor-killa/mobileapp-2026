@@ -1,87 +1,80 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../models/transfer_response.dart';
+import 'auth_service.dart';
+import '../models/wallet.dart';
+import '../models/transaction.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://localhost:8001/api/products';
+  static const String _baseUrl = 'http://10.0.2.2:8001/api';
 
-  /// Appel réel à l'API Laravel pour récupérer le prix du premier produit
-  /// et l'utiliser comme nouveau solde du wallet
-  Future<TransferResponse> transfererMontant(double montant) async {
-    print('📤 ÉTAPE 2 : Envoi de la requête API...');
-    print('💰 Montant à transférer : $montant €');
+  final _authService = AuthService();
 
-    try {
-      print('⚙️  ÉTAPE 3 : Appel GET $baseUrl...');
-      final response = await http.get(Uri.parse(baseUrl));
-
-      if (response.statusCode != 200) {
-        return TransferResponse(
-          success: false,
-          montantTotal: 0,
-          montantTransfere: 0,
-          nouveauSolde: 0,
-          message: 'Erreur API : status ${response.statusCode}',
-        );
-      }
-
-      print('📥 ÉTAPE 4 : Réception du JSON :');
-      print(response.body);
-
-      final data = json.decode(response.body);
-
-      // Récupérer la liste de produits (gère les deux formats possibles)
-      final List<dynamic> products = data is List ? data : (data['data'] ?? data['products'] ?? []);
-
-      if (products.isEmpty) {
-        return TransferResponse(
-          success: false,
-          montantTotal: 0,
-          montantTransfere: 0,
-          nouveauSolde: 0,
-          message: 'Aucun produit trouvé',
-        );
-      }
-
-      // Récupérer le product_price du premier produit
-      final premierProduit = products[0];
-      final double productPrice = double.parse(premierProduit['product_price'].toString());
-
-      print('🔄 ÉTAPE 5 : product_price du premier produit = $productPrice');
-
-      return TransferResponse(
-        success: true,
-        montantTotal: productPrice,
-        montantTransfere: montant,
-        nouveauSolde: productPrice,
-        message: 'Solde mis à jour depuis l\'API (prix du 1er produit)',
-      );
-    } catch (e) {
-      print('❌ Erreur lors de l\'appel API : $e');
-      return TransferResponse(
-        success: false,
-        montantTotal: 0,
-        montantTransfere: 0,
-        nouveauSolde: 0,
-        message: 'Erreur de connexion : $e',
-      );
-    }
+  Future<Map<String, String>> _headers() async {
+    final token = await _authService.getToken();
+    return {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'Authorization': 'Bearer $token',
+    };
   }
 
-  /// Récupérer le solde actuel depuis l'API (prix du premier produit)
-  Future<double> getSoldeActuel() async {
-    try {
-      final response = await http.get(Uri.parse(baseUrl));
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final List<dynamic> products = data is List ? data : (data['data'] ?? data['products'] ?? []);
-        if (products.isNotEmpty) {
-          return double.parse(products[0]['product_price'].toString());
-        }
-      }
-    } catch (e) {
-      print('❌ Erreur getSoldeActuel : $e');
+  // GET /api/wallet
+  Future<Wallet> getWallet() async {
+    final response = await http.get(
+      Uri.parse('$_baseUrl/wallet'),
+      headers: await _headers(),
+    );
+    if (response.statusCode == 200) {
+      return Wallet.fromJson(jsonDecode(response.body));
     }
-    return 0;
+    throw Exception('Impossible de charger le portefeuille');
+  }
+
+  // POST /api/wallet/transfer
+  Future<Map<String, dynamic>> transfer(String recipientEmail, double amount) async {
+    final response = await http.post(
+      Uri.parse('$_baseUrl/wallet/transfer'),
+      headers: await _headers(),
+      body: jsonEncode({'recipient_email': recipientEmail, 'amount': amount}),
+    );
+    return jsonDecode(response.body);
+  }
+
+  // POST /api/wallet/topup/create-intent
+  Future<String> createPaymentIntent(double amount) async {
+    final response = await http.post(
+      Uri.parse('$_baseUrl/wallet/topup/create-intent'),
+      headers: await _headers(),
+      body: jsonEncode({'amount': amount}),
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body)['client_secret'] as String;
+    }
+    throw Exception('Erreur création PaymentIntent');
+  }
+
+  // POST /api/wallet/topup/confirm
+  Future<Map<String, dynamic>> confirmTopUp(String paymentIntentId, double amount) async {
+    final response = await http.post(
+      Uri.parse('$_baseUrl/wallet/topup/confirm'),
+      headers: await _headers(),
+      body: jsonEncode({'payment_intent_id': paymentIntentId, 'amount': amount}),
+    );
+    return jsonDecode(response.body);
+  }
+
+  // GET /api/wallet/transactions
+  Future<List<Transaction>> getTransactions() async {
+    final response = await http.get(
+      Uri.parse('$_baseUrl/wallet/transactions'),
+      headers: await _headers(),
+    );
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return (data['transactions'] as List)
+          .map((t) => Transaction.fromJson(t))
+          .toList();
+    }
+    throw Exception('Impossible de charger les transactions');
   }
 }

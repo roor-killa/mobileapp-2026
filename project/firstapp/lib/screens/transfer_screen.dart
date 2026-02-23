@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../models/transfer_response.dart';
 import '../services/api_service.dart';
 
 class TransferScreen extends StatefulWidget {
@@ -11,90 +10,63 @@ class TransferScreen extends StatefulWidget {
 }
 
 class _TransferScreenState extends State<TransferScreen> {
-  // Contrôleur pour le champ de saisie
-  final TextEditingController _montantController = TextEditingController();
-  
-  // Service API
-  final ApiService _apiService = ApiService();
-  
-  // État de l'application
-  bool _isLoading = false; // Chargement en cours ?
-  TransferResponse? _lastResponse; // Dernière réponse reçue
-  double? _soldeActuel; // Solde actuel
-  
-  @override
-  void initState() {
-    super.initState();
-    _chargerSoldeInitial();
-  }
-  
-  /// Charge le solde au démarrage
-  Future<void> _chargerSoldeInitial() async {
-    final solde = await _apiService.getSoldeActuel();
-    setState(() {
-      _soldeActuel = solde;
-    });
-  }
-  
-  /// ÉTAPE 1 : Action déclenchée par le bouton "Transférer"
+  final _recipientController = TextEditingController();
+  final _montantController   = TextEditingController();
+  final _apiService          = ApiService();
+
+  bool _isLoading       = false;
+  bool? _lastSuccess;
+  String _lastMessage   = '';
+  double? _nouveauSolde;
+
   Future<void> _effectuerTransfert() async {
-    // Validation de la saisie
+    final email = _recipientController.text.trim();
     final montantText = _montantController.text.trim();
-    if (montantText.isEmpty) {
-      _afficherErreur('Veuillez entrer un montant');
+
+    if (email.isEmpty) {
+      _afficherErreur('Veuillez entrer l\'email du destinataire');
       return;
     }
-    
+
     final montant = double.tryParse(montantText);
     if (montant == null || montant <= 0) {
       _afficherErreur('Montant invalide');
       return;
     }
-    
-    print('🚀 ÉTAPE 1 : Bouton "Transférer" pressé');
-    print('💵 Montant saisi : $montant €');
-    
-    // Active le loader
+
     setState(() {
-      _isLoading = true;
-      _lastResponse = null;
+      _isLoading   = true;
+      _lastSuccess = null;
     });
-    
+
     try {
-      // ÉTAPES 2-5 : Appel API et récupération du JSON
-      final response = await _apiService.transfererMontant(montant);
-      
-      // ÉTAPE 6 : Mise à jour de l'interface avec les données
-      print('✅ ÉTAPE 6 : Affichage des données');
+      final result = await _apiService.transfer(email, montant);
+
       setState(() {
-        _lastResponse = response;
-        _soldeActuel = response.nouveauSolde;
-        _isLoading = false;
+        _lastSuccess  = result['success'] == true;
+        _lastMessage  = result['message'] ?? '';
+        _nouveauSolde = result['nouveau_solde'] != null
+            ? (result['nouveau_solde'] as num).toDouble()
+            : null;
+        _isLoading    = false;
       });
-      
-      // Vider le champ après succès
-      if (response.success) {
+
+      if (_lastSuccess == true) {
         _montantController.clear();
+        _recipientController.clear();
       }
-      
     } catch (e) {
-      print('❌ Erreur : $e');
-      setState(() {
-        _isLoading = false;
-      });
-      _afficherErreur('Erreur lors du transfert');
+      setState(() => _isLoading = false);
+      _afficherErreur('Erreur de connexion');
     }
   }
-  
+
   void _afficherErreur(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-      ),
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
     );
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -107,132 +79,91 @@ class _TransferScreenState extends State<TransferScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Affichage du solde actuel
-            _buildSoldeCard(),
-            
-            const SizedBox(height: 30),
-            
-            // ÉTAPE 0 : Champ de saisie du montant
-            _buildMontantInput(),
-            
+            // Champ email destinataire
+            TextField(
+              controller: _recipientController,
+              keyboardType: TextInputType.emailAddress,
+              decoration: InputDecoration(
+                labelText: 'Email du destinataire',
+                hintText: 'ex: bob@exemple.com',
+                prefixIcon: const Icon(Icons.person),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                filled: true,
+                fillColor: Colors.grey.shade100,
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // Champ montant
+            TextField(
+              controller: _montantController,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+              ],
+              decoration: InputDecoration(
+                labelText: 'Montant à transférer',
+                hintText: 'Ex: 50.00',
+                prefixIcon: const Icon(Icons.euro),
+                suffixText: '€',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                filled: true,
+                fillColor: Colors.grey.shade100,
+              ),
+              style: const TextStyle(fontSize: 20),
+            ),
+
             const SizedBox(height: 20),
-            
-            // ÉTAPE 1 : Bouton de transfert
-            _buildTransferButton(),
-            
-            const SizedBox(height: 30),
-            
-            // ÉTAPE 6 : Affichage du résultat
-            if (_lastResponse != null) _buildResultCard(),
-            
+
+            // Bouton de transfert
+            ElevatedButton(
+              onPressed: _isLoading ? null : _effectuerTransfert,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: const Text(
+                'Transférer',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
             // Indicateur de chargement
-            if (_isLoading) _buildLoadingIndicator(),
+            if (_isLoading)
+              const Column(
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 10),
+                  Text('Traitement en cours...', style: TextStyle(color: Colors.grey)),
+                ],
+              ),
+
+            // Résultat
+            if (_lastSuccess != null) _buildResultCard(),
           ],
         ),
       ),
     );
   }
-  
-  /// Card affichant le solde actuel
-  Widget _buildSoldeCard() {
-    return Card(
-      elevation: 4,
-      color: Colors.blue.shade50,
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          children: [
-            const Text(
-              'Solde disponible',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.black54,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              _soldeActuel != null 
-                  ? '${_soldeActuel!.toStringAsFixed(2)} €'
-                  : 'Chargement...',
-              style: const TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-                color: Colors.blue,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-  
-  /// ÉTAPE 0 : Champ de saisie du montant
-  Widget _buildMontantInput() {
-    return TextField(
-      controller: _montantController,
-      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      inputFormatters: [
-        FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
-      ],
-      decoration: InputDecoration(
-        labelText: 'Montant à transférer',
-        hintText: 'Ex: 50.00',
-        prefixIcon: const Icon(Icons.euro),
-        suffixText: '€',
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-        filled: true,
-        fillColor: Colors.grey.shade100,
-      ),
-      style: const TextStyle(fontSize: 20),
-    );
-  }
-  
-  /// ÉTAPE 1 : Bouton de transfert
-  Widget _buildTransferButton() {
-    return ElevatedButton(
-      onPressed: _isLoading ? null : _effectuerTransfert,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.blue,
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-      ),
-      child: const Text(
-        'Transférer',
-        style: TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-          color: Colors.white,
-        ),
-      ),
-    );
-  }
-  
-  /// Indicateur de chargement (étapes 2-5)
-  Widget _buildLoadingIndicator() {
-    return const Column(
-      children: [
-        CircularProgressIndicator(),
-        SizedBox(height: 10),
-        Text(
-          'Traitement en cours...',
-          style: TextStyle(color: Colors.grey),
-        ),
-      ],
-    );
-  }
-  
-  /// ÉTAPE 6 : Affichage du résultat
+
   Widget _buildResultCard() {
-    final response = _lastResponse!;
-    final isSuccess = response.success;
-    
     return Card(
       elevation: 4,
-      color: isSuccess ? Colors.green.shade50 : Colors.red.shade50,
+      color: _lastSuccess! ? Colors.green.shade50 : Colors.red.shade50,
       child: Padding(
         padding: const EdgeInsets.all(20.0),
         child: Column(
@@ -241,64 +172,49 @@ class _TransferScreenState extends State<TransferScreen> {
             Row(
               children: [
                 Icon(
-                  isSuccess ? Icons.check_circle : Icons.error,
-                  color: isSuccess ? Colors.green : Colors.red,
+                  _lastSuccess! ? Icons.check_circle : Icons.error,
+                  color: _lastSuccess! ? Colors.green : Colors.red,
                   size: 30,
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    response.message,
+                    _lastMessage,
                     style: TextStyle(
-                      fontSize: 18,
+                      fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: isSuccess ? Colors.green : Colors.red,
+                      color: _lastSuccess! ? Colors.green : Colors.red,
                     ),
                   ),
                 ),
               ],
             ),
-            if (isSuccess) ...[
-              const Divider(height: 30),
-              _buildDetailRow('Solde initial', '${response.montantTotal.toStringAsFixed(2)} €'),
-              _buildDetailRow('Montant transféré', '- ${response.montantTransfere.toStringAsFixed(2)} €'),
-              _buildDetailRow('Nouveau solde', '${response.nouveauSolde.toStringAsFixed(2)} €', isBold: true),
+            if (_lastSuccess! && _nouveauSolde != null) ...[
+              const Divider(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Nouveau solde', style: TextStyle(fontSize: 16)),
+                  Text(
+                    '${_nouveauSolde!.toStringAsFixed(2)} €',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue,
+                    ),
+                  ),
+                ],
+              ),
             ],
           ],
         ),
       ),
     );
   }
-  
-  Widget _buildDetailRow(String label, String value, {bool isBold = false}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.black87,
-              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
-            ),
-          ),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 16,
-              color: isBold ? Colors.blue : Colors.black,
-              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-  
+
   @override
   void dispose() {
+    _recipientController.dispose();
     _montantController.dispose();
     super.dispose();
   }
