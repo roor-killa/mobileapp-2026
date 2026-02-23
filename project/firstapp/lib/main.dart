@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
 import 'screens/login_screen.dart';
@@ -7,9 +8,11 @@ import 'services/auth_service.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialiser Stripe avec la clé publique (pk_test_...)
-  // Remplacer par votre clé depuis dashboard.stripe.com
-  Stripe.publishableKey = 'pk_test_IccVZ7bheyeCyav1XoHsC9lI009hbcLEsU';
+  // Stripe ne supporte pas le web (PaymentSheet = natif Android/iOS uniquement)
+  if (!kIsWeb) {
+    Stripe.publishableKey = 'pk_test_IccVZ7bheyeCyav1XoHsC9lI009hbcLEsU';
+    await Stripe.instance.applySettings();
+  }
 
   runApp(const MyApp());
 }
@@ -40,6 +43,9 @@ class _AuthGate extends StatelessWidget {
     return FutureBuilder<bool>(
       future: AuthService().isLoggedIn(),
       builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return const LoginScreen();
+        }
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../models/transaction.dart';
 import '../models/wallet.dart';
@@ -122,7 +123,8 @@ class _WalletScreenState extends State<WalletScreen> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: ElevatedButton.icon(
-                          onPressed: () async {
+                          // Stripe PaymentSheet = natif uniquement (pas web)
+                          onPressed: kIsWeb ? null : () async {
                             await Navigator.push(
                               context,
                               MaterialPageRoute(builder: (_) => const TopUpScreen()),
@@ -130,7 +132,7 @@ class _WalletScreenState extends State<WalletScreen> {
                             _loadData();
                           },
                           icon: const Icon(Icons.add_card),
-                          label: const Text('Recharger'),
+                          label: Text(kIsWeb ? 'Recharger (mobile)' : 'Recharger'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.green,
                             foregroundColor: Colors.white,
