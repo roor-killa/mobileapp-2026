@@ -216,7 +216,23 @@ class _WalletScreenState extends State<WalletScreen> {
           child: Icon(icon, color: isPositive ? Colors.green : Colors.red, size: 20),
         ),
         title: Text(label),
-        subtitle: Text(t.createdAt.toLocal().toString().substring(0, 16)),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (t.relatedUserName != null)
+              Text(
+                t.type == 'transfer_out'
+                    ? 'À : ${t.relatedUserName}'
+                    : 'De : ${t.relatedUserName}',
+                style: const TextStyle(fontWeight: FontWeight.w500),
+              ),
+            Text(
+              t.createdAt.toLocal().toString().substring(0, 16),
+              style: const TextStyle(fontSize: 12, color: Colors.black45),
+            ),
+          ],
+        ),
+        isThreeLine: t.relatedUserName != null,
         trailing: Text(
           '${isPositive ? '+' : '-'}${t.amount.toStringAsFixed(2)} €',
           style: TextStyle(

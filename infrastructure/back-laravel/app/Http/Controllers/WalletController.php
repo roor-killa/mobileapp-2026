@@ -148,10 +148,20 @@ class WalletController extends Controller
     {
         $transactions = $request->user()->wallet
             ->transactions()
+            ->with('relatedWallet.user')
             ->latest()
             ->take(20)
-            ->get(['id', 'type', 'amount', 'status', 'created_at']);
+            ->get(['id', 'type', 'amount', 'status', 'created_at', 'related_wallet_id']);
 
-        return response()->json(['transactions' => $transactions]);
+        return response()->json([
+            'transactions' => $transactions->map(fn($t) => [
+                'id'                => $t->id,
+                'type'              => $t->type,
+                'amount'            => $t->amount,
+                'status'            => $t->status,
+                'created_at'        => $t->created_at,
+                'related_user_name' => $t->relatedWallet?->user?->name,
+            ]),
+        ]);
     }
 }
