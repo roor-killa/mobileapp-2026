@@ -15,6 +15,7 @@ Route::get('/products', [ProductController::class, 'index']);
 // Routes protégées (token Sanctum requis : Authorization: Bearer <token>)
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
+    Route::get('/user', fn(\Illuminate\Http\Request $r) => response()->json($r->user()->only('id', 'name', 'email')));
 
     // Wallet
     Route::get('/wallet',              [WalletController::class, 'show']);

@@ -19,6 +19,18 @@ class ApiService {
     };
   }
 
+  // GET /api/user
+  Future<String> getCurrentUserEmail() async {
+    final response = await http.get(
+      Uri.parse('$_baseUrl/user'),
+      headers: await _headers(),
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body)['email'] as String;
+    }
+    throw Exception('Impossible de récupérer l\'utilisateur');
+  }
+
   // GET /api/wallet
   Future<Wallet> getWallet() async {
     final response = await http.get(

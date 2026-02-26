@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../services/auth_service.dart';
+import '../services/api_service.dart';
 
 class ReceiveScreen extends StatefulWidget {
   const ReceiveScreen({super.key});
@@ -13,15 +14,33 @@ class ReceiveScreen extends StatefulWidget {
 class _ReceiveScreenState extends State<ReceiveScreen> {
   final _amountController = TextEditingController();
   final _authService      = AuthService();
+  final _apiService       = ApiService();
 
   String? _qrData;
   String? _userEmail;
   double? _montant;
+  bool    _loadingEmail = true;
 
   @override
   void initState() {
     super.initState();
-    _authService.getEmail().then((e) => setState(() => _userEmail = e));
+    _loadEmail();
+  }
+
+  Future<void> _loadEmail() async {
+    // 1. Essayer le storage local
+    String? email = await _authService.getEmail();
+
+    // 2. Fallback : récupérer depuis l'API et sauvegarder
+    if (email == null) {
+      email = await _apiService.getCurrentUserEmail();
+      await _authService.saveEmail(email);
+    }
+
+    setState(() {
+      _userEmail    = email;
+      _loadingEmail = false;
+    });
   }
 
   void _genererQr() {
@@ -74,9 +93,11 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
 
             // Bouton générer
             ElevatedButton.icon(
-              onPressed: _userEmail == null ? null : _genererQr,
+              onPressed: (_loadingEmail || _userEmail == null) ? null : _genererQr,
               icon: const Icon(Icons.qr_code),
-              label: const Text('Générer le QR Code', style: TextStyle(fontSize: 16)),
+              label: _loadingEmail
+                  ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                  : const Text('Générer le QR Code', style: TextStyle(fontSize: 16)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.purple,
                 foregroundColor: Colors.white,
