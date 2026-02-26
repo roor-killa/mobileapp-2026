@@ -62,6 +62,14 @@ class _TopUpScreenState extends State<TopUpScreen> {
           ),
         );
         Navigator.pop(context);
+      } else {
+        final message = result['message'] ?? 'Échec du rechargement.';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur : $message'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     } on StripeException catch (e) {
       if (!mounted) return;

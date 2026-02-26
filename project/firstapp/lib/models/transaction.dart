@@ -17,7 +17,7 @@ class Transaction {
     return Transaction(
       id:        json['id'],
       type:      json['type'],
-      amount:    (json['amount'] as num).toDouble(),
+      amount:    double.parse(json['amount'].toString()),
       status:    json['status'],
       createdAt: DateTime.parse(json['created_at']),
     );

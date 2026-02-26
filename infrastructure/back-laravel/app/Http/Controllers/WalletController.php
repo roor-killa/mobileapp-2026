@@ -109,8 +109,10 @@ class WalletController extends Controller
         $stripe = new StripeClient(config('services.stripe.secret'));
         $intent = $stripe->paymentIntents->retrieve($request->payment_intent_id);
 
-        if ($intent->status !== 'succeeded') {
-            return response()->json(['message' => 'Paiement non confirmé par Stripe.'], 422);
+        if (!in_array($intent->status, ['succeeded', 'processing'])) {
+            return response()->json([
+                'message' => 'Paiement non confirmé par Stripe (statut : ' . $intent->status . ').',
+            ], 422);
         }
 
         if ((int) $intent->metadata->user_id !== $request->user()->id) {

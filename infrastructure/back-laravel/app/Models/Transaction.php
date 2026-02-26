@@ -15,6 +15,10 @@ class Transaction extends Model
         'status',
     ];
 
+    protected $casts = [
+        'amount' => 'float',
+    ];
+
     public function wallet()
     {
         return $this->belongsTo(Wallet::class);
