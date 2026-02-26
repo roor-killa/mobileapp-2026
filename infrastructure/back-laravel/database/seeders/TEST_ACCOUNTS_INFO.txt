@@ -1,0 +1,13 @@
+// Pour utiliser ce seeder après la migration:
+// php artisan db:seed --class=BankingAccountsSeeder
+
+// Données de test créées:
+// Utilisateurs:
+// 1. jean.dupont@example.com / password123 - Solde: 1000 EUR + 5000 EUR épargne
+// 2. marie.martin@example.com / password123 - Solde: 1500 EUR + 6000 EUR épargne
+// 3. pierre.bernard@example.com / password123 - Solde: 2000 EUR + 7000 EUR épargne
+// 4. sophie.lefebvre@example.com / password123 - Solde: 2500 EUR + 8000 EUR épargne
+
+// Chaque utilisateur dispose de 2 comptes:
+// - Compte Chèques (débit/crédit quotidien)
+// - Compte d'Épargne (placements)

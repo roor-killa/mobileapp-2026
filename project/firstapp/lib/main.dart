@@ -1,45 +1,32 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/login_screen.dart';
-import 'screens/transfer_screen.dart';
+import 'screens/dashboard_screen.dart';
+import 'services/bank_service.dart';
 
-void main() {
-  runApp(const MyApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final prefs = await SharedPreferences.getInstance();
+  final token = prefs.getString('auth_token');
+  
+  runApp(MyBankApp(isLoggedIn: token != null));
 }
 
-class MyApp extends StatefulWidget {
-  const MyApp({super.key});
+class MyBankApp extends StatelessWidget {
+  final bool isLoggedIn;
 
-  @override
-  State<MyApp> createState() => _MyAppState();
-}
-
-class _MyAppState extends State<MyApp> {
-  String? _authToken;
-  
-  void _handleLoginSuccess(String token) {
-    setState(() {
-      _authToken = token;
-    });
-  }
-  
-  void _handleLogout() {
-    setState(() {
-      _authToken = null;
-    });
-  }
+  const MyBankApp({Key? key, required this.isLoggedIn}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'BankApp - Transfert d\'argent',
+      title: 'MyBank',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         primarySwatch: Colors.blue,
         useMaterial3: true,
       ),
-      home: _authToken == null
-          ? LoginScreen(onLoginSuccess: _handleLoginSuccess)
-          : TransferScreen(onLogout: _handleLogout),
+      home: isLoggedIn ? const DashboardScreen() : const LoginScreen(),
     );
   }
 }

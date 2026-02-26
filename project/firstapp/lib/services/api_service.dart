@@ -5,7 +5,8 @@ import '../models/user.dart';
 import '../models/transfer.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://localhost:8001/api';
+  // Use emulator host mapping
+  static const String baseUrl = 'http://10.0.2.2:8000/api';
   static const int currentUserId = 1; // ID de l'utilisateur courant (à adapter selon l'auth)
 
   /// Récupère la liste des utilisateurs (destinataires possibles)

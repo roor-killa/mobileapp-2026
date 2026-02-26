@@ -2,16 +2,16 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable, HasApiTokens;
 
     /**
      * The attributes that are mass assignable.
@@ -19,10 +19,11 @@ class User extends Authenticatable
      * @var list<string>
      */
     protected $fillable = [
-        'name',
+        'first_name',
+        'last_name',
         'email',
+        'phone',
         'password',
-        'balance',
     ];
 
     /**
@@ -45,23 +46,22 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
-            'balance' => 'decimal:2',
         ];
     }
 
     /**
-     * Transferts effectués par cet utilisateur
+     * Retourne tous les comptes bancaires de l'utilisateur
      */
-    public function sentTransfers(): HasMany
+    public function accounts(): HasMany
     {
-        return $this->hasMany(Transfer::class, 'from_user_id');
+        return $this->hasMany(Account::class);
     }
 
     /**
-     * Transferts reçus par cet utilisateur
+     * Retourne le nom complet de l'utilisateur
      */
-    public function receivedTransfers(): HasMany
+    public function getFullNameAttribute(): string
     {
-        return $this->hasMany(Transfer::class, 'to_user_id');
+        return "{$this->first_name} {$this->last_name}";
     }
 }
