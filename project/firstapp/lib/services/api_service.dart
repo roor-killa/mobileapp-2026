@@ -1,31 +1,53 @@
 import 'dart:convert';
 import 'dart:async';
+import 'package:http/http.dart' as http; // <-- On ajoute le vrai outil réseau
 import '../models/transfer_response.dart';
 
 class ApiService {
-  // URL de base de l'API (à modifier pour la vraie API)
-  static const String baseUrl = 'http://localhost:8000/api';
+  // L'URL de ton serveur Laravel
+  // Mets 'http://10.0.2.2:8000/api' si tu utilises un émulateur Android !
+  static const String baseUrl = 'http://127.0.0.1:8000/api'; 
   
-  // Simulation d'un solde en base de données
-  static double _soldeBDD = 1500.50; // Montant initial dans wallet
+  // =====================================================================
+  // VRAIE API (Connectée à Laravel)
+  // =====================================================================
   
-  /// SIMULATION : Simule l'appel API avec délai
-  /// Cette fonction sera remplacée par un vrai appel HTTP
+  Future<Map<String, dynamic>> register(String name, String prenom, String email, String telephone, String password) async {
+    final url = Uri.parse('$baseUrl/register');
+    
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'name': name,
+          'prenom': prenom,
+          'email': email,
+          'telephone': telephone,
+          'password': password,
+        }),
+      );
+
+      return jsonDecode(response.body);
+    } catch (e) {
+      print("Erreur API: $e");
+      return {'status': 'error', 'message': 'Erreur de connexion au serveur'};
+    }
+  }
+
+  // =====================================================================
+  // SIMULATION DU PROFESSEUR (On la garde intacte)
+  // =====================================================================
+  
+  static double _soldeBDD = 1500.50; 
+  
   Future<TransferResponse> transfererMontant(double montant) async {
     print('📤 ÉTAPE 2 : Envoi de la requête API...');
-    print('💰 Montant à transférer : $montant €');
+    await Future.delayed(const Duration(seconds: 2)); // Le faux chargement !
     
-    // Simuler le délai réseau (1-2 secondes)
-    await Future.delayed(const Duration(seconds: 2));
-    
-    print('⚙️  ÉTAPE 3 : Traitement côté serveur...');
-    
-    // SIMULATION du traitement serveur
-    // En réalité, cela se passe dans Laravel + PostgreSQL
     final montantTotal = _soldeBDD;
     final nouveauSolde = montantTotal - montant;
     
-    // Vérification de solde suffisant
     if (nouveauSolde < 0) {
       return TransferResponse(
         success: false,
@@ -36,10 +58,8 @@ class ApiService {
       );
     }
     
-    // Mise à jour du solde simulé
     _soldeBDD = nouveauSolde;
     
-    // ÉTAPE 4 : Construction du JSON de réponse (simulé)
     final jsonResponse = {
       'success': true,
       'montant_total': montantTotal,
@@ -48,15 +68,9 @@ class ApiService {
       'message': 'Transfert effectué avec succès',
     };
     
-    print('📥 ÉTAPE 4 : Réception du JSON :');
-    print(json.encode(jsonResponse));
-    
-    // ÉTAPE 5 : Conversion JSON -> Objet Dart
-    print('🔄 ÉTAPE 5 : Parsing du JSON...');
     return TransferResponse.fromJson(jsonResponse);
   }
   
-  /// Récupérer le solde actuel (pour affichage)
   Future<double> getSoldeActuel() async {
     await Future.delayed(const Duration(milliseconds: 500));
     return _soldeBDD;
