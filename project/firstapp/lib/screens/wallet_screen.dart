@@ -7,6 +7,8 @@ import '../services/auth_service.dart';
 import 'login_screen.dart';
 import 'transfer_screen.dart';
 import 'topup_screen.dart';
+import 'receive_screen.dart';
+import 'scan_pay_screen.dart';
 
 class WalletScreen extends StatefulWidget {
   const WalletScreen({super.key});
@@ -101,44 +103,53 @@ class _WalletScreenState extends State<WalletScreen> {
                       ),
                       const SizedBox(height: 16),
 
-                      // Boutons d'action
+                      // Boutons d'action (grille 2×2)
+                      _actionButton(
+                        icon: Icons.send,
+                        label: 'Transférer',
+                        color: Colors.blue,
+                        onTap: () async {
+                          await Navigator.push(context,
+                              MaterialPageRoute(builder: (_) => const TransferScreen()));
+                          _loadData();
+                        },
+                      ),
+                      const SizedBox(height: 10),
                       Row(
                         children: [
                           Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: () async {
-                                await Navigator.push(
-                                  context,
-                                  MaterialPageRoute(builder: (_) => const TransferScreen()),
-                                );
+                            child: _actionButton(
+                              icon: Icons.add_card,
+                              label: kIsWeb ? 'Recharger (mobile)' : 'Recharger',
+                              color: Colors.green,
+                              onTap: kIsWeb ? null : () async {
+                                await Navigator.push(context,
+                                    MaterialPageRoute(builder: (_) => const TopUpScreen()));
                                 _loadData();
                               },
-                              icon: const Icon(Icons.send),
-                              label: const Text('Transférer'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.blue,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(vertical: 14),
-                              ),
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 10),
                           Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: kIsWeb ? null : () async {
-                                await Navigator.push(
-                                  context,
-                                  MaterialPageRoute(builder: (_) => const TopUpScreen()),
-                                );
+                            child: _actionButton(
+                              icon: Icons.qr_code,
+                              label: 'Recevoir',
+                              color: Colors.purple,
+                              onTap: () => Navigator.push(context,
+                                  MaterialPageRoute(builder: (_) => const ReceiveScreen())),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: _actionButton(
+                              icon: Icons.qr_code_scanner,
+                              label: 'Scanner',
+                              color: Colors.deepOrange,
+                              onTap: () async {
+                                await Navigator.push(context,
+                                    MaterialPageRoute(builder: (_) => const ScanPayScreen()));
                                 _loadData();
                               },
-                              icon: const Icon(Icons.add_card),
-                              label: Text(kIsWeb ? 'Recharger (mobile)' : 'Recharger'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.green,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(vertical: 14),
-                              ),
                             ),
                           ),
                         ],
@@ -188,6 +199,25 @@ class _WalletScreenState extends State<WalletScreen> {
                 ),
               ],
             ),
+    );
+  }
+
+  Widget _actionButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    VoidCallback? onTap,
+  }) {
+    return ElevatedButton.icon(
+      onPressed: onTap,
+      icon: Icon(icon, size: 18),
+      label: Text(label, style: const TextStyle(fontSize: 13)),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: onTap == null ? Colors.grey.shade300 : color,
+        foregroundColor: onTap == null ? Colors.grey : Colors.white,
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
     );
   }
 

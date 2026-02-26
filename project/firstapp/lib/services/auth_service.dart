@@ -7,6 +7,7 @@ import '../config.dart';
 class AuthService {
   static String get _baseUrl => apiBaseUrl;
   static const String _tokenKey = 'auth_token';
+  static const String _emailKey = 'auth_email';
 
   final _storage = const FlutterSecureStorage();
 
@@ -18,8 +19,17 @@ class AuthService {
     return await _storage.read(key: _tokenKey);
   }
 
+  Future<void> saveEmail(String email) async {
+    await _storage.write(key: _emailKey, value: email);
+  }
+
+  Future<String?> getEmail() async {
+    return await _storage.read(key: _emailKey);
+  }
+
   Future<void> deleteToken() async {
     await _storage.delete(key: _tokenKey);
+    await _storage.delete(key: _emailKey);
   }
 
   Future<bool> isLoggedIn() async {
@@ -38,6 +48,7 @@ class AuthService {
     final data = jsonDecode(response.body);
     if (response.statusCode == 201) {
       await saveToken(data['token']);
+      await saveEmail(data['user']['email']);
       return {'success': true, 'user': User.fromJson(data['user'])};
     }
     final message = data['message'] ?? data['errors']?.toString() ?? 'Erreur inscription';
@@ -55,6 +66,7 @@ class AuthService {
     final data = jsonDecode(response.body);
     if (response.statusCode == 200) {
       await saveToken(data['token']);
+      await saveEmail(data['user']['email']);
       return {'success': true, 'user': User.fromJson(data['user'])};
     }
     final message = data['message'] ?? 'Identifiants incorrects';
