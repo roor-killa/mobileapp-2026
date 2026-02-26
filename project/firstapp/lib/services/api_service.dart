@@ -1,13 +1,12 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'auth_service.dart';
 import '../models/wallet.dart';
 import '../models/transaction.dart';
+import '../config.dart';
 
 class ApiService {
-  static String get _baseUrl =>
-      kIsWeb ? 'http://localhost:8001/api' : 'http://10.0.2.2:8001/api';
+  static String get _baseUrl => apiBaseUrl;
 
   final _authService = AuthService();
 

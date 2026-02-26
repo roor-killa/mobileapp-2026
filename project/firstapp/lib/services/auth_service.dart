@@ -1,15 +1,11 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import '../models/user.dart';
+import '../config.dart';
 
 class AuthService {
-  // Web (Chrome)      : localhost
-  // Android emulator  : 10.0.2.2 → localhost de la machine hôte
-  // iOS simulator     : localhost
-  static String get _baseUrl =>
-      kIsWeb ? 'http://localhost:8001/api' : 'http://10.0.2.2:8001/api';
+  static String get _baseUrl => apiBaseUrl;
   static const String _tokenKey = 'auth_token';
 
   final _storage = const FlutterSecureStorage();
