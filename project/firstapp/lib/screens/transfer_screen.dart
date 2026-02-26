@@ -19,7 +19,7 @@ class _TransferScreenState extends State<TransferScreen> {
   String _lastMessage   = '';
   double? _nouveauSolde;
 
-  Future<void> _effectuerTransfert() async {
+  Future<void> _confirmerEtTransferer() async {
     final email = _recipientController.text.trim();
     final montantText = _montantController.text.trim();
 
@@ -34,6 +34,86 @@ class _TransferScreenState extends State<TransferScreen> {
       return;
     }
 
+    // Popup de confirmation
+    final confirme = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.send, color: Colors.blue),
+            SizedBox(width: 8),
+            Text('Confirmer le transfert'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Vous êtes sur le point d\'envoyer :'),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Destinataire', style: TextStyle(color: Colors.black54)),
+                      Flexible(
+                        child: Text(
+                          email,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                          textAlign: TextAlign.end,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Divider(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Montant', style: TextStyle(color: Colors.black54)),
+                      Text(
+                        '${montant.toStringAsFixed(2)} €',
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Annuler', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Confirmer'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirme != true) return;
+
+    await _effectuerTransfert(email, montant);
+  }
+
+  Future<void> _effectuerTransfert(String email, double montant) async {
     setState(() {
       _isLoading   = true;
       _lastSuccess = null;
@@ -41,6 +121,7 @@ class _TransferScreenState extends State<TransferScreen> {
 
     try {
       final result = await _apiService.transfer(email, montant);
+
 
       setState(() {
         _lastSuccess  = result['success'] == true;
@@ -122,7 +203,7 @@ class _TransferScreenState extends State<TransferScreen> {
 
             // Bouton de transfert
             ElevatedButton(
-              onPressed: _isLoading ? null : _effectuerTransfert,
+              onPressed: _isLoading ? null : _confirmerEtTransferer,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.blue,
                 padding: const EdgeInsets.symmetric(vertical: 16),

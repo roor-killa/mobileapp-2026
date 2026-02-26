@@ -67,103 +67,126 @@ class _WalletScreenState extends State<WalletScreen> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _loadData,
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  // Carte solde
-                  Card(
-                    elevation: 4,
-                    color: Colors.blue.shade50,
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        children: [
-                          const Text(
-                            'Solde disponible',
-                            style: TextStyle(fontSize: 16, color: Colors.black54),
+          : Column(
+              children: [
+                // ── En-tête fixe ──────────────────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  child: Column(
+                    children: [
+                      // Carte solde
+                      Card(
+                        elevation: 4,
+                        color: Colors.blue.shade50,
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Column(
+                            children: [
+                              const Text(
+                                'Solde disponible',
+                                style: TextStyle(fontSize: 16, color: Colors.black54),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                '${_wallet?.balance.toStringAsFixed(2) ?? '...'} €',
+                                style: const TextStyle(
+                                  fontSize: 36,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.blue,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            '${_wallet?.balance.toStringAsFixed(2) ?? '...'} €',
-                            style: const TextStyle(
-                              fontSize: 36,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.blue,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Boutons d'action
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () async {
+                                await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (_) => const TransferScreen()),
+                                );
+                                _loadData();
+                              },
+                              icon: const Icon(Icons.send),
+                              label: const Text('Transférer'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.blue,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: kIsWeb ? null : () async {
+                                await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (_) => const TopUpScreen()),
+                                );
+                                _loadData();
+                              },
+                              icon: const Icon(Icons.add_card),
+                              label: Text(kIsWeb ? 'Recharger (mobile)' : 'Recharger'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                              ),
                             ),
                           ),
                         ],
                       ),
-                    ),
+                    ],
                   ),
-                  const SizedBox(height: 16),
+                ),
 
-                  // Boutons d'action
-                  Row(
+                // ── Titre historique ──────────────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  child: Row(
                     children: [
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: () async {
-                            await Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => const TransferScreen()),
-                            );
-                            _loadData();
-                          },
-                          icon: const Icon(Icons.send),
-                          label: const Text('Transférer'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                          ),
-                        ),
+                      const Icon(Icons.history, size: 20, color: Colors.black54),
+                      const SizedBox(width: 6),
+                      const Text(
+                        'Historique',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          // Stripe PaymentSheet = natif uniquement (pas web)
-                          onPressed: kIsWeb ? null : () async {
-                            await Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => const TopUpScreen()),
-                            );
-                            _loadData();
-                          },
-                          icon: const Icon(Icons.add_card),
-                          label: Text(kIsWeb ? 'Recharger (mobile)' : 'Recharger'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                          ),
-                        ),
+                      const Spacer(),
+                      Text(
+                        '${_transactions.length} transaction${_transactions.length > 1 ? 's' : ''}',
+                        style: const TextStyle(fontSize: 13, color: Colors.black45),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 24),
+                ),
+                const Divider(height: 1),
 
-                  // Historique des transactions
-                  const Text(
-                    'Historique',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  if (_transactions.isEmpty)
-                    const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(24),
-                        child: Text(
-                          'Aucune transaction pour l\'instant.',
-                          style: TextStyle(color: Colors.grey),
+                // ── Liste défilante ───────────────────────────────────────
+                Expanded(
+                  child: _transactions.isEmpty
+                      ? const Center(
+                          child: Text(
+                            'Aucune transaction pour l\'instant.',
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                        )
+                      : RefreshIndicator(
+                          onRefresh: _loadData,
+                          child: ListView.builder(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            itemCount: _transactions.length,
+                            itemBuilder: (_, i) => _buildTransactionTile(_transactions[i]),
+                          ),
                         ),
-                      ),
-                    )
-                  else
-                    ..._transactions.map((t) => _buildTransactionTile(t)),
-                ],
-              ),
+                ),
+              ],
             ),
     );
   }
@@ -188,7 +211,10 @@ class _WalletScreenState extends State<WalletScreen> {
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 4),
       child: ListTile(
-        leading: Icon(icon, color: isPositive ? Colors.green : Colors.red),
+        leading: CircleAvatar(
+          backgroundColor: isPositive ? Colors.green.shade50 : Colors.red.shade50,
+          child: Icon(icon, color: isPositive ? Colors.green : Colors.red, size: 20),
+        ),
         title: Text(label),
         subtitle: Text(t.createdAt.toLocal().toString().substring(0, 16)),
         trailing: Text(
