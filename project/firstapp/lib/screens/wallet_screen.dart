@@ -191,6 +191,11 @@ class _WalletScreenState extends State<WalletScreen> {
     );
   }
 
+  String _formatDate(DateTime dt) {
+    final d = dt.toLocal();
+    return '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+  }
+
   Widget _buildTransactionTile(Transaction t) {
     final isPositive = t.type == 'topup' || t.type == 'transfer_in';
 
@@ -227,7 +232,7 @@ class _WalletScreenState extends State<WalletScreen> {
                 style: const TextStyle(fontWeight: FontWeight.w500),
               ),
             Text(
-              t.createdAt.toLocal().toString().substring(0, 16),
+              _formatDate(t.createdAt),
               style: const TextStyle(fontSize: 12, color: Colors.black45),
             ),
           ],
