@@ -68,6 +68,7 @@ class Transaction {
   final String status;
   final String referenceNumber;
   final DateTime transactionDate;
+  final String? direction;
 
   Transaction({
     required this.id,
@@ -79,6 +80,7 @@ class Transaction {
     required this.status,
     required this.referenceNumber,
     required this.transactionDate,
+    this.direction,
   });
 
   factory Transaction.fromJson(Map<String, dynamic> json) {
@@ -92,6 +94,37 @@ class Transaction {
       status: json['status'],
       referenceNumber: json['reference_number'],
       transactionDate: DateTime.parse(json['transaction_date']),
+      direction: json['direction'],
+    );
+  }
+}
+
+class BeneficiaryAccount {
+  final int id;
+  final String accountType;
+  final String accountNumber;
+  final String iban;
+  final String currency;
+  final String ownerName;
+
+  BeneficiaryAccount({
+    required this.id,
+    required this.accountType,
+    required this.accountNumber,
+    required this.iban,
+    required this.currency,
+    required this.ownerName,
+  });
+
+  factory BeneficiaryAccount.fromJson(Map<String, dynamic> json) {
+    final owner = (json['owner'] as Map<String, dynamic>?) ?? const {};
+    return BeneficiaryAccount(
+      id: json['id'],
+      accountType: json['account_type'] ?? '',
+      accountNumber: json['account_number'] ?? '',
+      iban: json['iban'] ?? '',
+      currency: json['currency'] ?? 'EUR',
+      ownerName: owner['name'] ?? 'Bénéficiaire',
     );
   }
 }

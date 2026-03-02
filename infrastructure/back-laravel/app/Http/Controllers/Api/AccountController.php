@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Models\Account;
 use Illuminate\Http\Request;
 
 class AccountController extends \App\Http\Controllers\Controller
@@ -22,18 +23,51 @@ class AccountController extends \App\Http\Controllers\Controller
     /**
      * Récupérer un compte spécifique
      */
-    public function getAccount(Request $request, $accountId)
+    public function getAccount(Request $request, Account $account)
     {
-        $account = $request->user()->accounts()->find($accountId);
-
-        if (!$account) {
+        if ($account->user_id !== $request->user()->id) {
             return response()->json([
-                'message' => 'Compte non trouvé',
-            ], 404);
+                'message' => 'Non autorisé',
+            ], 403);
         }
 
         return response()->json([
             'account' => $account,
+        ]);
+    }
+
+    /**
+     * Liste des bénéficiaires (comptes d'autres utilisateurs)
+     */
+    public function getBeneficiaries(Request $request)
+    {
+        $accounts = Account::query()
+            ->where('user_id', '!=', $request->user()->id)
+            ->where('is_active', true)
+            ->with('user:id,name,first_name,last_name,email')
+            ->orderBy('user_id')
+            ->orderBy('account_type')
+            ->limit(50)
+            ->get();
+
+        $beneficiaries = $accounts->map(function (Account $account) {
+            $ownerName = $account->user?->full_name ?? $account->user?->name ?? 'Bénéficiaire';
+
+            return [
+                'id' => $account->id,
+                'account_type' => $account->account_type,
+                'iban' => $account->iban,
+                'account_number' => $account->account_number,
+                'currency' => $account->currency,
+                'owner' => [
+                    'id' => $account->user?->id,
+                    'name' => $ownerName,
+                ],
+            ];
+        })->values();
+
+        return response()->json([
+            'beneficiaries' => $beneficiaries,
         ]);
     }
 

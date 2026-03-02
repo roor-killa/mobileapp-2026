@@ -19,11 +19,12 @@ class AuthController extends \App\Http\Controllers\Controller
             'first_name' => ['required', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'unique:users'],
-            'phone' => ['required', 'string', 'min:10'],
+            'phone' => ['required', 'string', 'min:10', 'max:30'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
 
         $user = User::create([
+            'name' => trim($validated['first_name'].' '.$validated['last_name']),
             'first_name' => $validated['first_name'],
             'last_name' => $validated['last_name'],
             'email' => $validated['email'],

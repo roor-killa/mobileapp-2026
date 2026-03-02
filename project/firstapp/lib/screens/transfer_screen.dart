@@ -7,10 +7,10 @@ class TransferScreen extends StatefulWidget {
   final Function? onTransferSuccess;
 
   const TransferScreen({
-    Key? key,
+    super.key,
     this.accounts = const [],
     this.onTransferSuccess,
-  }) : super(key: key);
+  });
 
   @override
   State<TransferScreen> createState() => _TransferScreenState();
@@ -24,7 +24,9 @@ class _TransferScreenState extends State<TransferScreen> {
   late TextEditingController _descriptionController;
 
   Account? _selectedFromAccount;
-  Account? _selectedToAccount;
+  _Destination? _selectedDestination;
+  List<_Destination> _destinations = const [];
+  bool _loadingDestinations = true;
   bool _isLoading = false;
   String? _errorMessage;
   bool _showSuccessMessage = false;
@@ -32,9 +34,57 @@ class _TransferScreenState extends State<TransferScreen> {
   @override
   void initState() {
     super.initState();
-    _bankService.init();
+    _init();
     _amountController = TextEditingController();
     _descriptionController = TextEditingController();
+  }
+
+  Future<void> _init() async {
+    await _bankService.init();
+    await _loadDestinations();
+  }
+
+  Future<void> _loadDestinations() async {
+    setState(() {
+      _loadingDestinations = true;
+    });
+    try {
+      final beneficiaries = await _bankService.getBeneficiaries();
+
+      final own = widget.accounts
+          .map(
+            (a) => _Destination(
+              id: a.id,
+              label: a.accountType,
+              subtitle: a.iban,
+              isOwn: true,
+            ),
+          )
+          .toList();
+
+      final others = beneficiaries
+          .map(
+            (b) => _Destination(
+              id: b.id,
+              label: b.ownerName,
+              subtitle: '${b.accountType} • ${b.iban}',
+              isOwn: false,
+            ),
+          )
+          .toList();
+
+      setState(() {
+        _destinations = [...own, ...others];
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = e.toString().replaceAll('Exception: ', '');
+      });
+    } finally {
+      setState(() {
+        _loadingDestinations = false;
+      });
+    }
   }
 
   @override
@@ -47,8 +97,8 @@ class _TransferScreenState extends State<TransferScreen> {
   Future<void> _performTransfer() async {
     if (_formKey.currentState!.validate() &&
         _selectedFromAccount != null &&
-        _selectedToAccount != null) {
-      if (_selectedFromAccount!.id == _selectedToAccount!.id) {
+        _selectedDestination != null) {
+      if (_selectedFromAccount!.id == _selectedDestination!.id) {
         setState(() {
           _errorMessage = 'Veuillez sélectionner deux comptes différents';
         });
@@ -63,7 +113,7 @@ class _TransferScreenState extends State<TransferScreen> {
       try {
         await _bankService.transfer(
           _selectedFromAccount!.id,
-          _selectedToAccount!.id,
+          _selectedDestination!.id,
           double.parse(_amountController.text),
           _descriptionController.text.isEmpty
               ? 'Virement bancaire'
@@ -75,7 +125,7 @@ class _TransferScreenState extends State<TransferScreen> {
           _amountController.clear();
           _descriptionController.clear();
           _selectedFromAccount = null;
-          _selectedToAccount = null;
+          _selectedDestination = null;
         });
 
         // Appeler la fonction de succès si fournie
@@ -103,6 +153,7 @@ class _TransferScreenState extends State<TransferScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Effectuer un virement'),
@@ -147,13 +198,13 @@ class _TransferScreenState extends State<TransferScreen> {
                   padding: const EdgeInsets.all(12),
                   margin: const EdgeInsets.only(bottom: 20),
                   decoration: BoxDecoration(
-                    color: Colors.red[100],
+                    color: scheme.errorContainer,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.red),
+                    border: Border.all(color: scheme.error.withValues(alpha: 0.35)),
                   ),
                   child: Text(
                     _errorMessage!,
-                    style: const TextStyle(color: Colors.red),
+                    style: TextStyle(color: scheme.onErrorContainer),
                   ),
                 ),
 
@@ -166,30 +217,26 @@ class _TransferScreenState extends State<TransferScreen> {
                 ),
               ),
               const SizedBox(height: 10),
-              DropdownButtonFormField<Account>(
-                value: _selectedFromAccount,
-                hint: const Text('Sélectionnez un compte'),
-                items: widget.accounts
-                    .map((account) => DropdownMenuItem(
-                          value: account,
-                          child: Text(
-                              '${account.accountType} - ${account.balance.toStringAsFixed(2)} EUR'),
-                        ))
-                    .toList(),
-                onChanged: (value) {
-                  setState(() => _selectedFromAccount = value);
+              DropdownMenu<Account>(
+                initialSelection: _selectedFromAccount,
+                hintText: 'Sélectionnez un compte',
+                expandedInsets: EdgeInsets.zero,
+                onSelected: (value) {
+                  setState(() {
+                    _selectedFromAccount = value;
+                    if (_selectedDestination != null && value != null && _selectedDestination!.id == value.id) {
+                      _selectedDestination = null;
+                    }
+                  });
                 },
-                decoration: InputDecoration(
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 15,
-                  ),
-                ),
-                validator: (value) =>
-                    value == null ? 'Sélectionnez un compte source' : null,
+                dropdownMenuEntries: widget.accounts
+                    .map(
+                      (account) => DropdownMenuEntry(
+                        value: account,
+                        label: '${account.accountType} • ${account.balance.toStringAsFixed(2)} EUR',
+                      ),
+                    )
+                    .toList(),
               ),
 
               const SizedBox(height: 20),
@@ -203,31 +250,38 @@ class _TransferScreenState extends State<TransferScreen> {
                 ),
               ),
               const SizedBox(height: 10),
-              DropdownButtonFormField<Account>(
-                value: _selectedToAccount,
-                hint: const Text('Sélectionnez un compte'),
-                items: widget.accounts
-                    .map((account) => DropdownMenuItem(
-                          value: account,
-                          child:
-                              Text('${account.accountType} - ${account.iban}'),
-                        ))
-                    .toList(),
-                onChanged: (value) {
-                  setState(() => _selectedToAccount = value);
-                },
-                decoration: InputDecoration(
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 15,
+              if (_loadingDestinations)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 10),
+                  child: LinearProgressIndicator(),
+                )
+              else
+                DropdownMenu<_Destination>(
+                  initialSelection: _selectedDestination,
+                  hintText: 'Sélectionnez un bénéficiaire',
+                  expandedInsets: EdgeInsets.zero,
+                  onSelected: (value) => setState(() => _selectedDestination = value),
+                  dropdownMenuEntries: _destinations
+                      .where((d) => _selectedFromAccount == null || d.id != _selectedFromAccount!.id)
+                      .map(
+                        (d) => DropdownMenuEntry(
+                          value: d,
+                          label: d.isOwn ? '${d.label} (mes comptes)' : d.label,
+                        ),
+                      )
+                      .toList(),
+                ),
+
+              if (_selectedDestination != null) ...[
+                const SizedBox(height: 10),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    _selectedDestination!.subtitle,
+                    style: TextStyle(color: scheme.onSurfaceVariant),
                   ),
                 ),
-                validator: (value) =>
-                    value == null ? 'Sélectionnez un compte destination' : null,
-              ),
+              ],
 
               const SizedBox(height: 20),
 
@@ -306,8 +360,7 @@ class _TransferScreenState extends State<TransferScreen> {
                   onPressed: _isLoading ? null : _performTransfer,
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 15),
-                    backgroundColor: Colors.blue,
-                    disabledBackgroundColor: Colors.grey,
+                    backgroundColor: scheme.primary,
                   ),
                   child: _isLoading
                       ? const SizedBox(
@@ -334,4 +387,18 @@ class _TransferScreenState extends State<TransferScreen> {
       ),
     );
   }
+}
+
+class _Destination {
+  final int id;
+  final String label;
+  final String subtitle;
+  final bool isOwn;
+
+  const _Destination({
+    required this.id,
+    required this.label,
+    required this.subtitle,
+    required this.isOwn,
+  });
 }

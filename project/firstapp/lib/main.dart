@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/login_screen.dart';
 import 'screens/dashboard_screen.dart';
-import 'services/bank_service.dart';
+import 'theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -15,17 +15,14 @@ void main() async {
 class MyBankApp extends StatelessWidget {
   final bool isLoggedIn;
 
-  const MyBankApp({Key? key, required this.isLoggedIn}) : super(key: key);
+  const MyBankApp({super.key, required this.isLoggedIn});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'MyBank',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        useMaterial3: true,
-      ),
+      theme: AppTheme.light(),
       home: isLoggedIn ? const DashboardScreen() : const LoginScreen(),
     );
   }

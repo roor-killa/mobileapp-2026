@@ -12,12 +12,42 @@ class BankService {
     _token = prefs.getString('auth_token');
   }
 
+  Map<String, String> _jsonHeaders({bool withAuth = false}) {
+    final headers = <String, String>{
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    };
+    if (withAuth && _token != null) {
+      headers['Authorization'] = 'Bearer $_token';
+    }
+    return headers;
+  }
+
+  String _extractErrorMessage(http.Response response) {
+    try {
+      final data = jsonDecode(response.body);
+      if (data is Map<String, dynamic>) {
+        if (data['message'] is String) return data['message'] as String;
+        final errors = data['errors'];
+        if (errors is Map<String, dynamic> && errors.isNotEmpty) {
+          final first = errors.values.first;
+          if (first is List && first.isNotEmpty) {
+            return first.first.toString();
+          }
+        }
+      }
+    } catch (_) {
+      // ignore
+    }
+    return 'Erreur réseau (code ${response.statusCode})';
+  }
+
   // Authentification
   Future<Map<String, dynamic>> login(String email, String password) async {
     try {
       final response = await http.post(
         Uri.parse('${ApiConfig.baseUrl}${ApiConfig.loginEndpoint}'),
-        headers: {'Content-Type': 'application/json'},
+        headers: _jsonHeaders(),
         body: jsonEncode({'email': email, 'password': password}),
       );
 
@@ -31,7 +61,7 @@ class BankService {
 
         return data;
       } else {
-        throw Exception('Erreur de connexion');
+        throw Exception(_extractErrorMessage(response));
       }
     } catch (e) {
       rethrow;
@@ -49,7 +79,7 @@ class BankService {
     try {
       final response = await http.post(
         Uri.parse('${ApiConfig.baseUrl}${ApiConfig.registerEndpoint}'),
-        headers: {'Content-Type': 'application/json'},
+        headers: _jsonHeaders(),
         body: jsonEncode({
           'first_name': firstName,
           'last_name': lastName,
@@ -70,7 +100,7 @@ class BankService {
 
         return data;
       } else {
-        throw Exception('Erreur lors de l\'inscription');
+        throw Exception(_extractErrorMessage(response));
       }
     } catch (e) {
       rethrow;
@@ -81,10 +111,7 @@ class BankService {
     try {
       await http.post(
         Uri.parse('${ApiConfig.baseUrl}/auth/logout'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $_token',
-        },
+        headers: _jsonHeaders(withAuth: true),
       );
     } finally {
       _token = null;
@@ -99,10 +126,7 @@ class BankService {
     try {
       final response = await http.get(
         Uri.parse('${ApiConfig.baseUrl}${ApiConfig.accountsEndpoint}'),
-        headers: {
-          'Authorization': 'Bearer $_token',
-          'Content-Type': 'application/json',
-        },
+        headers: _jsonHeaders(withAuth: true),
       );
 
       if (response.statusCode == 200) {
@@ -112,8 +136,30 @@ class BankService {
             .toList();
         return accounts;
       } else {
-        throw Exception('Erreur lors du chargement des comptes');
+        throw Exception(_extractErrorMessage(response));
       }
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<List<BeneficiaryAccount>> getBeneficiaries() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}${ApiConfig.beneficiariesEndpoint}'),
+        headers: _jsonHeaders(withAuth: true),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final List<BeneficiaryAccount> accounts =
+            (data['beneficiaries'] as List<dynamic>)
+                .map((b) => BeneficiaryAccount.fromJson(b as Map<String, dynamic>))
+                .toList();
+        return accounts;
+      }
+
+      throw Exception(_extractErrorMessage(response));
     } catch (e) {
       rethrow;
     }
@@ -124,10 +170,7 @@ class BankService {
     try {
       final response = await http.get(
         Uri.parse('${ApiConfig.baseUrl}${ApiConfig.historyEndpoint}'),
-        headers: {
-          'Authorization': 'Bearer $_token',
-          'Content-Type': 'application/json',
-        },
+        headers: _jsonHeaders(withAuth: true),
       );
 
       if (response.statusCode == 200) {
@@ -137,8 +180,28 @@ class BankService {
             .toList();
         return transactions;
       } else {
-        throw Exception('Erreur lors du chargement des transactions');
+        throw Exception(_extractErrorMessage(response));
       }
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<List<Transaction>> getAccountTransactions(int accountId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}${ApiConfig.accountsEndpoint}/$accountId/transactions'),
+        headers: _jsonHeaders(withAuth: true),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final tx = data['transactions'];
+        final List<dynamic> items = (tx is Map<String, dynamic>) ? (tx['data'] as List<dynamic>) : (tx as List<dynamic>);
+        return items.map((t) => Transaction.fromJson(t as Map<String, dynamic>)).toList();
+      }
+
+      throw Exception(_extractErrorMessage(response));
     } catch (e) {
       rethrow;
     }
@@ -154,10 +217,7 @@ class BankService {
     try {
       final response = await http.post(
         Uri.parse('${ApiConfig.baseUrl}${ApiConfig.transactionEndpoint}'),
-        headers: {
-          'Authorization': 'Bearer $_token',
-          'Content-Type': 'application/json',
-        },
+        headers: _jsonHeaders(withAuth: true),
         body: jsonEncode({
           'from_account_id': fromAccountId,
           'to_account_id': toAccountId,
@@ -169,8 +229,7 @@ class BankService {
       if (response.statusCode == 201) {
         return jsonDecode(response.body);
       } else {
-        final error = jsonDecode(response.body);
-        throw Exception(error['message'] ?? 'Erreur lors du virement');
+        throw Exception(_extractErrorMessage(response));
       }
     } catch (e) {
       rethrow;

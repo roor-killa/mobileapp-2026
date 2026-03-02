@@ -18,6 +18,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/accounts', [AccountController::class, 'getAccounts']);
     Route::get('/accounts/{account}', [AccountController::class, 'getAccount']);
     Route::post('/accounts', [AccountController::class, 'createAccount']);
+    Route::get('/beneficiaries', [AccountController::class, 'getBeneficiaries']);
 
     // Transactions
     Route::get('/transactions', [TransactionController::class, 'getTransactions']);

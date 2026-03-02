@@ -6,6 +6,7 @@ class ApiConfig {
   static const String loginEndpoint = '/auth/login';
   static const String registerEndpoint = '/auth/register';
   static const String accountsEndpoint = '/accounts';
+  static const String beneficiariesEndpoint = '/beneficiaries';
   static const String transactionEndpoint = '/transactions/transfer';
   static const String historyEndpoint = '/transactions';
 }

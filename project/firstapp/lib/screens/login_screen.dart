@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import '../services/bank_service.dart';
 import 'dashboard_screen.dart';
+import '../theme/app_theme.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({Key? key}) : super(key: key);
+  const LoginScreen({super.key});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -114,226 +115,201 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('MyBank'),
-        centerTitle: true,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Logo
-              Container(
-                padding: const EdgeInsets.symmetric(vertical: 20),
-                child: const Icon(Icons.account_balance,
-                    size: 80, color: Colors.blue),
-              ),
-
-              // Titre
-              const Text(
-                'Bienvenue chez MyBank',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 30),
-
-              // Message d'erreur
-              if (_errorMessage != null)
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  margin: const EdgeInsets.only(bottom: 20),
-                  decoration: BoxDecoration(
-                    color: Colors.red[100],
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.red),
-                  ),
-                  child: Text(
-                    _errorMessage!,
-                    style: const TextStyle(color: Colors.red),
-                  ),
-                ),
-
-              // Champs de connexion
-              if (!_isRegistering) ...[
-                TextFormField(
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: InputDecoration(
-                    labelText: 'Email',
-                    prefixIcon: const Icon(Icons.email),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              children: [
+                _HeaderCard(isRegistering: _isRegistering),
+                const SizedBox(height: 16),
+                if (_errorMessage != null)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: scheme.errorContainer,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: scheme.error.withValues(alpha: 0.35)),
+                    ),
+                    child: Text(
+                      _errorMessage!,
+                      style: TextStyle(color: scheme.onErrorContainer),
                     ),
                   ),
-                  validator: (value) => value?.isEmpty ?? true
-                      ? 'Veuillez entrer votre email'
-                      : null,
-                ),
-                const SizedBox(height: 15),
-                TextFormField(
-                  controller: _passwordController,
-                  obscureText: true,
-                  decoration: InputDecoration(
-                    labelText: 'Mot de passe',
-                    prefixIcon: const Icon(Icons.lock),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
+                if (!_isRegistering) ..._buildLoginFields() else ..._buildRegisterFields(),
+                const SizedBox(height: 22),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : (_isRegistering ? _register : _login),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      backgroundColor: scheme.primary,
+                      foregroundColor: scheme.onPrimary,
                     ),
-                  ),
-                  validator: (value) => value?.isEmpty ?? true
-                      ? 'Veuillez entrer votre mot de passe'
-                      : null,
-                ),
-              ] else ...[
-                // Champs d'inscription
-                TextFormField(
-                  controller: _firstNameController,
-                  decoration: InputDecoration(
-                    labelText: 'Prénom',
-                    prefixIcon: const Icon(Icons.person),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  validator: (value) => value?.isEmpty ?? true
-                      ? 'Veuillez entrer votre prénom'
-                      : null,
-                ),
-                const SizedBox(height: 15),
-                TextFormField(
-                  controller: _lastNameController,
-                  decoration: InputDecoration(
-                    labelText: 'Nom',
-                    prefixIcon: const Icon(Icons.person),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  validator: (value) => value?.isEmpty ?? true
-                      ? 'Veuillez entrer votre nom'
-                      : null,
-                ),
-                const SizedBox(height: 15),
-                TextFormField(
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: InputDecoration(
-                    labelText: 'Email',
-                    prefixIcon: const Icon(Icons.email),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  validator: (value) => value?.isEmpty ?? true
-                      ? 'Veuillez entrer votre email'
-                      : null,
-                ),
-                const SizedBox(height: 15),
-                TextFormField(
-                  controller: _phoneController,
-                  keyboardType: TextInputType.phone,
-                  decoration: InputDecoration(
-                    labelText: 'Téléphone',
-                    prefixIcon: const Icon(Icons.phone),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  validator: (value) => value?.isEmpty ?? true
-                      ? 'Veuillez entrer votre téléphone'
-                      : null,
-                ),
-                const SizedBox(height: 15),
-                TextFormField(
-                  controller: _passwordController,
-                  obscureText: true,
-                  decoration: InputDecoration(
-                    labelText: 'Mot de passe',
-                    prefixIcon: const Icon(Icons.lock),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  validator: (value) =>
-                      (value?.isEmpty ?? true) || (value?.length ?? 0) < 8
-                          ? 'Le mot de passe doit contenir au moins 8 caractères'
-                          : null,
-                ),
-                const SizedBox(height: 15),
-                TextFormField(
-                  controller: _passwordConfirmController,
-                  obscureText: true,
-                  decoration: InputDecoration(
-                    labelText: 'Confirmer le mot de passe',
-                    prefixIcon: const Icon(Icons.lock),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  validator: (value) => value?.isEmpty ?? true
-                      ? 'Veuillez confirmer votre mot de passe'
-                      : null,
-                ),
-              ],
-
-              const SizedBox(height: 30),
-
-              // Bouton principal
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : (_isRegistering ? _register : _login),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 15),
-                    backgroundColor: Colors.blue,
-                    disabledBackgroundColor: Colors.grey,
-                  ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
+                    child: _isLoading
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                          )
+                        : Text(
+                            _isRegistering ? "S'inscrire" : 'Se connecter',
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
                           ),
-                        )
-                      : Text(
-                          _isRegistering ? 'S\'inscrire' : 'Se connecter',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                  ),
                 ),
-              ),
-
-              const SizedBox(height: 15),
-
-              // Permuter vers connexion/inscription
-              TextButton(
-                onPressed: () {
-                  setState(() {
+                const SizedBox(height: 10),
+                TextButton(
+                  onPressed: () => setState(() {
                     _isRegistering = !_isRegistering;
                     _errorMessage = null;
-                  });
-                },
-                child: Text(
-                  _isRegistering
-                      ? 'Vous avez déjà un compte? Se connecter'
-                      : 'Créer un nouveau compte',
-                  style: const TextStyle(fontSize: 14),
+                  }),
+                  child: Text(
+                    _isRegistering ? 'Vous avez déjà un compte ? Se connecter' : 'Créer un nouveau compte',
+                    style: TextStyle(color: scheme.primary),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _buildLoginFields() {
+    return [
+      TextFormField(
+        controller: _emailController,
+        keyboardType: TextInputType.emailAddress,
+        decoration: const InputDecoration(labelText: 'Email', prefixIcon: Icon(Icons.email)),
+        validator: (value) => (value?.isEmpty ?? true) ? 'Veuillez entrer votre email' : null,
+      ),
+      const SizedBox(height: 12),
+      TextFormField(
+        controller: _passwordController,
+        obscureText: true,
+        decoration: const InputDecoration(labelText: 'Mot de passe', prefixIcon: Icon(Icons.lock)),
+        validator: (value) => (value?.isEmpty ?? true) ? 'Veuillez entrer votre mot de passe' : null,
+      ),
+    ];
+  }
+
+  List<Widget> _buildRegisterFields() {
+    return [
+      TextFormField(
+        controller: _firstNameController,
+        decoration: const InputDecoration(labelText: 'Prénom', prefixIcon: Icon(Icons.person)),
+        validator: (value) => (value?.isEmpty ?? true) ? 'Veuillez entrer votre prénom' : null,
+      ),
+      const SizedBox(height: 12),
+      TextFormField(
+        controller: _lastNameController,
+        decoration: const InputDecoration(labelText: 'Nom', prefixIcon: Icon(Icons.person)),
+        validator: (value) => (value?.isEmpty ?? true) ? 'Veuillez entrer votre nom' : null,
+      ),
+      const SizedBox(height: 12),
+      TextFormField(
+        controller: _emailController,
+        keyboardType: TextInputType.emailAddress,
+        decoration: const InputDecoration(labelText: 'Email', prefixIcon: Icon(Icons.email)),
+        validator: (value) => (value?.isEmpty ?? true) ? 'Veuillez entrer votre email' : null,
+      ),
+      const SizedBox(height: 12),
+      TextFormField(
+        controller: _phoneController,
+        keyboardType: TextInputType.phone,
+        decoration: const InputDecoration(labelText: 'Téléphone', prefixIcon: Icon(Icons.phone)),
+        validator: (value) => (value?.isEmpty ?? true) ? 'Veuillez entrer votre téléphone' : null,
+      ),
+      const SizedBox(height: 12),
+      TextFormField(
+        controller: _passwordController,
+        obscureText: true,
+        decoration: const InputDecoration(labelText: 'Mot de passe', prefixIcon: Icon(Icons.lock)),
+        validator: (value) {
+          if (value == null || value.isEmpty) return 'Veuillez entrer votre mot de passe';
+          if (value.length < 8) return 'Le mot de passe doit contenir au moins 8 caractères';
+          return null;
+        },
+      ),
+      const SizedBox(height: 12),
+      TextFormField(
+        controller: _passwordConfirmController,
+        obscureText: true,
+        decoration: const InputDecoration(labelText: 'Confirmer le mot de passe', prefixIcon: Icon(Icons.lock)),
+        validator: (value) => (value?.isEmpty ?? true) ? 'Veuillez confirmer votre mot de passe' : null,
+      ),
+    ];
+  }
+}
+
+class _HeaderCard extends StatelessWidget {
+  final bool isRegistering;
+
+  const _HeaderCard({required this.isRegistering});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [AppTheme.brand, AppTheme.brand2],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                height: 46,
+                width: 46,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
+                ),
+                child: const Icon(Icons.account_balance, color: Colors.white),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('MyBank', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800)),
+                    SizedBox(height: 2),
+                    Text(
+                      'Banque mobile • Comptes • Virements',
+                      style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-        ),
+          const SizedBox(height: 14),
+          Text(
+            isRegistering ? 'Créer un compte' : 'Connexion sécurisée',
+            style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Accédez à vos comptes et effectuez un virement en quelques secondes.',
+            style: TextStyle(color: Colors.white70, fontSize: 12),
+          ),
+        ],
       ),
     );
   }
