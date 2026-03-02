@@ -41,11 +41,21 @@ class TransactionsScreen extends StatelessWidget {
 
           final sign = isInternal ? '' : (isOutgoing ? '-' : (isIncoming ? '+' : ''));
 
+          final counterparty = isIncoming
+              ? (t.fromOwnerName ?? 'Compte externe')
+              : (isOutgoing ? (t.toOwnerName ?? 'Bénéficiaire') : null);
+
+          final subtitle = [
+            dateFormat.format(t.transactionDate),
+            'Ref ${t.referenceNumber}',
+            if (counterparty != null) (isIncoming ? 'De $counterparty' : 'À $counterparty'),
+          ].join(' • ');
+
           return ListTile(
             contentPadding: EdgeInsets.zero,
             leading: Icon(icon, color: color),
             title: Text(t.description.isEmpty ? 'Transaction' : t.description),
-            subtitle: Text('${dateFormat.format(t.transactionDate)} • Ref ${t.referenceNumber}'),
+            subtitle: Text(subtitle),
             trailing: Text(
               '$sign${t.amount.toStringAsFixed(2)} EUR',
               style: TextStyle(fontWeight: FontWeight.w800, color: color),

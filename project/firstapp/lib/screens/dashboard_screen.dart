@@ -328,6 +328,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final color = isInternal ? scheme.primary : (isOutgoing ? scheme.error : (isIncoming ? scheme.tertiary : scheme.onSurfaceVariant));
     final sign = isInternal ? '' : (isOutgoing ? '-' : (isIncoming ? '+' : ''));
 
+    final counterparty = isIncoming
+        ? (transaction.fromOwnerName ?? 'Compte externe')
+        : (isOutgoing ? (transaction.toOwnerName ?? 'Bénéficiaire') : null);
+
+    final subtitle = [
+      dateFormat.format(transaction.transactionDate),
+      if (counterparty != null) (isIncoming ? 'De $counterparty' : 'À $counterparty'),
+    ].join(' • ');
+
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 0),
       leading: Icon(
@@ -335,7 +344,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         color: color,
       ),
       title: Text(transaction.description),
-      subtitle: Text(dateFormat.format(transaction.transactionDate)),
+      subtitle: Text(subtitle),
       trailing: Text(
         '$sign${transaction.amount.toStringAsFixed(2)} EUR',
         style: TextStyle(

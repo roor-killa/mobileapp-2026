@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../services/bank_service.dart';
 import 'dashboard_screen.dart';
@@ -113,6 +114,14 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  void _fillDemo(String email) {
+    _emailController.text = email;
+    _passwordController.text = 'password123';
+    setState(() {
+      _errorMessage = null;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -126,6 +135,57 @@ class _LoginScreenState extends State<LoginScreen> {
               children: [
                 _HeaderCard(isRegistering: _isRegistering),
                 const SizedBox(height: 16),
+                if (kDebugMode && !_isRegistering)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: scheme.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: scheme.outlineVariant),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Connexion rapide (tests)',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            color: scheme.onSurface,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            ActionChip(
+                              label: const Text('Jean Dupont'),
+                              onPressed: () => _fillDemo('jean.dupont@example.com'),
+                            ),
+                            ActionChip(
+                              label: const Text('Marie Martin'),
+                              onPressed: () => _fillDemo('marie.martin@example.com'),
+                            ),
+                            ActionChip(
+                              label: const Text('Pierre Bernard'),
+                              onPressed: () => _fillDemo('pierre.bernard@example.com'),
+                            ),
+                            ActionChip(
+                              label: const Text('Sophie Lefebvre'),
+                              onPressed: () => _fillDemo('sophie.lefebvre@example.com'),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          "Mot de passe: password123",
+                          style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
                 if (_errorMessage != null)
                   Container(
                     width: double.infinity,

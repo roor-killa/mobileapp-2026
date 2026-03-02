@@ -69,6 +69,8 @@ class Transaction {
   final String referenceNumber;
   final DateTime transactionDate;
   final String? direction;
+  final String? fromOwnerName;
+  final String? toOwnerName;
 
   Transaction({
     required this.id,
@@ -81,9 +83,23 @@ class Transaction {
     required this.referenceNumber,
     required this.transactionDate,
     this.direction,
+    this.fromOwnerName,
+    this.toOwnerName,
   });
 
   factory Transaction.fromJson(Map<String, dynamic> json) {
+    String? readOwnerName(dynamic accountJson) {
+      try {
+        final acc = accountJson as Map<String, dynamic>?;
+        final owner = acc?['owner'] as Map<String, dynamic>?;
+        final name = owner?['name'];
+        if (name is String && name.trim().isNotEmpty) return name.trim();
+      } catch (_) {
+        // ignore
+      }
+      return null;
+    }
+
     return Transaction(
       id: json['id'],
       fromAccountId: json['from_account_id'],
@@ -95,6 +111,8 @@ class Transaction {
       referenceNumber: json['reference_number'],
       transactionDate: DateTime.parse(json['transaction_date']),
       direction: json['direction'],
+      fromOwnerName: readOwnerName(json['from_account']),
+      toOwnerName: readOwnerName(json['to_account']),
     );
   }
 }

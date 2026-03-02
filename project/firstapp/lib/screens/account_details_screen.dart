@@ -120,11 +120,12 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
                 final isOutgoing = t.fromAccountId == widget.account.id;
                 final sign = isOutgoing ? '-' : '+';
                 final color = isOutgoing ? scheme.error : scheme.tertiary;
+                final counterparty = isOutgoing ? (t.toOwnerName ?? 'Bénéficiaire') : (t.fromOwnerName ?? 'Compte externe');
                 return ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: Icon(isOutgoing ? Icons.call_made : Icons.call_received, color: color),
                   title: Text(t.description.isEmpty ? 'Transaction' : t.description),
-                  subtitle: Text(dateFormat.format(t.transactionDate)),
+                  subtitle: Text('${dateFormat.format(t.transactionDate)} • ${isOutgoing ? 'À' : 'De'} $counterparty'),
                   trailing: Text(
                     '$sign${t.amount.toStringAsFixed(2)} $currency',
                     style: TextStyle(fontWeight: FontWeight.w800, color: color),
