@@ -58,12 +58,24 @@ flutter pub get
 flutter run
 ```
 
+### Windows (important) — symlinks plugins Flutter
+Sur Windows, Flutter peut échouer avec **"Building with plugins requires symlink support"**.
+
+- Active **Developer Mode**: exécute `start ms-settings:developers` puis active *Developer Mode*
+- Ou lance ton terminal en **Administrateur**
+
 ### Important (Android Emulator)
 L’app utilise `10.0.2.2` pour joindre le PC hôte depuis l’émulateur:
 - config: `project/firstapp/lib/config/api_config.dart`
 - base URL: `http://10.0.2.2:8000/api`
 
 Si tu utilises un **téléphone réel**, il faudra remplacer `10.0.2.2` par l’IP locale de ton PC (ex: `http://192.168.x.x:8000/api`).
+
+Tu peux aussi lancer l’app en surchargeant l’URL API:
+
+```bash
+flutter run --dart-define=API_BASE_URL=http://192.168.x.x:8000/api
+```
 
 ## Comptes de test (déjà seedés)
 Mot de passe pour tous: `password123`

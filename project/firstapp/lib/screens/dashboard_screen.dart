@@ -28,8 +28,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
-    _bankService.init();
-    _initializationFuture = _loadData();
+    _initializationFuture = _initAndLoad();
+  }
+
+  Future<void> _initAndLoad() async {
+    await _bankService.init();
+    await _loadData();
   }
 
   Future<void> _loadData() async {
@@ -54,9 +58,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _errorMessage = null;
       });
     } catch (e) {
-      setState(() {
-        _errorMessage = e.toString().replaceAll('Exception: ', '');
-      });
+      final msg = e.toString().replaceAll('Exception: ', '');
+      if (msg.toLowerCase().contains('session expirée')) {
+        await _logout();
+        return;
+      }
+      setState(() => _errorMessage = msg);
     }
   }
 
@@ -92,10 +99,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ],
           ),
-          body: SingleChildScrollView(
-            padding: const EdgeInsets.all(20.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          body: RefreshIndicator(
+            onRefresh: _loadData,
+            child: ListView(
+              padding: const EdgeInsets.all(20.0),
               children: [
                 // Message d'erreur
                 if (_errorMessage != null)
@@ -168,7 +175,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   for (var account in _accounts!)
                     _buildAccountCard(account)
                 else if (_accounts == null)
-                  const CircularProgressIndicator()
+                  const Center(child: Padding(padding: EdgeInsets.only(top: 10), child: CircularProgressIndicator()))
                 else
                   const Text('Aucun compte trouvé'),
 
@@ -233,7 +240,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   for (var transaction in _transactions!.take(5))
                     _buildTransactionTile(transaction)
                 else if (_transactions == null)
-                  const CircularProgressIndicator()
+                  const Center(child: Padding(padding: EdgeInsets.only(top: 10), child: CircularProgressIndicator()))
                 else
                   const Text('Aucune transaction'),
               ],
