@@ -66,8 +66,8 @@ class ApiService {
   // LE VRAI TRANSFERT (Connecté à PostgreSQL)
   // =====================================================================
   
-  Future<TransferResponse> transfererMontant(double montant) async {
-    // 1. On récupère le badge dans le coffre
+  // Attention à bien ajouter "String emailDestinataire" dans les parenthèses !
+  Future<TransferResponse> transfererMontant(String emailDestinataire, double montant) async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token');
 
@@ -78,7 +78,6 @@ class ApiService {
     final url = Uri.parse('$baseUrl/transfer');
 
     try {
-      // 2. On appelle Laravel avec le Token
       final response = await http.post(
         url,
         headers: {
@@ -86,11 +85,11 @@ class ApiService {
           'Authorization': 'Bearer $token',
         },
         body: jsonEncode({
+          'email_destinataire': emailDestinataire, // <-- L'EMAIL EST ENVOYÉ ICI
           'montant': montant,
         }),
       );
 
-      // 3. On décode la réponse et on la donne à l'écran du prof
       final jsonResponse = jsonDecode(response.body);
       return TransferResponse.fromJson(jsonResponse);
       

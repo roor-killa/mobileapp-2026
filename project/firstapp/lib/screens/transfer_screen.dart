@@ -14,7 +14,8 @@ class TransferScreen extends StatefulWidget {
 class _TransferScreenState extends State<TransferScreen> {
   // Contrôleur pour le champ de saisie
   final TextEditingController _montantController = TextEditingController();
-  
+  final TextEditingController _emailController = TextEditingController();
+
   // Service API
   final ApiService _apiService = ApiService();
   
@@ -55,7 +56,14 @@ class _TransferScreenState extends State<TransferScreen> {
   /// ÉTAPE 1 : Action déclenchée par le bouton "Transférer"
   Future<void> _effectuerTransfert() async {
     // Validation de la saisie
+    final emailDestinataire = _emailController.text.trim();
     final montantText = _montantController.text.trim();
+
+    if (emailDestinataire.isEmpty) {
+      _afficherErreur('Veuillez entrer l\'email du destinataire');
+      return;
+    }
+
     if (montantText.isEmpty) {
       _afficherErreur('Veuillez entrer un montant');
       return;
@@ -75,7 +83,7 @@ class _TransferScreenState extends State<TransferScreen> {
     
     try {
       // ÉTAPES 2-5 : Appel API et récupération du JSON
-      final response = await _apiService.transfererMontant(montant);
+      final response = await _apiService.transfererMontant(emailDestinataire, montant);
       
       // ÉTAPE 6 : Mise à jour de l'interface avec les données
       print('✅ ÉTAPE 6 : Affichage des données');
@@ -87,6 +95,7 @@ class _TransferScreenState extends State<TransferScreen> {
       
       // Vider le champ après succès
       if (response.success) {
+        _emailController.clear();
         _montantController.clear();
       }
       
@@ -125,10 +134,15 @@ class _TransferScreenState extends State<TransferScreen> {
             
             const SizedBox(height: 30),
             
+            // Champ de saisie de l'email du destinataire
+            _buildEmailInput(),
+
+            const SizedBox(height: 15),
+
             // ÉTAPE 0 : Champ de saisie du montant
             _buildMontantInput(),
             
-            const SizedBox(height: 20),
+            const SizedBox(height: 30),
             
             // ÉTAPE 1 : Bouton de transfert
             _buildTransferButton(),
@@ -265,6 +279,25 @@ class _TransferScreenState extends State<TransferScreen> {
       }
     );
   }
+
+  /// Champ de saisie de l'email
+  Widget _buildEmailInput() {
+    return TextField(
+      controller: _emailController,
+      keyboardType: TextInputType.emailAddress,
+      decoration: InputDecoration(
+        labelText: 'Email du destinataire',
+        hintText: 'ami@example.com',
+        prefixIcon: const Icon(Icons.email),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        filled: true,
+        fillColor: Colors.grey.shade100,
+      ),
+    );
+  }
+
   /// ÉTAPE 0 : Champ de saisie du montant
   Widget _buildMontantInput() {
     return TextField(
@@ -397,8 +430,9 @@ class _TransferScreenState extends State<TransferScreen> {
   }
   
   @override
-  void dispose() {
-    _montantController.dispose();
-    super.dispose();
-  }
+void dispose() {
+  _montantController.dispose();
+  _emailController.dispose(); // <-- Ajouté
+  super.dispose();
+}
 }
