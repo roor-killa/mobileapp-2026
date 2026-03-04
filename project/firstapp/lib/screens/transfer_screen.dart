@@ -52,6 +52,21 @@ class _TransferScreenState extends State<TransferScreen> {
     }
   }
       
+  /// ÉTAPE 1 : Action déclenchée par le bouton "Transférer"
+  Future<void> _effectuerTransfert() async {
+    // Validation de la saisie
+    final montantText = _montantController.text.trim();
+    if (montantText.isEmpty) {
+      _afficherErreur('Veuillez entrer un montant');
+      return;
+    }
+    
+    final montant = double.tryParse(montantText);
+    if (montant == null || montant <= 0) {
+      _afficherErreur('Montant invalide');
+      return;
+    }
+
     // Active le loader
     setState(() {
       _isLoading = true;
