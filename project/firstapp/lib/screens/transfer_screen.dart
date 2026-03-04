@@ -146,21 +146,20 @@ class _TransferScreenState extends State<TransferScreen> {
     );
   }
   
-  /// Card affichant le solde actuel
+
+ /// Card affichant le solde actuel et le bouton de rechargement
   Widget _buildSoldeCard() {
     return Card(
       elevation: 4,
       color: Colors.blue.shade50,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
       child: Padding(
         padding: const EdgeInsets.all(20.0),
         child: Column(
           children: [
             const Text(
               'Solde disponible',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.black54,
-              ),
+              style: TextStyle(fontSize: 16, color: Colors.black54),
             ),
             const SizedBox(height: 10),
             Text(
@@ -168,9 +167,21 @@ class _TransferScreenState extends State<TransferScreen> {
                   ? '${_soldeActuel!.toStringAsFixed(2)} €'
                   : 'Chargement...',
               style: const TextStyle(
-                fontSize: 32,
+                fontSize: 36,
                 fontWeight: FontWeight.bold,
                 color: Colors.blue,
+              ),
+            ),
+            const SizedBox(height: 15),
+            
+            // NOUVEAU : Le bouton pour recharger
+            ElevatedButton.icon(
+              onPressed: _afficherDialogRechargement,
+              icon: const Icon(Icons.add_circle_outline, color: Colors.white),
+              label: const Text('Recharger par carte', style: TextStyle(color: Colors.white)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green, // Vert pour l'ajout d'argent
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
               ),
             ),
           ],
@@ -178,7 +189,82 @@ class _TransferScreenState extends State<TransferScreen> {
       ),
     );
   }
-  
+  /// Affiche une Pop-up pour simuler un dépôt par carte
+  void _afficherDialogRechargement() {
+    final TextEditingController _topupController = TextEditingController();
+    bool _isToppingUp = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false, // Empêche de fermer en cliquant à côté
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              title: const Text('Recharger le compte'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Simulez un dépôt par carte bancaire. Minimum 5 €.', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                  const SizedBox(height: 15),
+                  TextField(
+                    controller: _topupController,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    decoration: const InputDecoration(
+                      labelText: 'Montant à déposer',
+                      prefixIcon: Icon(Icons.credit_card),
+                      suffixText: '€',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: _isToppingUp ? null : () => Navigator.pop(context),
+                  child: const Text('Annuler', style: TextStyle(color: Colors.red)),
+                ),
+                ElevatedButton(
+                  onPressed: _isToppingUp ? null : () async {
+                    final montant = double.tryParse(_topupController.text.trim());
+                    if (montant == null || montant < 5.0) {
+                      _afficherErreur("Veuillez entrer au moins 5 €");
+                      return;
+                    }
+
+                    setStateDialog(() => _isToppingUp = true);
+
+                    // On appelle la fonction de l'API !
+                    final result = await _apiService.topUp(montant);
+
+                    if (result['success'] == true) {
+                      Navigator.pop(context); // On ferme la fenêtre
+                      
+                      // On met à jour le gros chiffre bleu sur l'écran
+                      setState(() {
+                        _soldeActuel = double.parse(result['nouveau_solde'].toString());
+                      });
+                      
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(result['message']), backgroundColor: Colors.green),
+                      );
+                    } else {
+                      setStateDialog(() => _isToppingUp = false);
+                      _afficherErreur(result['message'] ?? 'Erreur lors du rechargement');
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                  child: _isToppingUp 
+                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      : const Text('Valider', style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            );
+          }
+        );
+      }
+    );
+  }
   /// ÉTAPE 0 : Champ de saisie du montant
   Widget _buildMontantInput() {
     return TextField(

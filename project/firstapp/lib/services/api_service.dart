@@ -99,4 +99,36 @@ class ApiService {
       return TransferResponse(success: false, montantTotal: 0, montantTransfere: 0, nouveauSolde: 0, message: 'Erreur réseau');
     }
   }
+  // =====================================================================
+  // RECHARGEMENT DU COMPTE
+  // =====================================================================
+  
+  Future<Map<String, dynamic>> topUp(double montant) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+
+    if (token == null) {
+      return {'success': false, 'message': 'Erreur: Non connecté'};
+    }
+
+    final url = Uri.parse('$baseUrl/topup');
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'montant': montant,
+        }),
+      );
+
+      return jsonDecode(response.body);
+    } catch (e) {
+      print("Erreur API Rechargement: $e");
+      return {'success': false, 'message': 'Erreur réseau'};
+    }
+  }
 }
