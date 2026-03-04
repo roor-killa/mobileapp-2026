@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:convert';
 import '../models/transfer_response.dart';
+import '../models/transaction.dart'; // Assure-toi d'avoir créé ce modèle
 import '../services/api_service.dart';
 
 class TransferScreen extends StatefulWidget {
@@ -11,295 +13,299 @@ class TransferScreen extends StatefulWidget {
 }
 
 class _TransferScreenState extends State<TransferScreen> {
-  // Contrôleur pour le champ de saisie
   final TextEditingController _montantController = TextEditingController();
-  
-  // Service API
+  final TextEditingController _emailDestinataireController = TextEditingController();
   final ApiService _apiService = ApiService();
-  
-  // État de l'application
-  bool _isLoading = false; // Chargement en cours ?
-  TransferResponse? _lastResponse; // Dernière réponse reçue
-  double? _soldeActuel; // Solde actuel
-  
+
+  bool _isLoading = false;
+  bool _isLoadingHistory = true;
+  double? _soldeActuel;
+  List<Transaction> _history = [];
+
   @override
   void initState() {
     super.initState();
-    _chargerSoldeInitial();
+    _chargerDonneesInitiales();
   }
-  
-  /// Charge le solde au démarrage
+
+  @override
+  void dispose() {
+    _montantController.dispose();
+    _emailDestinataireController.dispose();
+    super.dispose();
+  }
+
+  // Charge le solde ET l'historique au démarrage
+  Future<void> _chargerDonneesInitiales() async {
+    setState(() => _isLoadingHistory = true);
+    await Future.wait([
+      _chargerSoldeInitial(),
+      _chargerHistorique(),
+    ]);
+    setState(() => _isLoadingHistory = false);
+  }
+
   Future<void> _chargerSoldeInitial() async {
-    final solde = await _apiService.getSoldeActuel();
-    setState(() {
-      _soldeActuel = solde;
-    });
+    try {
+      final solde = await _apiService.getSoldeActuel();
+      if (mounted) setState(() => _soldeActuel = solde);
+    } catch (e) {
+      _afficherErreur('Erreur solde: $e');
+    }
   }
-  
-  /// ÉTAPE 1 : Action déclenchée par le bouton "Transférer"
+
+  Future<void> _chargerHistorique() async {
+    try {
+      // Note: Tu dois ajouter cette méthode dans ton ApiService
+      final transactions = await _apiService.getTransactions(); 
+      if (mounted) setState(() => _history = transactions);
+    } catch (e) {
+      print('Erreur historique: $e');
+    }
+  }
+
   Future<void> _effectuerTransfert() async {
-    // Validation de la saisie
+    final email = _emailDestinataireController.text.trim();
     final montantText = _montantController.text.trim();
-    if (montantText.isEmpty) {
-      _afficherErreur('Veuillez entrer un montant');
+
+    if (email.isEmpty || montantText.isEmpty) {
+      _afficherErreur('Veuillez remplir tous les champs');
       return;
     }
-    
+
     final montant = double.tryParse(montantText);
     if (montant == null || montant <= 0) {
       _afficherErreur('Montant invalide');
       return;
     }
-    
-    print('🚀 ÉTAPE 1 : Bouton "Transférer" pressé');
-    print('💵 Montant saisi : $montant €');
-    
-    // Active le loader
-    setState(() {
-      _isLoading = true;
-      _lastResponse = null;
-    });
-    
+
+    setState(() => _isLoading = true);
+
     try {
-      // ÉTAPES 2-5 : Appel API et récupération du JSON
-      final response = await _apiService.transfererMontant(montant);
-      
-      // ÉTAPE 6 : Mise à jour de l'interface avec les données
-      print('✅ ÉTAPE 6 : Affichage des données');
-      setState(() {
-        _lastResponse = response;
-        _soldeActuel = response.nouveauSolde;
-        _isLoading = false;
-      });
-      
-      // Vider le champ après succès
+      final response = await _apiService.transfererMontant(
+        email: email,
+        montant: montant,
+      );
+
+      if (!mounted) return;
+
       if (response.success) {
+        setState(() {
+          _soldeActuel = response.nouveauSolde;
+          _isLoading = false;
+        });
+        
         _montantController.clear();
+        _emailDestinataireController.clear();
+        
+        // Affiche la boîte de dialogue de succès
+        _showSuccessDialog(response);
+        
+        // Rafraîchit l'historique pour voir la nouvelle ligne
+        _chargerHistorique();
       }
-      
     } catch (e) {
-      print('❌ Erreur : $e');
-      setState(() {
-        _isLoading = false;
-      });
-      _afficherErreur('Erreur lors du transfert');
+      if (mounted) setState(() => _isLoading = false);
+      _afficherErreur('Erreur : $e');
     }
   }
-  
-  void _afficherErreur(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
+
+  void _showSuccessDialog(TransferResponse data) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Column(
+            children: [
+              Icon(Icons.check_circle, color: Colors.green, size: 60),
+              SizedBox(height: 10),
+              Text("Transfert Réussi", style: TextStyle(fontWeight: FontWeight.bold)),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(data.message, textAlign: TextAlign.center),
+              const Divider(height: 30),
+              _buildDialogRow("Ancien solde :", "${data.montantTotal.toStringAsFixed(2)} €"),
+              _buildDialogRow("Montant envoyé :", "- ${data.montantTransfere.toStringAsFixed(2)} €", color: Colors.red),
+              const Divider(),
+              _buildDialogRow("Nouveau solde :", "${data.nouveauSolde.toStringAsFixed(2)} €", isBold: true),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text("OK", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildDialogRow(String label, String value, {Color? color, bool isBold = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label),
+          Text(value, style: TextStyle(color: color, fontWeight: isBold ? FontWeight.bold : FontWeight.normal)),
+        ],
       ),
     );
   }
-  
+
+  void _afficherErreur(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Transfert d\'argent'),
         backgroundColor: Colors.blue,
+        foregroundColor: Colors.white,
+        actions: [
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _chargerDonneesInitiales)
+        ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Affichage du solde actuel
-            _buildSoldeCard(),
-            
-            const SizedBox(height: 30),
-            
-            // ÉTAPE 0 : Champ de saisie du montant
-            _buildMontantInput(),
-            
-            const SizedBox(height: 20),
-            
-            // ÉTAPE 1 : Bouton de transfert
-            _buildTransferButton(),
-            
-            const SizedBox(height: 30),
-            
-            // ÉTAPE 6 : Affichage du résultat
-            if (_lastResponse != null) _buildResultCard(),
-            
-            // Indicateur de chargement
-            if (_isLoading) _buildLoadingIndicator(),
-          ],
+      body: RefreshIndicator(
+        onRefresh: _chargerDonneesInitiales,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildSoldeCard(),
+              const SizedBox(height: 30),
+              _buildEmailInput(),
+              const SizedBox(height: 20),
+              _buildMontantInput(),
+              const SizedBox(height: 20),
+              _buildTransferButton(),
+              const SizedBox(height: 40),
+              const Text(
+                'Historique des transactions',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const Divider(),
+              _buildHistoryList(),
+            ],
+          ),
         ),
       ),
     );
   }
-  
-  /// Card affichant le solde actuel
+
   Widget _buildSoldeCard() {
     return Card(
       elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
       color: Colors.blue.shade50,
       child: Padding(
         padding: const EdgeInsets.all(20.0),
         child: Column(
           children: [
-            const Text(
-              'Solde disponible',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.black54,
-              ),
-            ),
+            const Text('Solde disponible', style: TextStyle(fontSize: 16, color: Colors.black54)),
             const SizedBox(height: 10),
             Text(
-              _soldeActuel != null 
-                  ? '${_soldeActuel!.toStringAsFixed(2)} €'
-                  : 'Chargement...',
-              style: const TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-                color: Colors.blue,
-              ),
+              _soldeActuel != null ? '${_soldeActuel!.toStringAsFixed(2)} €' : '--- €',
+              style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.blue),
             ),
           ],
         ),
       ),
     );
   }
-  
-  /// ÉTAPE 0 : Champ de saisie du montant
+
+  Widget _buildEmailInput() {
+    return TextField(
+      controller: _emailDestinataireController,
+      decoration: InputDecoration(
+        labelText: 'Email du destinataire',
+        prefixIcon: const Icon(Icons.alternate_email),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        filled: true,
+        fillColor: Colors.grey.shade50,
+      ),
+    );
+  }
+
   Widget _buildMontantInput() {
     return TextField(
       controller: _montantController,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      inputFormatters: [
-        FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
-      ],
+      inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}'))],
       decoration: InputDecoration(
-        labelText: 'Montant à transférer',
-        hintText: 'Ex: 50.00',
+        labelText: 'Montant (€)',
         prefixIcon: const Icon(Icons.euro),
-        suffixText: '€',
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         filled: true,
-        fillColor: Colors.grey.shade100,
+        fillColor: Colors.grey.shade50,
       ),
-      style: const TextStyle(fontSize: 20),
     );
   }
-  
-  /// ÉTAPE 1 : Bouton de transfert
+
   Widget _buildTransferButton() {
     return ElevatedButton(
       onPressed: _isLoading ? null : _effectuerTransfert,
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.blue,
         padding: const EdgeInsets.symmetric(vertical: 16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
-      child: const Text(
-        'Transférer',
-        style: TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-          color: Colors.white,
-        ),
-      ),
+      child: _isLoading 
+        ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+        : const Text('Envoyer l\'argent', style: TextStyle(fontSize: 18, color: Colors.white)),
     );
   }
-  
-  /// Indicateur de chargement (étapes 2-5)
-  Widget _buildLoadingIndicator() {
-    return const Column(
-      children: [
-        CircularProgressIndicator(),
-        SizedBox(height: 10),
-        Text(
-          'Traitement en cours...',
-          style: TextStyle(color: Colors.grey),
-        ),
-      ],
-    );
-  }
-  
-  /// ÉTAPE 6 : Affichage du résultat
-  Widget _buildResultCard() {
-    final response = _lastResponse!;
-    final isSuccess = response.success;
-    
-    return Card(
-      elevation: 4,
-      color: isSuccess ? Colors.green.shade50 : Colors.red.shade50,
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  isSuccess ? Icons.check_circle : Icons.error,
-                  color: isSuccess ? Colors.green : Colors.red,
-                  size: 30,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    response.message,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: isSuccess ? Colors.green : Colors.red,
-                    ),
-                  ),
-                ),
-              ],
+
+  Widget _buildHistoryList() {
+    if (_isLoadingHistory) {
+      return const Padding(padding: EdgeInsets.all(20), child: Center(child: CircularProgressIndicator()));
+    }
+
+    if (_history.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.all(20.0),
+        child: Text("Aucune transaction trouvée.", textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
+      );
+    }
+
+    return ListView.builder(
+      shrinkWrap: true, // Nécessaire pour fonctionner dans SingleChildScrollView
+      physics: const NeverScrollableScrollPhysics(), // Désactive le scroll de la liste
+      itemCount: _history.length,
+      itemBuilder: (context, index) {
+        final tx = _history[index];
+        // Note: Ici on suppose que tu as accès à l'ID de l'utilisateur connecté 
+        // Si tu n'as pas l'ID, tu peux comparer par email
+        bool isSent = tx.senderName != "LeNomDuDestinataire"; 
+
+        return Card(
+          margin: const EdgeInsets.symmetric(vertical: 5),
+          child: ListTile(
+            leading: CircleAvatar(
+              backgroundColor: isSent ? Colors.red.shade50 : Colors.green.shade50,
+              child: Icon(isSent ? Icons.north_east : Icons.south_west, color: isSent ? Colors.red : Colors.green),
             ),
-            if (isSuccess) ...[
-              const Divider(height: 30),
-              _buildDetailRow('Solde initial', '${response.montantTotal.toStringAsFixed(2)} €'),
-              _buildDetailRow('Montant transféré', '- ${response.montantTransfere.toStringAsFixed(2)} €'),
-              _buildDetailRow('Nouveau solde', '${response.nouveauSolde.toStringAsFixed(2)} €', isBold: true),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-  
-  Widget _buildDetailRow(String label, String value, {bool isBold = false}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.black87,
-              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+            title: Text(isSent ? "Vers ${tx.receiverName}" : "De ${tx.senderName}"),
+            subtitle: Text(tx.date.substring(0, 10)),
+            trailing: Text(
+              "${isSent ? '-' : '+'}${tx.amount.toStringAsFixed(2)} €",
+              style: TextStyle(fontWeight: FontWeight.bold, color: isSent ? Colors.red : Colors.green),
             ),
           ),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 16,
-              color: isBold ? Colors.blue : Colors.black,
-              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
-  }
-  
-  @override
-  void dispose() {
-    _montantController.dispose();
-    super.dispose();
   }
 }

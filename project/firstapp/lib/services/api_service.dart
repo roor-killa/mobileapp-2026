@@ -1,64 +1,101 @@
 import 'dart:convert';
 import 'dart:async';
+import 'package:http/http.dart' as http;
 import '../models/transfer_response.dart';
+import '../models/transaction.dart';
 
 class ApiService {
-  // URL de base de l'API (à modifier pour la vraie API)
-  static const String baseUrl = 'http://localhost:8000/api';
+  // Instance unique (Singleton)
+  static final ApiService _instance = ApiService._internal();
+  factory ApiService() => _instance;
+  ApiService._internal();
   
-  // Simulation d'un solde en base de données
-  static double _soldeBDD = 1500.50; // Montant initial dans wallet
+  static const String baseUrl = 'http://10.0.2.2:8000/api';
   
-  /// SIMULATION : Simule l'appel API avec délai
-  /// Cette fonction sera remplacée par un vrai appel HTTP
-  Future<TransferResponse> transfererMontant(double montant) async {
-    print('📤 ÉTAPE 2 : Envoi de la requête API...');
-    print('💰 Montant à transférer : $montant €');
+  // Le token sera stocké ici une fois le login réussi
+  String? token; 
+
+  /// RÉEL : Envoi du virement au serveur Laravel
+  Future<TransferResponse> transfererMontant({
+    required String email, 
+    required double montant
+  }) async {
+    // Vérifie bien que c'est /send-money dans ton routes/api.php
+    final url = Uri.parse('$baseUrl/send-money');
     
-    // Simuler le délai réseau (1-2 secondes)
-    await Future.delayed(const Duration(seconds: 2));
-    
-    print('⚙️  ÉTAPE 3 : Traitement côté serveur...');
-    
-    // SIMULATION du traitement serveur
-    // En réalité, cela se passe dans Laravel + PostgreSQL
-    final montantTotal = _soldeBDD;
-    final nouveauSolde = montantTotal - montant;
-    
-    // Vérification de solde suffisant
-    if (nouveauSolde < 0) {
-      return TransferResponse(
-        success: false,
-        montantTotal: montantTotal,
-        montantTransfere: 0,
-        nouveauSolde: montantTotal,
-        message: 'Solde insuffisant',
+    try {
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token', 
+        },
+        body: jsonEncode({
+          'receiver_email': email,
+          'amount': montant,
+        }),
       );
+
+      if (response.statusCode == 200 || response.statusCode == 400) {
+        return TransferResponse.fromJson(jsonDecode(response.body));
+      } else {
+        throw Exception('Erreur serveur : ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ Erreur API : $e');
+      rethrow;
     }
-    
-    // Mise à jour du solde simulé
-    _soldeBDD = nouveauSolde;
-    
-    // ÉTAPE 4 : Construction du JSON de réponse (simulé)
-    final jsonResponse = {
-      'success': true,
-      'montant_total': montantTotal,
-      'montant_transfere': montant,
-      'nouveau_solde': nouveauSolde,
-      'message': 'Transfert effectué avec succès',
-    };
-    
-    print('📥 ÉTAPE 4 : Réception du JSON :');
-    print(json.encode(jsonResponse));
-    
-    // ÉTAPE 5 : Conversion JSON -> Objet Dart
-    print('🔄 ÉTAPE 5 : Parsing du JSON...');
-    return TransferResponse.fromJson(jsonResponse);
   }
   
-  /// Récupérer le solde actuel (pour affichage)
+  /// RÉEL : Récupérer l'historique des transactions
+  Future<List<Transaction>> getTransactions() async {
+    final url = Uri.parse('$baseUrl/transactions');
+    
+    try {
+      final response = await http.get(
+        url,
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        List<dynamic> body = jsonDecode(response.body);
+        return body.map((item) => Transaction.fromJson(item)).toList();
+      } else {
+        print('Erreur historique: ${response.statusCode} ${response.body}');
+        throw Exception('Impossible de charger l\'historique');
+      }
+    } catch (e) {
+      print('❌ Erreur Historique : $e');
+      return []; 
+    }
+  }
+
+  /// RÉEL : Récupérer le solde actuel
   Future<double> getSoldeActuel() async {
-    await Future.delayed(const Duration(milliseconds: 500));
-    return _soldeBDD;
+    final url = Uri.parse('$baseUrl/user'); 
+    
+    try {
+      final response = await http.get(
+        url,
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        // On récupère le champ 'balance' (assure-toi qu'il existe dans ta table users)
+        return double.parse(data['balance'].toString());
+      }
+      return 0.0;
+    } catch (e) {
+      print('❌ Erreur Solde : $e');
+      return 0.0;
+    }
   }
 }

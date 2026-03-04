@@ -1,40 +1,40 @@
-/// Modèle représentant la réponse de l'API
-/// Facilite la conversion JSON <-> Objet Dart
 class TransferResponse {
   final bool success;
-  final double montantTotal;
-  final double montantTransfere;
-  final double nouveauSolde;
   final String message;
+  final double montantTotal;      // Solde de l'utilisateur AVANT le transfert
+  final double montantTransfere;  // Le montant qui vient d'être envoyé
+  final double nouveauSolde;      // Le nouveau solde calculé par le serveur
 
   TransferResponse({
     required this.success,
+    required this.message,
     required this.montantTotal,
     required this.montantTransfere,
     required this.nouveauSolde,
-    required this.message,
   });
 
-  /// Factory pour créer un objet depuis JSON
-  /// C'est ici qu'on "parse" le JSON reçu de l'API
+  /// Transforme le JSON reçu de Laravel en objet Dart
   factory TransferResponse.fromJson(Map<String, dynamic> json) {
     return TransferResponse(
+      // On utilise les clés exactes définies dans ton AuthController.php
       success: json['success'] ?? false,
-      montantTotal: (json['montant_total'] ?? 0).toDouble(),
-      montantTransfere: (json['montant_transfere'] ?? 0).toDouble(),
-      nouveauSolde: (json['nouveau_solde'] ?? 0).toDouble(),
       message: json['message'] ?? '',
+      
+      // .toDouble() est important car le JSON peut envoyer un int ou un double
+      montantTotal: (json['montantTotal'] ?? 0.0).toDouble(),
+      montantTransfere: (json['montantTransfere'] ?? 0.0).toDouble(),
+      nouveauSolde: (json['nouveauSolde'] ?? 0.0).toDouble(),
     );
   }
 
-  /// Méthode pour convertir l'objet en JSON (si besoin)
+  /// Optionnel : Convertir l'objet en Map (utile pour le debug)
   Map<String, dynamic> toJson() {
     return {
       'success': success,
-      'montant_total': montantTotal,
-      'montant_transfere': montantTransfere,
-      'nouveau_solde': nouveauSolde,
       'message': message,
+      'montantTotal': montantTotal,
+      'montantTransfere': montantTransfere,
+      'nouveauSolde': nouveauSolde,
     };
   }
 }
