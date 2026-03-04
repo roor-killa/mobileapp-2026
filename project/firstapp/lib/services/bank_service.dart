@@ -173,6 +173,44 @@ class BankService {
     }
   }
 
+  /// Changer le mot de passe (utilisateur connecté).
+  /// Lance une Exception si le mot de passe actuel est incorrect ou si la requête échoue.
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    await init();
+    try {
+      final response = await http
+          .post(
+            Uri.parse('${ApiConfig.baseUrl}${ApiConfig.changePasswordEndpoint}'),
+            headers: _jsonHeaders(withAuth: true),
+            body: jsonEncode({
+              'current_password': currentPassword,
+              'password': newPassword,
+              'password_confirmation': newPassword,
+            }),
+          )
+          .timeout(const Duration(seconds: 20));
+
+      if (response.statusCode == 200) {
+        return;
+      }
+      if (response.statusCode == 401) {
+        await _handleUnauthorized();
+        throw Exception('Session expirée. Merci de vous reconnecter.');
+      }
+      throw Exception(_extractErrorMessage(response));
+    } on TimeoutException catch (e) {
+      throw _networkException(e);
+    } on http.ClientException catch (e) {
+      throw _networkException(e);
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw _networkException(e);
+    }
+  }
+
   // Comptes
   Future<List<Account>> getAccounts() async {
     await init();
@@ -221,6 +259,35 @@ class BankService {
       if (response.statusCode == 201) {
         final data = jsonDecode(response.body);
         return Account.fromJson(data['account'] as Map<String, dynamic>);
+      }
+      if (response.statusCode == 401) {
+        await _handleUnauthorized();
+        throw Exception('Session expirée. Merci de vous reconnecter.');
+      }
+      throw Exception(_extractErrorMessage(response));
+    } on TimeoutException catch (e) {
+      throw _networkException(e);
+    } on http.ClientException catch (e) {
+      throw _networkException(e);
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw _networkException(e);
+    }
+  }
+
+  /// Supprimer un compte (uniquement si solde = 0). Sinon lance une Exception.
+  Future<void> deleteAccount(int accountId) async {
+    await init();
+    try {
+      final response = await http
+          .delete(
+            Uri.parse('${ApiConfig.baseUrl}${ApiConfig.accountsEndpoint}/$accountId'),
+            headers: _jsonHeaders(withAuth: true),
+          )
+          .timeout(const Duration(seconds: 20));
+
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        return;
       }
       if (response.statusCode == 401) {
         await _handleUnauthorized();
@@ -365,6 +432,131 @@ class BankService {
       } else {
         throw Exception(_extractErrorMessage(response));
       }
+    } on TimeoutException catch (e) {
+      throw _networkException(e);
+    } on http.ClientException catch (e) {
+      throw _networkException(e);
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw _networkException(e);
+    }
+  }
+
+  /// Envoyer une demande d'argent à un utilisateur (il recevra une notification).
+  Future<Map<String, dynamic>> createPaymentRequest({
+    required int toUserId,
+    required double amount,
+    String? message,
+  }) async {
+    await init();
+    try {
+      final response = await http
+          .post(
+            Uri.parse('${ApiConfig.baseUrl}${ApiConfig.paymentRequestsEndpoint}'),
+            headers: _jsonHeaders(withAuth: true),
+            body: jsonEncode({
+              'to_user_id': toUserId,
+              'amount': amount,
+              'message': message,
+            }),
+          )
+          .timeout(const Duration(seconds: 20));
+
+      if (response.statusCode == 201) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      }
+      if (response.statusCode == 401) {
+        await _handleUnauthorized();
+        throw Exception('Session expirée. Merci de vous reconnecter.');
+      }
+      throw Exception(_extractErrorMessage(response));
+    } on TimeoutException catch (e) {
+      throw _networkException(e);
+    } on http.ClientException catch (e) {
+      throw _networkException(e);
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw _networkException(e);
+    }
+  }
+
+  /// Liste des demandes d'argent reçues (pour les afficher dans les notifications).
+  Future<List<Map<String, dynamic>>> getPaymentRequests() async {
+    await init();
+    try {
+      final response = await http
+          .get(
+            Uri.parse('${ApiConfig.baseUrl}${ApiConfig.paymentRequestsEndpoint}'),
+            headers: _jsonHeaders(withAuth: true),
+          )
+          .timeout(const Duration(seconds: 20));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final list = data['payment_requests'] as List<dynamic>? ?? [];
+        return list.cast<Map<String, dynamic>>();
+      }
+      if (response.statusCode == 401) {
+        await _handleUnauthorized();
+        throw Exception('Session expirée. Merci de vous reconnecter.');
+      }
+      return [];
+    } on TimeoutException catch (e) {
+      throw _networkException(e);
+    } on http.ClientException catch (e) {
+      throw _networkException(e);
+    } catch (e) {
+      if (e is Exception) rethrow;
+      return [];
+    }
+  }
+
+  /// Accepter une demande d'argent (effectue le virement depuis le compte choisi).
+  Future<void> acceptPaymentRequest(int paymentRequestId, int fromAccountId) async {
+    await init();
+    try {
+      final response = await http
+          .post(
+            Uri.parse('${ApiConfig.baseUrl}${ApiConfig.paymentRequestsEndpoint}/$paymentRequestId/accept'),
+            headers: _jsonHeaders(withAuth: true),
+            body: jsonEncode({'from_account_id': fromAccountId}),
+          )
+          .timeout(const Duration(seconds: 20));
+
+      if (response.statusCode == 200) return;
+      if (response.statusCode == 401) {
+        await _handleUnauthorized();
+        throw Exception('Session expirée. Merci de vous reconnecter.');
+      }
+      throw Exception(_extractErrorMessage(response));
+    } on TimeoutException catch (e) {
+      throw _networkException(e);
+    } on http.ClientException catch (e) {
+      throw _networkException(e);
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw _networkException(e);
+    }
+  }
+
+  /// Refuser une demande d'argent.
+  Future<void> declinePaymentRequest(int paymentRequestId) async {
+    await init();
+    try {
+      final response = await http
+          .post(
+            Uri.parse('${ApiConfig.baseUrl}${ApiConfig.paymentRequestsEndpoint}/$paymentRequestId/decline'),
+            headers: _jsonHeaders(withAuth: true),
+            body: jsonEncode({}),
+          )
+          .timeout(const Duration(seconds: 20));
+
+      if (response.statusCode == 200) return;
+      if (response.statusCode == 401) {
+        await _handleUnauthorized();
+        throw Exception('Session expirée. Merci de vous reconnecter.');
+      }
+      throw Exception(_extractErrorMessage(response));
     } on TimeoutException catch (e) {
       throw _networkException(e);
     } on http.ClientException catch (e) {

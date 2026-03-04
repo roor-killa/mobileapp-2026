@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/models.dart';
 import '../services/bank_service.dart';
+import '../theme/design_system.dart';
 
 class TransferScreen extends StatefulWidget {
   final List<Account> accounts;
@@ -30,6 +31,8 @@ class _TransferScreenState extends State<TransferScreen> {
   bool _isLoading = false;
   String? _errorMessage;
   bool _showSuccessMessage = false;
+  double _successAmount = 0;
+  String _successToName = '';
 
   @override
   void initState() {
@@ -120,8 +123,12 @@ class _TransferScreenState extends State<TransferScreen> {
               : _descriptionController.text,
         );
 
+        final amount = double.parse(_amountController.text);
+        final toName = _selectedDestination!.label;
         setState(() {
           _showSuccessMessage = true;
+          _successAmount = amount;
+          _successToName = toName;
           _amountController.clear();
           _descriptionController.clear();
           _selectedFromAccount = null;
@@ -154,6 +161,56 @@ class _TransferScreenState extends State<TransferScreen> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+
+    // Écran de succès (style Figma)
+    if (_showSuccessMessage) {
+      return Scaffold(
+        backgroundColor: DesignSystem.gray100,
+        body: SafeArea(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: DesignSystem.space24),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      color: DesignSystem.green100,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.check_circle_rounded, size: 48, color: DesignSystem.green500),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    'Virement effectué !',
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: DesignSystem.gray900),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Vous avez envoyé',
+                    style: TextStyle(fontSize: 14, color: DesignSystem.gray400),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${_successAmount.toStringAsFixed(2)} €',
+                    style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: DesignSystem.indigo600),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'à $_successToName',
+                    style: TextStyle(fontSize: 14, color: DesignSystem.gray500),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Effectuer un virement'),

@@ -7,8 +7,9 @@ import 'theme/app_theme.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final prefs = await SharedPreferences.getInstance();
+  await ThemeModeHolder.load(prefs);
   final token = prefs.getString('auth_token');
-  
+
   runApp(MyBankApp(isLoggedIn: token != null));
 }
 
@@ -19,11 +20,18 @@ class MyBankApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'MyBank',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.light(),
-      home: isLoggedIn ? const DashboardScreen() : const LoginScreen(),
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: ThemeModeHolder.notifier,
+      builder: (context, themeMode, _) {
+        return MaterialApp(
+          title: 'MyBank',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.light(),
+          darkTheme: AppTheme.dark(),
+          themeMode: themeMode,
+          home: isLoggedIn ? const DashboardScreen() : const LoginScreen(),
+        );
+      },
     );
   }
 }

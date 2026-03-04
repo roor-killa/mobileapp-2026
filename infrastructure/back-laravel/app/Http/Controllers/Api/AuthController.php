@@ -90,6 +90,33 @@ class AuthController extends \App\Http\Controllers\Controller
     }
 
     /**
+     * Changer le mot de passe (utilisateur connecté)
+     */
+    public function changePassword(Request $request)
+    {
+        $validated = $request->validate([
+            'current_password' => ['required', 'string'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        $user = $request->user();
+
+        if (!Hash::check($validated['current_password'], $user->password)) {
+            throw ValidationException::withMessages([
+                'current_password' => ['Le mot de passe actuel est incorrect.'],
+            ]);
+        }
+
+        $user->update([
+            'password' => Hash::make($validated['password']),
+        ]);
+
+        return response()->json([
+            'message' => 'Mot de passe modifié avec succès.',
+        ]);
+    }
+
+    /**
      * Générer un IBAN
      */
     private function generateIBAN($userId): string

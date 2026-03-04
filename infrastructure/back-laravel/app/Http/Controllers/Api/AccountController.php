@@ -94,6 +94,25 @@ class AccountController extends \App\Http\Controllers\Controller
         ], 201);
     }
 
+    /**
+     * Supprimer un compte (uniquement si solde = 0)
+     */
+    public function deleteAccount(Request $request, Account $account)
+    {
+        if ($account->user_id !== $request->user()->id) {
+            return response()->json(['message' => 'Non autorisé'], 403);
+        }
+
+        if ((float) $account->balance !== 0.0) {
+            return response()->json([
+                'message' => 'Impossible de supprimer un compte avec un solde non nul. Videz le compte avant de le supprimer.',
+            ], 422);
+        }
+
+        $account->delete();
+        return response()->json(['message' => 'Compte supprimé avec succès']);
+    }
+
     private function generateIBAN($userId): string
     {
         $countryCode = 'FR';

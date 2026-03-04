@@ -3,11 +3,13 @@ import 'package:intl/intl.dart';
 
 import '../models/models.dart';
 import '../services/bank_service.dart';
+import '../theme/design_system.dart';
 
 class AccountDetailsScreen extends StatefulWidget {
   final Account account;
+  final VoidCallback? onAccountDeleted;
 
-  const AccountDetailsScreen({super.key, required this.account});
+  const AccountDetailsScreen({super.key, required this.account, this.onAccountDeleted});
 
   @override
   State<AccountDetailsScreen> createState() => _AccountDetailsScreenState();
@@ -17,6 +19,7 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
   final BankService _bankService = BankService();
 
   bool _loading = true;
+  bool _deleting = false;
   String? _error;
   List<Transaction> _transactions = const [];
 
@@ -52,8 +55,20 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
     final currency = widget.account.currency;
     final dateFormat = DateFormat('dd/MM/yyyy HH:mm');
 
+    final canDelete = widget.account.balance == 0;
+
     return Scaffold(
-      appBar: AppBar(title: Text(widget.account.accountType)),
+      appBar: AppBar(
+        title: Text(widget.account.accountType),
+        actions: [
+          if (canDelete)
+            IconButton(
+              icon: const Icon(Icons.delete_outline_rounded),
+              onPressed: _deleting ? null : () => _confirmDelete(context),
+              tooltip: 'Supprimer le compte',
+            ),
+        ],
+      ),
       body: RefreshIndicator(
         onRefresh: _refresh,
         child: ListView(
@@ -142,6 +157,7 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
                             fontWeight: FontWeight.w600,
                             color: color,
                           ),
+
                         ),
                       ),
                     ],
@@ -153,11 +169,57 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
                   ),
                 );
               }),
+            if (canDelete) ...[
+              const SizedBox(height: 24),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: OutlinedButton.icon(
+                  onPressed: _deleting ? null : () => _confirmDelete(context),
+                  icon: _deleting ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.delete_outline_rounded),
+                  label: Text(_deleting ? 'Suppression…' : 'Supprimer ce compte'),
+                  style: OutlinedButton.styleFrom(foregroundColor: DesignSystem.red500, side: const BorderSide(color: DesignSystem.red500)),
+                ),
+              ),
+            ],
             const SizedBox(height: 24),
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _confirmDelete(BuildContext context) async {
+    final nav = Navigator.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Supprimer le compte ?'),
+        content: Text(
+          'Le compte ${widget.account.accountType} (${widget.account.accountNumber}) sera définitivement supprimé. Cette action est irréversible.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Supprimer', style: TextStyle(color: DesignSystem.red500, fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() => _deleting = true);
+    try {
+      await _bankService.deleteAccount(widget.account.id);
+      if (!mounted) return;
+      widget.onAccountDeleted?.call();
+      nav.pop(true);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _deleting = false;
+        _error = e.toString().replaceAll('Exception: ', '');
+      });
+    }
   }
 }
 

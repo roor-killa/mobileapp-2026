@@ -124,6 +124,8 @@ class BeneficiaryAccount {
   final String iban;
   final String currency;
   final String ownerName;
+  /// ID de l'utilisateur propriétaire du compte (pour demandes d'argent).
+  final int? ownerId;
 
   BeneficiaryAccount({
     required this.id,
@@ -132,6 +134,7 @@ class BeneficiaryAccount {
     required this.iban,
     required this.currency,
     required this.ownerName,
+    this.ownerId,
   });
 
   factory BeneficiaryAccount.fromJson(Map<String, dynamic> json) {
@@ -143,6 +146,7 @@ class BeneficiaryAccount {
       iban: json['iban'] ?? '',
       currency: json['currency'] ?? 'EUR',
       ownerName: owner['name'] ?? 'Bénéficiaire',
+      ownerId: owner['id'] is int ? owner['id'] as int : null,
     );
   }
 }

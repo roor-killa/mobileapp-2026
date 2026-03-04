@@ -28,34 +28,65 @@ if (-not (Test-Path (Join-Path $backend "vendor\autoload.php"))) {
 }
 
 WriteStep "2) Lancement de l'émulateur Android"
-$emulators = (flutter emulators) 2>$null
-if (-not $emulators) {
-  throw "Aucun émulateur trouvé. Crée un AVD dans Android Studio (Device Manager) puis réessaie."
-}
 
-# Choix par défaut: le premier ID listé par flutter emulators (sans dépendre des caractères spéciaux)
-$emuLine = $emulators | Where-Object { $_ -and ($_ -notmatch '^\s*Id\s') -and ($_ -notmatch '^\s*Name\s') -and ($_ -notmatch '^\s*Manufacturer\s') -and ($_ -notmatch '^\s*Platform\s') } | Select-Object -First 1
-if (-not $emuLine) { throw "Impossible de détecter une ligne d'émulateur dans 'flutter emulators'." }
-$emuId = ($emuLine -split '\s+')[0]
-if (-not $emuId) { throw "Impossible d'extraire l'ID émulateur depuis: $emuLine" }
-
-Write-Host "Émulateur détecté: $emuId" -ForegroundColor Green
-
-try {
-  flutter emulators --launch $emuId | Out-Null
-} catch {
-  Write-Host "Échec de 'flutter emulators --launch $emuId' ($_). Tentative via emulator.exe directe..." -ForegroundColor Yellow
-}
-
-# Fallback: lancer directement l'émulateur Android si possible
-$sdkRoot = @($env:ANDROID_SDK_ROOT, $env:ANDROID_HOME, "C:\Users\Fayzel\AppData\Local\Android\sdk") | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
+# Trouver le SDK Android (emulator.exe)
+$sdkCandidates = @(
+  $env:ANDROID_SDK_ROOT,
+  $env:ANDROID_HOME,
+  "$env:LOCALAPPDATA\Android\sdk",
+  "C:\Users\Fayzel\AppData\Local\Android\sdk"
+)
+$sdkRoot = $sdkCandidates | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
+$emuExe = $null
 if ($sdkRoot) {
   $emuExe = Join-Path $sdkRoot "emulator\emulator.exe"
-  if (Test-Path $emuExe) {
-    $avdName = ($emuId -replace '_', ' ')
-    Write-Host "Tentative de lancement direct: $emuExe -avd '$avdName'" -ForegroundColor DarkCyan
-    Start-Process $emuExe -ArgumentList @("-avd", $avdName) | Out-Null
+  if (-not (Test-Path $emuExe)) { $emuExe = $null }
+}
+
+$avdToLaunch = $null
+
+# Méthode 1 : emulator -list-avds puis lancer avec le nom exact (le plus fiable sur Windows)
+if ($emuExe) {
+  try {
+    $avdList = & $emuExe -list-avds 2>$null
+    if ($avdList -and ($avdList | Where-Object { $_.Trim() })) {
+      $avdToLaunch = ($avdList | Where-Object { $_.Trim() } | Select-Object -First 1).Trim()
+      Write-Host "AVD trouvé: $avdToLaunch" -ForegroundColor Green
+    }
+  } catch {
+    Write-Host "emulator -list-avds a échoué: $_" -ForegroundColor Yellow
   }
+}
+
+# Méthode 2 : parser flutter emulators si pas d'AVD trouvé
+if (-not $avdToLaunch) {
+  $emulators = (flutter emulators) 2>$null
+  if (-not $emulators) {
+    throw "Aucun émulateur trouvé. Ouvre Android Studio > Device Manager > Create Device pour créer un AVD, puis réessaie."
+  }
+  $emuLine = $emulators | Where-Object { $_ -and ($_ -notmatch '^\s*Id\s') -and ($_ -notmatch '^\s*Name\s') -and ($_ -notmatch '^\s*Manufacturer\s') -and ($_ -notmatch '^\s*Platform\s') -and ($_ -notmatch '^To run') -and ($_ -notmatch '^To create') } | Select-Object -First 1
+  if ($emuLine) {
+    # Premier mot ou premier token avant " • " (format Flutter: "Medium_Phone_API_36.1 • Medium Phone...")
+    $avdToLaunch = ($emuLine -split '•')[0].Trim()
+    if ($avdToLaunch) { Write-Host "Émulateur (flutter): $avdToLaunch" -ForegroundColor Green }
+  }
+}
+
+if (-not $avdToLaunch) {
+  throw "Aucun AVD détecté. Crée un appareil virtuel dans Android Studio (Device Manager) puis relance ce script."
+}
+
+# Lancer l'émulateur : priorité à emulator.exe -avd (nom exact)
+$emulatorLaunched = $false
+if ($emuExe -and $avdToLaunch) {
+  Write-Host "Lancement: emulator.exe -avd `"$avdToLaunch`"" -ForegroundColor Cyan
+  Start-Process -FilePath $emuExe -ArgumentList "-avd", $avdToLaunch -WindowStyle Normal
+  $emulatorLaunched = $true
+}
+
+if (-not $emulatorLaunched) {
+  Write-Host "Tentative: flutter emulators --launch $avdToLaunch" -ForegroundColor Cyan
+  Start-Process -FilePath "flutter" -ArgumentList "emulators", "--launch", $avdToLaunch -WindowStyle Normal -ErrorAction SilentlyContinue
 }
 
 WriteStep "3) Attente que l'émulateur soit prêt"

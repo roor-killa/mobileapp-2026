@@ -15,8 +15,10 @@ class ApiConfig {
   static const String loginEndpoint = '/auth/login';
   static const String registerEndpoint = '/auth/register';
   static const String logoutEndpoint = '/auth/logout';
+  static const String changePasswordEndpoint = '/auth/change-password';
   static const String accountsEndpoint = '/accounts';
   static const String beneficiariesEndpoint = '/beneficiaries';
   static const String transactionEndpoint = '/transactions/transfer';
   static const String historyEndpoint = '/transactions';
+  static const String paymentRequestsEndpoint = '/payment-requests';
 }
