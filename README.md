@@ -64,18 +64,13 @@ Sur Windows, Flutter peut échouer avec **"Building with plugins requires symlin
 - Active **Developer Mode**: exécute `start ms-settings:developers` puis active *Developer Mode*
 - Ou lance ton terminal en **Administrateur**
 
-### Important (Android Emulator)
-L’app utilise `10.0.2.2` pour joindre le PC hôte depuis l’émulateur:
-- config: `project/firstapp/lib/config/api_config.dart`
-- base URL: `http://10.0.2.2:8000/api`
+### URL API automatique
+L’app choisit la bonne URL selon la plateforme (plus besoin de `--dart-define` en dev) :
+- **Chrome / Web** : `http://127.0.0.1:8000/api`
+- **Émulateur Android** : `http://10.0.2.2:8000/api`
 
-Si tu utilises un **téléphone réel**, il faudra remplacer `10.0.2.2` par l’IP locale de ton PC (ex: `http://192.168.x.x:8000/api`).
-
-Tu peux aussi lancer l’app en surchargeant l’URL API:
-
-```bash
-flutter run --dart-define=API_BASE_URL=http://192.168.x.x:8000/api
-```
+Pour un **téléphone réel**, lance avec :  
+`flutter run --dart-define=API_BASE_URL=http://192.168.x.x:8000/api`
 
 ## Comptes de test (déjà seedés)
 Mot de passe pour tous: `password123`
@@ -99,5 +94,6 @@ Mot de passe pour tous: `password123`
 5. Revenir au dashboard et vérifier que l’historique et les soldes ont changé.
 
 ## Dépannage rapide
-- **L’app ne contacte pas l’API**: vérifier que Laravel tourne (`php artisan serve`) et que le port `8000` est libre.
-- **Reset complet des données**: `php artisan migrate:fresh --seed`
+- **« Client failed to fetch » / « Impossible de contacter le serveur »** : démarre d’abord le backend (`php artisan serve --host=127.0.0.1 --port=8000` dans `infrastructure/back-laravel`). En web, l’app utilise automatiquement `127.0.0.1:8000`.
+- **L’app ne contacte pas l’API** : vérifier que Laravel tourne et que le port `8000` est libre. CORS est autorisé pour l’API (`config/cors.php`).
+- **Reset complet des données** : `php artisan migrate:fresh --seed`

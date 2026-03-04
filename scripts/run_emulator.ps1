@@ -80,7 +80,7 @@ WriteStep "4) Lancer l'app Flutter sur l'émulateur"
 $runCmd = "cd `"$app`"; flutter pub get; flutter run -d $deviceId --dart-define=API_BASE_URL=http://10.0.2.2:8000/api"
 Start-Process powershell -ArgumentList "-NoProfile","-ExecutionPolicy","Bypass","-Command",$runCmd | Out-Null
 
-WriteHost ""
+Write-Host ""
 Write-Host "Terminé. L'app va s'installer et apparaître sur l'émulateur." -ForegroundColor Green
 Write-Host "Astuce: sur la Home de l'émulateur, ouvre le tiroir d'apps, maintiens 'MyBank' et glisse l'icône sur l'écran d'accueil." -ForegroundColor Gray
 

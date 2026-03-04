@@ -8,6 +8,8 @@ import 'transfer_screen.dart';
 import 'login_screen.dart';
 import 'account_details_screen.dart';
 import 'transactions_screen.dart';
+import 'profile_screen.dart';
+import 'create_account_screen.dart';
 import '../theme/app_theme.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -24,6 +26,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   List<Transaction>? _transactions;
   String? _errorMessage;
   String? _userName;
+  String _transactionFilter = 'all'; // all, incoming, outgoing, internal
 
   @override
   void initState() {
@@ -93,6 +96,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
           appBar: AppBar(
             title: const Text('MyBank'),
             actions: [
+              IconButton(
+                icon: const Icon(Icons.account_circle),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                  );
+                },
+              ),
               IconButton(
                 icon: const Icon(Icons.logout),
                 onPressed: _logout,
@@ -165,9 +177,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 const SizedBox(height: 30),
 
                 // Comptes bancaires
-                const Text(
-                  'Mes comptes',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Mes comptes',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    TextButton.icon(
+                      onPressed: () async {
+                        final created = await Navigator.push<bool>(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => CreateAccountScreen(onAccountCreated: _loadData),
+                          ),
+                        );
+                        if (created == true) await _loadData();
+                      },
+                      icon: const Icon(Icons.add, size: 18),
+                      label: const Text('Ouvrir un compte'),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 15),
 
@@ -226,6 +256,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   builder: (_) => TransactionsScreen(
                                     accounts: _accounts ?? const [],
                                     transactions: _transactions ?? const [],
+                                    initialFilter: _transactionFilter,
                                   ),
                                 ),
                               );
@@ -234,10 +265,37 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 15),
-
+                if (_transactions != null && _transactions!.isNotEmpty) ...[
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    children: [
+                      FilterChip(
+                        label: const Text('Toutes'),
+                        selected: _transactionFilter == 'all',
+                        onSelected: (_) => setState(() => _transactionFilter = 'all'),
+                      ),
+                      FilterChip(
+                        label: const Text('Entrant'),
+                        selected: _transactionFilter == 'incoming',
+                        onSelected: (_) => setState(() => _transactionFilter = 'incoming'),
+                      ),
+                      FilterChip(
+                        label: const Text('Sortant'),
+                        selected: _transactionFilter == 'outgoing',
+                        onSelected: (_) => setState(() => _transactionFilter = 'outgoing'),
+                      ),
+                      FilterChip(
+                        label: const Text('Interne'),
+                        selected: _transactionFilter == 'internal',
+                        onSelected: (_) => setState(() => _transactionFilter = 'internal'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                ],
                 if (_transactions != null && _transactions!.isNotEmpty)
-                  for (var transaction in _transactions!.take(5))
+                  for (var transaction in _filteredTransactions(_transactions!).take(5))
                     _buildTransactionTile(transaction)
                 else if (_transactions == null)
                   const Center(child: Padding(padding: EdgeInsets.only(top: 10), child: CircularProgressIndicator()))
@@ -249,6 +307,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
         );
       },
     );
+  }
+
+  List<Transaction> _filteredTransactions(List<Transaction> list) {
+    final ids = (_accounts ?? const <Account>[]).map((a) => a.id).toSet();
+    return list.where((t) {
+      final isOutgoing = ids.contains(t.fromAccountId) && (t.toAccountId == null || !ids.contains(t.toAccountId));
+      final isIncoming = t.toAccountId != null && ids.contains(t.toAccountId) && !ids.contains(t.fromAccountId);
+      final isInternal = t.toAccountId != null && ids.contains(t.fromAccountId) && ids.contains(t.toAccountId);
+      switch (_transactionFilter) {
+        case 'incoming': return isIncoming;
+        case 'outgoing': return isOutgoing;
+        case 'internal': return isInternal;
+        default: return true;
+      }
+    }).toList();
   }
 
   Widget _buildAccountCard(Account account) {
@@ -337,13 +410,37 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (counterparty != null) (isIncoming ? 'De $counterparty' : 'À $counterparty'),
     ].join(' • ');
 
+    final label = isInternal
+        ? 'Interne'
+        : (isOutgoing ? 'Sortant' : (isIncoming ? 'Entrant' : 'Autre'));
+
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 0),
       leading: Icon(
         icon,
         color: color,
       ),
-      title: Text(transaction.description),
+      title: Row(
+        children: [
+          Expanded(child: Text(transaction.description)),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
+            ),
+          ),
+        ],
+      ),
       subtitle: Text(subtitle),
       trailing: Text(
         '$sign${transaction.amount.toStringAsFixed(2)} EUR',

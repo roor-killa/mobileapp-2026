@@ -60,9 +60,15 @@ class BankService {
     return 'Erreur réseau (code ${response.statusCode})';
   }
 
+  static const String _serverHint = "Démarrez le backend : dans infrastructure/back-laravel, exécutez « php artisan serve --host=127.0.0.1 --port=8000 ».";
+
   Exception _networkException(Object e) {
     if (e is TimeoutException) {
-      return Exception("Délai dépassé. Vérifie que l'API est lancée (port 8000).");
+      return Exception("Délai dépassé. $_serverHint");
+    }
+    final msg = e.toString().toLowerCase();
+    if (msg.contains('failed to fetch') || msg.contains('connection refused') || msg.contains('socketexception') || msg.contains('clientexception')) {
+      return Exception("Impossible de contacter le serveur. $_serverHint");
     }
     return Exception('Erreur réseau. Vérifie ta connexion et que l’API est accessible.');
   }
@@ -93,9 +99,11 @@ class BankService {
       }
     } on TimeoutException catch (e) {
       throw _networkException(e);
+    } on http.ClientException catch (e) {
+      throw _networkException(e);
     } catch (e) {
       if (e is Exception) rethrow;
-      throw Exception(e.toString());
+      throw _networkException(e);
     }
   }
 
@@ -138,9 +146,11 @@ class BankService {
       }
     } on TimeoutException catch (e) {
       throw _networkException(e);
+    } on http.ClientException catch (e) {
+      throw _networkException(e);
     } catch (e) {
       if (e is Exception) rethrow;
-      throw Exception(e.toString());
+      throw _networkException(e);
     }
   }
 
@@ -188,9 +198,42 @@ class BankService {
       }
     } on TimeoutException catch (e) {
       throw _networkException(e);
+    } on http.ClientException catch (e) {
+      throw _networkException(e);
     } catch (e) {
       if (e is Exception) rethrow;
-      throw Exception(e.toString());
+      throw _networkException(e);
+    }
+  }
+
+  /// Créer un nouveau compte (ex. Compte d'épargne).
+  Future<Account> createAccount(String accountType) async {
+    await init();
+    try {
+      final response = await http
+          .post(
+            Uri.parse('${ApiConfig.baseUrl}${ApiConfig.accountsEndpoint}'),
+            headers: _jsonHeaders(withAuth: true),
+            body: jsonEncode({'account_type': accountType}),
+          )
+          .timeout(const Duration(seconds: 20));
+
+      if (response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        return Account.fromJson(data['account'] as Map<String, dynamic>);
+      }
+      if (response.statusCode == 401) {
+        await _handleUnauthorized();
+        throw Exception('Session expirée. Merci de vous reconnecter.');
+      }
+      throw Exception(_extractErrorMessage(response));
+    } on TimeoutException catch (e) {
+      throw _networkException(e);
+    } on http.ClientException catch (e) {
+      throw _networkException(e);
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw _networkException(e);
     }
   }
 
@@ -219,9 +262,11 @@ class BankService {
       throw Exception(_extractErrorMessage(response));
     } on TimeoutException catch (e) {
       throw _networkException(e);
+    } on http.ClientException catch (e) {
+      throw _networkException(e);
     } catch (e) {
       if (e is Exception) rethrow;
-      throw Exception(e.toString());
+      throw _networkException(e);
     }
   }
 
@@ -250,9 +295,11 @@ class BankService {
       }
     } on TimeoutException catch (e) {
       throw _networkException(e);
+    } on http.ClientException catch (e) {
+      throw _networkException(e);
     } catch (e) {
       if (e is Exception) rethrow;
-      throw Exception(e.toString());
+      throw _networkException(e);
     }
   }
 
@@ -280,9 +327,11 @@ class BankService {
       throw Exception(_extractErrorMessage(response));
     } on TimeoutException catch (e) {
       throw _networkException(e);
+    } on http.ClientException catch (e) {
+      throw _networkException(e);
     } catch (e) {
       if (e is Exception) rethrow;
-      throw Exception(e.toString());
+      throw _networkException(e);
     }
   }
 
@@ -318,9 +367,11 @@ class BankService {
       }
     } on TimeoutException catch (e) {
       throw _networkException(e);
+    } on http.ClientException catch (e) {
+      throw _networkException(e);
     } catch (e) {
       if (e is Exception) rethrow;
-      throw Exception(e.toString());
+      throw _networkException(e);
     }
   }
 

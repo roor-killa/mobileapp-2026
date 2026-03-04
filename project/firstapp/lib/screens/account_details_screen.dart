@@ -121,10 +121,31 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
                 final sign = isOutgoing ? '-' : '+';
                 final color = isOutgoing ? scheme.error : scheme.tertiary;
                 final counterparty = isOutgoing ? (t.toOwnerName ?? 'Bénéficiaire') : (t.fromOwnerName ?? 'Compte externe');
+                final label = isOutgoing ? 'Sortant' : 'Entrant';
                 return ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: Icon(isOutgoing ? Icons.call_made : Icons.call_received, color: color),
-                  title: Text(t.description.isEmpty ? 'Transaction' : t.description),
+                  title: Row(
+                    children: [
+                      Expanded(child: Text(t.description.isEmpty ? 'Transaction' : t.description)),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: color.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          label,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: color,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                   subtitle: Text('${dateFormat.format(t.transactionDate)} • ${isOutgoing ? 'À' : 'De'} $counterparty'),
                   trailing: Text(
                     '$sign${t.amount.toStringAsFixed(2)} $currency',

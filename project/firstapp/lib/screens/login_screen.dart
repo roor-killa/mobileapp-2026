@@ -319,14 +319,21 @@ class _HeaderCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [AppTheme.brand, AppTheme.brand2],
+          colors: [AppTheme.brand, AppTheme.brandLight, AppTheme.brand2],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.brand.withValues(alpha: 0.25),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -334,40 +341,48 @@ class _HeaderCard extends StatelessWidget {
           Row(
             children: [
               Container(
-                height: 46,
-                width: 46,
+                height: 52,
+                width: 52,
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.18),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1.5),
                 ),
-                child: const Icon(Icons.account_balance, color: Colors.white),
+                child: const Icon(Icons.account_balance_rounded, color: Colors.white, size: 28),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 16),
               const Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('MyBank', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800)),
-                    SizedBox(height: 2),
+                    Text(
+                      'MyBank',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    SizedBox(height: 4),
                     Text(
                       'Banque mobile • Comptes • Virements',
-                      style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500),
+                      style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500),
                     ),
                   ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 20),
           Text(
             isRegistering ? 'Créer un compte' : 'Connexion sécurisée',
-            style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700),
+            style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           const Text(
             'Accédez à vos comptes et effectuez un virement en quelques secondes.',
-            style: TextStyle(color: Colors.white70, fontSize: 12),
+            style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.3),
           ),
         ],
       ),
