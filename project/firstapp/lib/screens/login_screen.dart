@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import 'register_screen.dart';
-import 'transfer_screen.dart'; // L'écran du professeur
+import 'transfer_screen.dart'; 
 import 'package:shared_preferences/shared_preferences.dart';
+import 'main_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -46,7 +47,7 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const TransferScreen()),
+        MaterialPageRoute(builder: (context) => const MainScreen()),
       );
     } else {
       // Si le mot de passe est faux, on affiche une erreur rouge
@@ -55,8 +56,7 @@ class _LoginScreenState extends State<LoginScreen> {
       );
     }
   } 
-
-  
+ 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
