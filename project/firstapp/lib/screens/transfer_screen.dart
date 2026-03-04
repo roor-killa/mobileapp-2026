@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/transfer_response.dart';
+import '../models/utilisateur.dart';
 import '../services/api_service.dart';
+import '../services/auth_service.dart';
+import 'releve_compte_screen.dart';
+import 'login_screen.dart';
 
 class TransferScreen extends StatefulWidget {
   const TransferScreen({super.key});
@@ -11,129 +15,113 @@ class TransferScreen extends StatefulWidget {
 }
 
 class _TransferScreenState extends State<TransferScreen> {
-  // Contrôleur pour le champ de saisie
   final TextEditingController _montantController = TextEditingController();
-  
-  // Service API
   final ApiService _apiService = ApiService();
-  
-  // État de l'application
-  bool _isLoading = false; // Chargement en cours ?
-  TransferResponse? _lastResponse; // Dernière réponse reçue
-  double? _soldeActuel; // Solde actuel
-  
+
+  bool _isLoading = false;
+  TransferResponse? _lastResponse;
+
+  Utilisateur get _user => AuthService.utilisateurConnecte!;
+
   @override
   void initState() {
     super.initState();
-    _chargerSoldeInitial();
   }
-  
-  /// Charge le solde au démarrage
-  Future<void> _chargerSoldeInitial() async {
-    final solde = await _apiService.getSoldeActuel();
-    setState(() {
-      _soldeActuel = solde;
-    });
-  }
-  
-  /// ÉTAPE 1 : Action déclenchée par le bouton "Transférer"
+
   Future<void> _effectuerTransfert() async {
-    // Validation de la saisie
     final montantText = _montantController.text.trim();
     if (montantText.isEmpty) {
       _afficherErreur('Veuillez entrer un montant');
       return;
     }
-    
+
     final montant = double.tryParse(montantText);
     if (montant == null || montant <= 0) {
       _afficherErreur('Montant invalide');
       return;
     }
-    
-    print('🚀 ÉTAPE 1 : Bouton "Transférer" pressé');
-    print('💵 Montant saisi : $montant €');
-    
-    // Active le loader
+
     setState(() {
       _isLoading = true;
       _lastResponse = null;
     });
-    
+
     try {
-      // ÉTAPES 2-5 : Appel API et récupération du JSON
-      final response = await _apiService.transfererMontant(montant);
-      
-      // ÉTAPE 6 : Mise à jour de l'interface avec les données
-      print('✅ ÉTAPE 6 : Affichage des données');
+      final response = await _apiService.transfererMontant(montant, _user);
+
+      if (!mounted) return;
       setState(() {
         _lastResponse = response;
-        _soldeActuel = response.nouveauSolde;
         _isLoading = false;
       });
-      
-      // Vider le champ après succès
+
       if (response.success) {
         _montantController.clear();
       }
-      
     } catch (e) {
-      print('❌ Erreur : $e');
-      setState(() {
-        _isLoading = false;
-      });
+      if (!mounted) return;
+      setState(() => _isLoading = false);
       _afficherErreur('Erreur lors du transfert');
     }
   }
-  
-  void _afficherErreur(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-      ),
+
+  void _deconnecter() {
+    AuthService().deconnecter();
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (_) => false,
     );
   }
-  
+
+  void _afficherErreur(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Transfert d\'argent'),
+        title: Text('Bonjour, ${_user.nom.split(' ').first}'),
         backgroundColor: Colors.blue,
+        foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.receipt_long),
+            tooltip: 'Relevé de compte',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ReleveCompteScreen()),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Déconnexion',
+            onPressed: _deconnecter,
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Affichage du solde actuel
             _buildSoldeCard(),
-            
             const SizedBox(height: 30),
-            
-            // ÉTAPE 0 : Champ de saisie du montant
             _buildMontantInput(),
-            
             const SizedBox(height: 20),
-            
-            // ÉTAPE 1 : Bouton de transfert
             _buildTransferButton(),
-            
             const SizedBox(height: 30),
-            
-            // ÉTAPE 6 : Affichage du résultat
             if (_lastResponse != null) _buildResultCard(),
-            
-            // Indicateur de chargement
             if (_isLoading) _buildLoadingIndicator(),
           ],
         ),
       ),
     );
   }
-  
-  /// Card affichant le solde actuel
+
   Widget _buildSoldeCard() {
     return Card(
       elevation: 4,
@@ -144,16 +132,11 @@ class _TransferScreenState extends State<TransferScreen> {
           children: [
             const Text(
               'Solde disponible',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.black54,
-              ),
+              style: TextStyle(fontSize: 16, color: Colors.black54),
             ),
             const SizedBox(height: 10),
             Text(
-              _soldeActuel != null 
-                  ? '${_soldeActuel!.toStringAsFixed(2)} €'
-                  : 'Chargement...',
+              '${_user.soldeActuel.toStringAsFixed(2)} €',
               style: const TextStyle(
                 fontSize: 32,
                 fontWeight: FontWeight.bold,
@@ -165,8 +148,7 @@ class _TransferScreenState extends State<TransferScreen> {
       ),
     );
   }
-  
-  /// ÉTAPE 0 : Champ de saisie du montant
+
   Widget _buildMontantInput() {
     return TextField(
       controller: _montantController,
@@ -179,57 +161,43 @@ class _TransferScreenState extends State<TransferScreen> {
         hintText: 'Ex: 50.00',
         prefixIcon: const Icon(Icons.euro),
         suffixText: '€',
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
         filled: true,
         fillColor: Colors.grey.shade100,
       ),
       style: const TextStyle(fontSize: 20),
     );
   }
-  
-  /// ÉTAPE 1 : Bouton de transfert
+
   Widget _buildTransferButton() {
     return ElevatedButton(
       onPressed: _isLoading ? null : _effectuerTransfert,
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.blue,
         padding: const EdgeInsets.symmetric(vertical: 16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
       child: const Text(
         'Transférer',
-        style: TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-          color: Colors.white,
-        ),
+        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
       ),
     );
   }
-  
-  /// Indicateur de chargement (étapes 2-5)
+
   Widget _buildLoadingIndicator() {
     return const Column(
       children: [
         CircularProgressIndicator(),
         SizedBox(height: 10),
-        Text(
-          'Traitement en cours...',
-          style: TextStyle(color: Colors.grey),
-        ),
+        Text('Traitement en cours...', style: TextStyle(color: Colors.grey)),
       ],
     );
   }
-  
-  /// ÉTAPE 6 : Affichage du résultat
+
   Widget _buildResultCard() {
     final response = _lastResponse!;
     final isSuccess = response.success;
-    
+
     return Card(
       elevation: 4,
       color: isSuccess ? Colors.green.shade50 : Colors.red.shade50,
@@ -269,7 +237,7 @@ class _TransferScreenState extends State<TransferScreen> {
       ),
     );
   }
-  
+
   Widget _buildDetailRow(String label, String value, {bool isBold = false}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 5),
@@ -296,7 +264,7 @@ class _TransferScreenState extends State<TransferScreen> {
       ),
     );
   }
-  
+
   @override
   void dispose() {
     _montantController.dispose();
