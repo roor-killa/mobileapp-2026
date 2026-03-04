@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import 'register_screen.dart';
 import 'transfer_screen.dart'; // L'écran du professeur
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -34,20 +35,28 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = false);
 
     if (result['status'] == 'success') {
+      // 1. On ouvre le coffre-fort du téléphone
+      final prefs = await SharedPreferences.getInstance();
+
+      // 2. On y range précieusement le Token envoyé par Laravel
+      await prefs.setString('token', result['token']);
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Bienvenue ${result['user']['prenom']} !"), backgroundColor: Colors.green),
+        const SnackBar(content: Text("Bienvenue !"), backgroundColor: Colors.green),
       );
-      // On redirige vers l'écran de transfert
+
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (context) => const TransferScreen()),
       );
     } else {
+      // Si le mot de passe est faux, on affiche une erreur rouge
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Erreur : ${result['message'] ?? 'Identifiants invalides'}"), backgroundColor: Colors.red),
       );
     }
-  }
+  } 
 
+  
   @override
   Widget build(BuildContext context) {
     return Scaffold(

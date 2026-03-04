@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/transfer_response.dart';
 import '../services/api_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class TransferScreen extends StatefulWidget {
   const TransferScreen({super.key});
@@ -28,32 +29,29 @@ class _TransferScreenState extends State<TransferScreen> {
     _chargerSoldeInitial();
   }
   
-  /// Charge le solde au démarrage
+  /// Charge le VRAI solde au démarrage depuis PostgreSQL
   Future<void> _chargerSoldeInitial() async {
-    final solde = await _apiService.getSoldeActuel();
-    setState(() {
-      _soldeActuel = solde;
-    });
+    // 1. On récupère le badge secret dans le coffre
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+
+    if (token != null) {
+      // 2. On utilise la fonction getUser que Gemini t'a préparée !
+      // Elle envoie le Token à Laravel pour récupérer les infos du client
+      final userData = await _apiService.getUser(token);
+
+      // 3. Si Laravel nous répond bien, on met à jour l'écran
+      if (userData['solde'] != null) {
+        setState(() {
+          // On transforme le solde de la base de données en nombre à virgule pour Flutter
+          _soldeActuel = double.parse(userData['solde'].toString());
+        });
+      }
+    } else {
+      print("Erreur : Aucun token trouvé, l'utilisateur n'est pas connecté.");
+    }
   }
-  
-  /// ÉTAPE 1 : Action déclenchée par le bouton "Transférer"
-  Future<void> _effectuerTransfert() async {
-    // Validation de la saisie
-    final montantText = _montantController.text.trim();
-    if (montantText.isEmpty) {
-      _afficherErreur('Veuillez entrer un montant');
-      return;
-    }
-    
-    final montant = double.tryParse(montantText);
-    if (montant == null || montant <= 0) {
-      _afficherErreur('Montant invalide');
-      return;
-    }
-    
-    print('🚀 ÉTAPE 1 : Bouton "Transférer" pressé');
-    print('💵 Montant saisi : $montant €');
-    
+      
     // Active le loader
     setState(() {
       _isLoading = true;
