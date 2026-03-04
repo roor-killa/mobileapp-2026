@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import 'transfer_screen.dart'; // Pour naviguer vers l'écran du prof après succès
+import 'package:shared_preferences/shared_preferences.dart';
+import 'main_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -42,16 +44,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => _isLoading = false);
 
     if (result['status'] == 'success') {
+      // 1. On ouvre le coffre-fort
+      final prefs = await SharedPreferences.getInstance();
+      
+      // 2. On sauvegarde le token (Vérifie bien si Laravel renvoie 'token' ou 'access_token')
+      final token = result['token'] ?? result['access_token']; 
+      if (token != null) {
+        await prefs.setString('token', token);
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Inscription réussie !"), backgroundColor: Colors.green),
       );
-      // On redirige l'utilisateur vers l'écran de transfert de ton prof
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const TransferScreen()),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Erreur : ${result['message']}"), backgroundColor: Colors.red),
+
+      // 3. On redirige vers le nouveau squelette avec les onglets
+      // On utilise pushAndRemoveUntil pour effacer l'historique (impossible de faire "Retour" vers l'inscription)
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const MainScreen()),
+        (route) => false, 
       );
     }
   }
