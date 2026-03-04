@@ -1,5 +1,5 @@
-import 'package:firstapp/screens/register_screen.dart';
 import 'package:flutter/material.dart';
+import 'screens/login_screen.dart'; // <-- Importe le Login au lieu du Register
 
 void main() {
   runApp(const MyApp());
@@ -11,13 +11,13 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Transfert App',
+      title: 'BKN Wallet',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         primarySwatch: Colors.blue,
         useMaterial3: true,
       ),
-      home: const RegisterScreen(),
+      home: const LoginScreen(), // <-- Démarre sur la page de connexion
     );
   }
 }
