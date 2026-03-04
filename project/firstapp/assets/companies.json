@@ -1,0 +1,22 @@
+[
+  {
+    "id": 1,
+    "name": "Entreprise Exemple 1",
+    "commune": "Fort-de-France",
+    "sector": "Services",
+    "address": "12 rue Exemple, 97200 Fort-de-France",
+    "phone": "0596 00 00 00",
+    "website": "https://example.com",
+    "description": "Description courte de l'entreprise."
+  },
+  {
+    "id": 2,
+    "name": "Entreprise Exemple 2",
+    "commune": "Le Lamentin",
+    "sector": "Commerce",
+    "address": "Zone industrielle, 97232 Le Lamentin",
+    "phone": "0596 11 11 11",
+    "website": null,
+    "description": "Une autre entreprise pour tester la liste."
+  }
+]
