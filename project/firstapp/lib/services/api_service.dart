@@ -33,24 +33,26 @@ class ApiService {
       return {'status': 'error', 'message': 'Erreur de connexion au serveur'};
     }
   }
-Future<Map<String, dynamic>> login(String email, String password) async {
-    final url = Uri.parse('$baseUrl/login'); // Appelle la route /login de Laravel
-    
-    try {
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'email': email,
-          'password': password,
-        }),
-      );
-      return jsonDecode(response.body);
-    } catch (e) {
-      print("Erreur API Login: $e");
-      return {'status': 'error', 'message': 'Erreur de connexion au serveur'};
+  
+  Future<Map<String, dynamic>> login(String email, String password) async {
+      final url = Uri.parse('$baseUrl/login'); 
+      
+      try {
+        final response = await http.post(
+          url,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'email': email,
+            'password': password,
+          }),
+        );
+        // On renvoie directement la VRAIE réponse de Laravel, sans la trafiquer !
+        return jsonDecode(response.body);
+      } catch (e) {
+        print("Erreur API Login: $e");
+        return {'status': 'error', 'message': 'Erreur de connexion au serveur'};
+      }
     }
-  }
 
   Future<Map<String, dynamic>> logout(String token) async {
     final url = Uri.parse('$baseUrl/logout');
