@@ -12,8 +12,7 @@ class ApiService {
 
   static void _log(String message) => ApiHelper.log(message);
 
-  // ================= AUTHENTIFICATION =================
-
+  // Authentification
   static Future<Map<String, dynamic>> login(String email, String password) async {
     try {
       _log('Tentative de connexion: $email');
@@ -71,7 +70,7 @@ class ApiService {
       final data = json.decode(response.body);
       _log('Register réponse: ${response.statusCode}');
       if (response.statusCode == 200 && data['success'] == true) {
-        _log('✅ Inscription réussie');
+        _log('Inscription réussie');
         return {'success': true, 'data': data};
       } else {
         return {'success': false, 'error': data['detail'] ?? 'Erreur d\'inscription'};
@@ -81,8 +80,6 @@ class ApiService {
       return {'success': false, 'error': 'Erreur de connexion'};
     }
   }
-
-  // ================= SESSION =================
 
   static Future<void> saveSession(
     String userId,
@@ -128,8 +125,7 @@ class ApiService {
     _log('Session effacée');
   }
 
-  // ================= UTILISATEURS =================
-
+  // Utilisateurs et contacts
   static Future<List<dynamic>> getContacts() async {
     try {
       final response = await http.get(Uri.parse('${ApiHelper.baseUrl}/users'));
@@ -169,8 +165,7 @@ class ApiService {
     }
   }
 
-  // ================= TRANSACTIONS =================
-
+  // Transactions
   static Future<Map<String, dynamic>> transferer({
     required String expediteurId,
     required String destinataire,
@@ -180,7 +175,11 @@ class ApiService {
       final response = await http.post(
         Uri.parse('${ApiHelper.baseUrl}/transfer'),
         headers: {'Content-Type': 'application/json'},
-        body: json.encode({'expediteur_id': expediteurId, 'destinataire': destinataire, 'montant': montant}),
+        body: json.encode({
+          'expediteur_id': expediteurId, 
+          'destinataire': destinataire, 
+          'montant': montant
+        }),
       );
       final data = json.decode(response.body);
       return {'success': response.statusCode == 200, 'statusCode': response.statusCode, 'data': data};
@@ -189,7 +188,11 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>> acheter({required String userId, required double montant, required String methode}) async {
+  static Future<Map<String, dynamic>> acheter({
+    required String userId, 
+    required double montant, 
+    required String methode
+  }) async {
     try {
       final response = await http.post(
         Uri.parse('${ApiHelper.baseUrl}/buy'),
@@ -203,7 +206,10 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>> vendre({required String userId, required double montant}) async {
+  static Future<Map<String, dynamic>> vendre({
+    required String userId, 
+    required double montant
+  }) async {
     try {
       final response = await http.post(
         Uri.parse('${ApiHelper.baseUrl}/sell'),
@@ -231,6 +237,7 @@ class ApiService {
     }
   }
 
+  // Stats et analytics
   static Future<Map<String, dynamic>> getStats() async {
     try {
       final response = await http.get(Uri.parse('${ApiHelper.baseUrl}/stats'));
@@ -242,8 +249,309 @@ class ApiService {
     }
   }
 
-  // ================= TEST DE CONNEXION =================
+  // Profil et paramètres
+  static Future<bool> updateProfile({
+    required String userId,
+    required String nom,
+    required String prenom,
+    required String email,
+    required String phone,
+    required String pseudo,
+  }) async {
+    try {
+      _log('Mise à jour du profil pour $userId');
+      final response = await http.put(
+        Uri.parse('${ApiHelper.baseUrl}/user/$userId'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'nom': nom,
+          'prenom': prenom,
+          'email': email,
+          'phone': phone,
+          'pseudo': pseudo,
+        }),
+      ).timeout(const Duration(seconds: 15));
 
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          await saveSession(
+            userId,
+            pseudo,
+            email,
+            userName: nom,
+            userFirstName: prenom,
+          );
+          _log('Profil mis à jour avec succès');
+          return true;
+        }
+      }
+      return false;
+    } catch (e) {
+      _log('Erreur updateProfile: $e');
+      return false;
+    }
+  }
+
+  static Future<bool> changePassword({
+    required String userId,
+    required String oldPassword,
+    required String newPassword,
+  }) async {
+    try {
+      _log('Changement de mot de passe pour $userId');
+      final response = await http.post(
+        Uri.parse('${ApiHelper.baseUrl}/user/change-password'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'user_id': userId,
+          'old_password': oldPassword,
+          'new_password': newPassword,
+        }),
+      ).timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['success'] == true;
+      }
+      return false;
+    } catch (e) {
+      _log('Erreur changePassword: $e');
+      return false;
+    }
+  }
+
+  // Paramètres utilisateur
+  static Future<Map<String, dynamic>> getUserSettings(String userId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiHelper.baseUrl}/user/$userId/settings'),
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+      return {};
+    } catch (e) {
+      _log('Erreur getUserSettings: $e');
+      return {};
+    }
+  }
+
+  static Future<bool> updateUserSettings({
+    required String userId,
+    bool? biometricEnabled,
+    bool? notificationsEnabled,
+    bool? twoFactorEnabled,
+  }) async {
+    try {
+      final response = await http.put(
+        Uri.parse('${ApiHelper.baseUrl}/user/$userId/settings'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          if (biometricEnabled != null) 'biometric_enabled': biometricEnabled,
+          if (notificationsEnabled != null) 'notifications_enabled': notificationsEnabled,
+          if (twoFactorEnabled != null) 'two_factor_enabled': twoFactorEnabled,
+        }),
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['success'] == true;
+      }
+      return false;
+    } catch (e) {
+      _log('Erreur updateUserSettings: $e');
+      return false;
+    }
+  }
+
+  // Sessions
+  static Future<List<dynamic>> getUserSessions(String userId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiHelper.baseUrl}/user/$userId/sessions'),
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['sessions'] ?? [];
+      }
+      return [];
+    } catch (e) {
+      _log('Erreur getUserSessions: $e');
+      return [];
+    }
+  }
+
+  static Future<bool> terminateSession(String sessionId) async {
+    try {
+      final response = await http.delete(
+        Uri.parse('${ApiHelper.baseUrl}/user/session/$sessionId'),
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['success'] == true;
+      }
+      return false;
+    } catch (e) {
+      _log('Erreur terminateSession: $e');
+      return false;
+    }
+  }
+
+  static Future<bool> terminateAllSessions(String userId) async {
+    try {
+      final response = await http.delete(
+        Uri.parse('${ApiHelper.baseUrl}/user/$userId/sessions'),
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['success'] == true;
+      }
+      return false;
+    } catch (e) {
+      _log('Erreur terminateAllSessions: $e');
+      return false;
+    }
+  }
+
+  // Crypto
+  static Future<Map<String, dynamic>> getCryptoPrices() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiHelper.baseUrl}/crypto/prices'),
+      ).timeout(const Duration(seconds: 10));
+      
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+      return {'prices': {}};
+    } catch (e) {
+      _log('Erreur getCryptoPrices: $e');
+      return {'prices': {}};
+    }
+  }
+
+  static Future<Map<String, dynamic>> estimateCrypto({
+    required String crypto,
+    String fiat = 'eur',
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${ApiHelper.baseUrl}/crypto/estimate'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'crypto': crypto,
+          'fiat': fiat,
+        }),
+      ).timeout(const Duration(seconds: 10));
+      
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+      return {};
+    } catch (e) {
+      _log('Erreur estimateCrypto: $e');
+      return {};
+    }
+  }
+
+  static Future<Map<String, dynamic>> buyCrypto({
+    required String userId,
+    required String crypto,
+    required double amountBKN,
+    String? walletAddress,
+  }) async {
+    try {
+      _log('Achat crypto: $amountBKN BKN de $crypto');
+      final response = await http.post(
+        Uri.parse('${ApiHelper.baseUrl}/crypto/buy'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'user_id': userId,
+          'crypto': crypto,
+          'amount_bkn': amountBKN,
+          'wallet_address': walletAddress,
+        }),
+      ).timeout(const Duration(seconds: 15));
+      
+      final data = json.decode(response.body);
+      return {
+        'success': response.statusCode == 200,
+        ...data,
+      };
+    } catch (e) {
+      _log('Erreur buyCrypto: $e');
+      return {'success': false, 'error': 'Erreur de connexion: $e'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> sellCrypto({
+    required String userId,
+    required String crypto,
+    required double amountCrypto,
+    String? walletAddress,
+  }) async {
+    try {
+      _log('Vente crypto: $amountCrypto $crypto');
+      final response = await http.post(
+        Uri.parse('${ApiHelper.baseUrl}/crypto/sell'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'user_id': userId,
+          'crypto': crypto,
+          'amount_crypto': amountCrypto,
+          'wallet_address': walletAddress,
+        }),
+      ).timeout(const Duration(seconds: 15));
+      
+      final data = json.decode(response.body);
+      return {
+        'success': response.statusCode == 200,
+        ...data,
+      };
+    } catch (e) {
+      _log('Erreur sellCrypto: $e');
+      return {'success': false, 'error': 'Erreur de connexion: $e'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> getCryptoBalance(String userId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiHelper.baseUrl}/crypto/balance/$userId'),
+      ).timeout(const Duration(seconds: 10));
+      
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+      return {'balances': {}};
+    } catch (e) {
+      _log('Erreur getCryptoBalance: $e');
+      return {'balances': {}};
+    }
+  }
+
+  static Future<Map<String, dynamic>> getCryptoHistory(String userId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiHelper.baseUrl}/crypto/history/$userId'),
+      ).timeout(const Duration(seconds: 10));
+      
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+      return {'transactions': []};
+    } catch (e) {
+      _log('Erreur getCryptoHistory: $e');
+      return {'transactions': []};
+    }
+  }
+
+// utilitaires
   static Future<bool> testConnection() async {
     try {
       final response = await http.get(Uri.parse('${ApiHelper.baseUrl}/health')).timeout(const Duration(seconds: 5));

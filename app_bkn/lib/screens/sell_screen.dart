@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter/services.dart'; // Pour Clipboard
 import 'package:app_bkn/theme/app_theme.dart';
 import 'package:app_bkn/services/api_service.dart';
 import 'package:app_bkn/providers/user_provider.dart';
@@ -13,32 +14,79 @@ class SellScreen extends StatefulWidget {
 }
 
 class _SellScreenState extends State<SellScreen> {
-  double _amount = 200.0;
+  late double _amount;
   bool _isLoading = false;
+  final double minimumBalance = 10.0;
 
-  Future<void> _handleSell() async {
-    setState(() => _isLoading = true);
-    
-    final success = await context.read<TransactionProvider>().vendre(
-      userId: ApiService.currentUserId!,
-      montant: _amount,
-    );
-    
-    if (!mounted) return;
-    
-    if (success) {
-      await context.read<UserProvider>().refreshSolde();
-      if (!mounted) return;
-      _showSuccessDialog();
-    } else {
-      if (!mounted) return;
-      _showErrorDialog();
-    }
-    
-    setState(() => _isLoading = false);
+  @override
+  void initState() {
+    super.initState();
+    _amount = 0.0;
   }
 
-  void _showSuccessDialog() {
+  Future<void> _handleSell() async {
+    if (ApiService.currentUserId == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Vous devez être connecté'),
+          backgroundColor: AppTheme.errorRed,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    
+    try {
+      final success = await context.read<TransactionProvider>().vendre(
+        userId: ApiService.currentUserId!,
+        montant: _amount,
+      );
+      
+      if (!mounted) return;
+      
+      if (success) {
+        await context.read<UserProvider>().refreshSolde();
+        if (!mounted) return;
+        
+        // Récupérer la dernière transaction pour l'ID
+        final transactions = context.read<TransactionProvider>().transactions;
+        String? transactionId;
+        if (transactions.isNotEmpty) {
+          transactionId = transactions.first['id'];
+        }
+        
+        _showSuccessDialog(transactionId);
+      } else {
+        final error = context.read<TransactionProvider>().error;
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(error ?? 'Vente échouée'),
+            backgroundColor: AppTheme.errorRed,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erreur: $e'),
+          backgroundColor: AppTheme.errorRed,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  void _showSuccessDialog(String? transactionId) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -63,6 +111,91 @@ class _SellScreenState extends State<SellScreen> {
             ),
             const SizedBox(height: 8),
             const Text('vendus avec succès', style: TextStyle(color: AppTheme.textSecondary)),
+            
+            // Affichage sécurisé de l'ID de transaction
+            if (transactionId != null) ...[
+              const SizedBox(height: 20),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.receipt, size: 16, color: AppTheme.primaryBlue),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'Référence de transaction',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.grey.shade300),
+                            ),
+                            child: Text(
+                              transactionId,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontFamily: 'monospace',
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryBlue.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: IconButton(
+                            icon: Icon(Icons.copy, size: 20, color: AppTheme.primaryBlue),
+                            onPressed: () {
+                              Clipboard.setData(ClipboardData(text: transactionId));
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('📋 ID copié dans le presse-papiers'),
+                                  backgroundColor: AppTheme.primaryBlue,
+                                  behavior: SnackBarBehavior.floating,
+                                  duration: Duration(seconds: 1),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Gardez cet ID pour le support client',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppTheme.textSecondary,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
         actions: [
@@ -78,45 +211,17 @@ class _SellScreenState extends State<SellScreen> {
     );
   }
 
-  void _showErrorDialog() {
-    final error = context.read<TransactionProvider>().error;
-    
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: const BoxDecoration(color: AppTheme.errorRed, shape: BoxShape.circle),
-              child: const Icon(Icons.close, color: Colors.white, size: 32),
-            ),
-            const SizedBox(height: 16),
-            const Text('Erreur', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-          ],
-        ),
-        content: Text(
-          error ?? 'Vente échouée',
-          textAlign: TextAlign.center,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              context.read<TransactionProvider>().clearError();
-              Navigator.pop(context);
-            },
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final userProvider = Provider.of<UserProvider>(context);
-    final solde = userProvider.solde;
+    final double solde = userProvider.solde;
+    
+    final double maxVendable = solde > minimumBalance ? solde - minimumBalance : 0.0;
+    
+    if (_amount > maxVendable) {
+      _amount = maxVendable;
+    }
+    if (_amount < 0) _amount = 0.0;
 
     return Scaffold(
       appBar: AppBar(
@@ -131,13 +236,13 @@ class _SellScreenState extends State<SellScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildAmountCard(solde),
+              _buildAmountCard(solde, maxVendable),
               const SizedBox(height: 24),
               _buildBalanceInfo(solde),
               const SizedBox(height: 24),
               _buildBonusCard(),
               const SizedBox(height: 40),
-              _buildSellButton(),
+              _buildSellButton(maxVendable <= 0.0),
             ],
           ),
         ),
@@ -145,7 +250,9 @@ class _SellScreenState extends State<SellScreen> {
     );
   }
 
-  Widget _buildAmountCard(double solde) {
+  Widget _buildAmountCard(double solde, double maxVendable) {
+    final bool peutVendre = maxVendable > 0.0;
+    
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(32),
@@ -181,7 +288,7 @@ class _SellScreenState extends State<SellScreen> {
             textBaseline: TextBaseline.alphabetic,
             children: [
               Text(
-                _amount.toStringAsFixed(0), 
+                peutVendre ? _amount.toStringAsFixed(0) : '0', 
                 style: const TextStyle(
                   fontSize: 56, 
                   fontWeight: FontWeight.bold, 
@@ -204,38 +311,112 @@ class _SellScreenState extends State<SellScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              color: AppTheme.errorRed.withValues(alpha: 0.1), 
+              color: peutVendre 
+                  ? AppTheme.errorRed.withValues(alpha: 0.1)
+                  : Colors.grey.shade200, 
               borderRadius: BorderRadius.circular(30)
             ),
             child: Text(
-              '≈ ${_amount.toStringAsFixed(0)} €', 
-              style: const TextStyle(
+              peutVendre ? '≈ ${_amount.toStringAsFixed(0)} €' : '0 €', 
+              style: TextStyle(
                 fontSize: 18, 
                 fontWeight: FontWeight.bold, 
-                color: AppTheme.errorRed
+                color: peutVendre ? AppTheme.errorRed : Colors.grey.shade600
               )
             ),
           ),
           const SizedBox(height: 24),
-          Slider(
-            value: _amount,
-            min: 50,
-            max: solde > 1000 ? 1000 : solde,
-            divisions: 19,
-            onChanged: (value) => setState(() => _amount = value),
-            activeColor: AppTheme.errorRed,
-            inactiveColor: AppTheme.errorRed.withValues(alpha: 0.2),
-          ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('50 BKN', style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
-              Text(
-                '${solde > 1000 ? 1000 : solde.toStringAsFixed(0)} BKN', 
-                style: TextStyle(color: Colors.grey.shade600, fontSize: 12)
+          
+          if (peutVendre)
+            Column(
+              children: [
+                Slider(
+                  value: _amount,
+                  min: 0.0,
+                  max: maxVendable,
+                  divisions: maxVendable > 0.0 ? maxVendable.toInt() : 1,
+                  onChanged: (double value) => setState(() => _amount = value),
+                  activeColor: AppTheme.errorRed,
+                  inactiveColor: AppTheme.errorRed.withValues(alpha: 0.2),
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('0 BKN', 
+                      style: TextStyle(color: Colors.grey.shade600, fontSize: 12)
+                    ),
+                    Text(
+                      '${maxVendable.toStringAsFixed(0)} BKN', 
+                      style: TextStyle(color: Colors.grey.shade600, fontSize: 12)
+                    ),
+                  ],
+                ),
+              ],
+            )
+          else
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppTheme.errorRed.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppTheme.errorRed.withValues(alpha: 0.3)),
               ),
-            ],
-          ),
+              child: Row(
+                children: [
+                  Icon(Icons.warning_amber_rounded, color: AppTheme.errorRed, size: 24),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Solde insuffisant',
+                          style: TextStyle(
+                            color: AppTheme.errorRed,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Vous devez garder au moins ${minimumBalance.toStringAsFixed(0)} BKN',
+                          style: const TextStyle(
+                            color: AppTheme.errorRed,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+          if (peutVendre) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryBlue.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, color: AppTheme.primaryBlue, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Après la vente, il vous restera ${(solde - _amount).toStringAsFixed(0)} BKN',
+                      style: const TextStyle(
+                        color: AppTheme.textPrimary,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -321,27 +502,35 @@ class _SellScreenState extends State<SellScreen> {
     );
   }
 
-  Widget _buildSellButton() {
+  Widget _buildSellButton(bool soldeInsuffisant) {
     return Container(
       width: double.infinity,
       height: 60,
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFFFF6B6B), Color(0xFFFF3B30)]
-        ),
+        gradient: soldeInsuffisant || _amount == 0.0
+            ? LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Colors.grey.shade400, Colors.grey.shade500]
+              )
+            : const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFFFF6B6B), Color(0xFFFF3B30)]
+              ),
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFFFF3B30).withValues(alpha: 0.3),
-            blurRadius: 20,
-            offset: const Offset(0, 10)
-          )
-        ],
+        boxShadow: (soldeInsuffisant || _amount == 0.0)
+            ? []
+            : [
+                BoxShadow(
+                  color: const Color(0xFFFF3B30).withValues(alpha: 0.3),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10)
+                )
+              ],
       ),
       child: ElevatedButton(
-        onPressed: _isLoading ? null : _handleSell,
+        onPressed: (soldeInsuffisant || _amount == 0.0 || _isLoading) ? null : _handleSell,
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.transparent,
           shadowColor: Colors.transparent,
@@ -355,9 +544,10 @@ class _SellScreenState extends State<SellScreen> {
                 width: 24,
                 child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
               )
-            : const Text(
-                'VALIDER LA VENTE',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1),
+            : Text(
+                soldeInsuffisant ? 'SOLDE INSUFFISANT' : 
+                _amount == 0.0 ? 'SÉLECTIONNEZ UN MONTANT' : 'VALIDER LA VENTE',
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1),
               ),
       ),
     );

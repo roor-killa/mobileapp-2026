@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter/services.dart';
 import 'package:app_bkn/theme/app_theme.dart';
 import 'package:app_bkn/providers/transaction_provider.dart';
 import 'package:app_bkn/services/api_service.dart';
@@ -15,6 +16,7 @@ class HistoryScreen extends StatefulWidget {
 
 class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  String? _copiedId;
 
   @override
   void initState() {
@@ -36,6 +38,22 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
         limit: 50,
       );
     }
+  }
+
+  void _copyTransactionId(String id) {
+    Clipboard.setData(ClipboardData(text: id));
+    setState(() => _copiedId = id);
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _copiedId = null);
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('📋 ID copié dans le presse-papiers'),
+        backgroundColor: AppTheme.primaryBlue,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 1),
+      ),
+    );
   }
 
   @override
@@ -132,6 +150,7 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
     final date = DateTime.parse(t['date']);
     final formattedDate = DateFormat('dd/MM/yyyy - HH:mm').format(date);
     final montant = t['montant'].toDouble();
+    final transactionId = t['id'] ?? 'Inconnu';
     
     Color getColor() {
       if (t['type'] == 'achat' || t['type'] == 'reception') {
@@ -185,89 +204,144 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Row(
+        child: Column(
           children: [
-            // Icon
-            Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                color: getColor().withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Icon(
-                getIcon(),
-                color: getColor(),
-                size: 24,
-              ),
-            ),
-            const SizedBox(width: 16),
-            
-            // Details
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    getTitle(),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
-                    ),
+            Row(
+              children: [
+                // Icon
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: getColor().withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    formattedDate,
-                    style: const TextStyle(
-                      color: AppTheme.textSecondary,
-                      fontSize: 13,
-                    ),
+                  child: Icon(
+                    getIcon(),
+                    color: getColor(),
+                    size: 24,
                   ),
-                  if (t['description'] != null && t['description'].isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      t['description'],
-                      style: const TextStyle(
-                        color: AppTheme.textSecondary,
-                        fontSize: 12,
+                ),
+                const SizedBox(width: 16),
+                
+                // Details
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        getTitle(),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                        ),
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      const SizedBox(height: 4),
+                      Text(
+                        formattedDate,
+                        style: const TextStyle(
+                          color: AppTheme.textSecondary,
+                          fontSize: 13,
+                        ),
+                      ),
+                      if (t['description'] != null && t['description'].isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          t['description'],
+                          style: const TextStyle(
+                            color: AppTheme.textSecondary,
+                            fontSize: 12,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                
+                // Montant
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      '${isEnvoi ? '-' : '+'}${montant.toStringAsFixed(0)}',
+                      style: TextStyle(
+                        color: isEnvoi ? AppTheme.errorRed : AppTheme.secondaryGreen,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '≈ ${montant.toStringAsFixed(0)} €',
+                        style: const TextStyle(
+                          color: AppTheme.textSecondary,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                     ),
                   ],
-                ],
-              ),
-            ),
-            
-            // Montant
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  '${isEnvoi ? '-' : '+'}${montant.toStringAsFixed(0)}',
-                  style: TextStyle(
-                    color: isEnvoi ? AppTheme.errorRed : AppTheme.secondaryGreen,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    '≈ ${montant.toStringAsFixed(0)} €',
-                    style: const TextStyle(
-                      color: AppTheme.textSecondary,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
                 ),
               ],
+            ),
+            
+            // ✅ LIGNE D'ID DE TRANSACTION (avec bouton copier)
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.receipt, size: 14, color: AppTheme.primaryBlue),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      transactionId,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontFamily: 'monospace',
+                        color: Colors.grey.shade700,
+                        fontWeight: _copiedId == transactionId ? FontWeight.bold : FontWeight.normal,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: _copiedId == transactionId 
+                          ? AppTheme.secondaryGreen.withValues(alpha: 0.1)
+                          : AppTheme.primaryBlue.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: IconButton(
+                      icon: Icon(
+                        _copiedId == transactionId ? Icons.check : Icons.copy,
+                        size: 14,
+                        color: _copiedId == transactionId 
+                            ? AppTheme.secondaryGreen 
+                            : AppTheme.primaryBlue,
+                      ),
+                      onPressed: () => _copyTransactionId(transactionId),
+                      constraints: const BoxConstraints(
+                        minWidth: 28,
+                        minHeight: 28,
+                      ),
+                      padding: EdgeInsets.zero,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),

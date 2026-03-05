@@ -12,12 +12,14 @@ from passlib.context import CryptContext
 import time
 import socket
 from zeroconf import ServiceInfo, Zeroconf
+from enum import Enum
 
-# ==================== DEBUG ====================
-print("🔥 SERVER.PY EST EXÉCUTÉ !")
-print(f"📝 __name__ = {__name__}")
 
-# ==================== CONFIGURATION HACHAGE ====================
+# Débug
+print("SERVER.PY EST EXÉCUTÉ !")
+print(f"__name__ = {__name__}")
+
+# UTILITAIRES SÉCURITÉ 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def hash_password(password: str) -> str:
@@ -26,7 +28,7 @@ def hash_password(password: str) -> str:
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
-# ==================== MODÈLES ====================
+# MODÈLES de données
 class LoginRequest(BaseModel):
     email: str
     password: str
@@ -53,14 +55,53 @@ class SellRequest(BaseModel):
     user_id: str
     montant: float
 
-# ==================== CONFIGURATION ====================
+class UpdateProfileRequest(BaseModel):
+    nom: str
+    prenom: str
+    email: str
+    phone: str
+    pseudo: str
+
+class ChangePasswordRequest(BaseModel):
+    user_id: str
+    old_password: str
+    new_password: str
+
+class UpdateSettingsRequest(BaseModel):
+    user_id: str
+    biometric_enabled: Optional[bool] = None
+    notifications_enabled: Optional[bool] = None
+    two_factor_enabled: Optional[bool] = None
+
+# MODÈLES CRYPTO
+class CryptoPriceRequest(BaseModel):
+    crypto: str
+    fiat: str = 'eur'
+
+class CryptoBuyRequest(BaseModel):
+    user_id: str
+    crypto: str
+    amount_bkn: float
+    wallet_address: Optional[str] = None
+
+class CryptoSellRequest(BaseModel):
+    user_id: str
+    crypto: str
+    amount_crypto: float
+    wallet_address: Optional[str] = None
+
+class CryptoBalanceRequest(BaseModel):
+    user_id: str
+    crypto: str
+
+# Configuration de la base de données
 DB_HOST = os.getenv('DB_HOST', 'postgres')
 DB_PORT = os.getenv('DB_PORT', '5432')
 DB_NAME = os.getenv('DB_NAME', 'bkn_db')
 DB_USER = os.getenv('DB_USER', 'bkn_admin')
 DB_PASSWORD = os.getenv('DB_PASSWORD', 'BknSecurePass2026!')
 
-print(f"📊 Configuration DB: {DB_HOST}:{DB_PORT}/{DB_NAME}")
+print(f"Configuration DB: {DB_HOST}:{DB_PORT}/{DB_NAME}")
 
 app = FastAPI(title="BKN API", version="1.0.0")
 
@@ -72,7 +113,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ==================== BASE DE DONNÉES ====================
+# Constantes crypto
+CRYPTO_PRICES = {
+    'bitcoin': 45000.0,
+    'ethereum': 2800.0,
+    'solana': 98.0,
+    'cardano': 0.45,
+    'polkadot': 6.50,
+    'avalanche': 35.0,
+}
+
+# Base de données
 def get_db():
     print(f"🔌 Tentative de connexion à {DB_HOST}:{DB_PORT}")
     return psycopg2.connect(
@@ -86,24 +137,24 @@ def get_db():
 
 def init_database():
     """Initialise la base de données avec les tables et données par défaut"""
-    print("🗄️ Début de l'initialisation de la base de données...")
+    print("Début de l'initialisation de la base de données...")
     max_attempts = 30
     for attempt in range(max_attempts):
         try:
             conn = get_db()
             cur = conn.cursor()
-            print(f"✅ Connexion à la base de données établie (tentative {attempt + 1})")
+            print(f"Connexion à la base de données établie (tentative {attempt + 1})")
             break
         except Exception as e:
-            print(f"⏳ Attente de la base de données... ({attempt + 1}/{max_attempts})")
-            print(f"❌ Erreur: {e}")
+            print(f"Attente de la base de données... ({attempt + 1}/{max_attempts})")
+            print(f"Erreur: {e}")
             time.sleep(2)
     else:
-        print("❌ Impossible de se connecter à la base de données")
+        print("Impossible de se connecter à la base de données")
         return
     
     # Table users
-    print("📦 Création de la table users...")
+    print("Création de la table users...")
     cur.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id VARCHAR(50) PRIMARY KEY,
@@ -123,7 +174,7 @@ def init_database():
     """)
     
     # Table transactions
-    print("📦 Création de la table transactions...")
+    print("Création de la table transactions...")
     cur.execute("""
         CREATE TABLE IF NOT EXISTS transactions (
             id VARCHAR(50) PRIMARY KEY,
@@ -140,11 +191,59 @@ def init_database():
         )
     """)
     
+    # Table user_settings
+    print("Création de la table user_settings...")
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS user_settings (
+            user_id VARCHAR(50) PRIMARY KEY,
+            biometric_enabled BOOLEAN DEFAULT FALSE,
+            notifications_enabled BOOLEAN DEFAULT TRUE,
+            two_factor_enabled BOOLEAN DEFAULT FALSE,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+    """)
+    
+    # Table user_sessions
+    print("Création de la table user_sessions...")
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS user_sessions (
+            id VARCHAR(50) PRIMARY KEY,
+            user_id VARCHAR(50) NOT NULL,
+            device_name VARCHAR(255),
+            device_type VARCHAR(50),
+            ip_address VARCHAR(50),
+            last_active TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            is_active BOOLEAN DEFAULT TRUE,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+    """)
+    
+    # Table crypto_transactions
+    print("Création de la table crypto_transactions...")
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS crypto_transactions (
+            id VARCHAR(50) PRIMARY KEY,
+            user_id VARCHAR(50) NOT NULL,
+            type VARCHAR(20) NOT NULL,
+            crypto VARCHAR(50) NOT NULL,
+            amount_bkn DECIMAL(15,2) NOT NULL,
+            amount_crypto DECIMAL(15,8) NOT NULL,
+            price_at_transaction DECIMAL(15,2) NOT NULL,
+            wallet_address TEXT,
+            status VARCHAR(20) DEFAULT 'completed',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+    """)
+    
     # Index pour performances
-    print("📊 Création des index...")
+    print("Création des index...")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date DESC)")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_transactions_user ON transactions(expediteur_id, destinataire_id)")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_crypto_user ON crypto_transactions(user_id, created_at DESC)")
     
     # Insérer utilisateurs par défaut
     cur.execute("SELECT COUNT(*) FROM users")
@@ -165,7 +264,7 @@ def init_database():
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         """, users)
         
-        print("➕ Création des transactions par défaut...")
+        print("Création des transactions par défaut...")
         cur.execute("""
             INSERT INTO transactions (id, type, montant, date, description, expediteur_id, destinataire_id)
             VALUES 
@@ -174,14 +273,32 @@ def init_database():
             ('TR3', 'transfert', 500, '2024-02-05 14:30:00', 'Transfert vers @jane', '1', '2'),
             ('TR4', 'reception', 300, '2024-02-06 10:15:00', 'Reçu de @bob', '3', '1')
         """)
-        print("✅ Utilisateurs par défaut créés avec mot de passe: password123")
+        
+        print("Création des paramètres par défaut...")
+        for user in users:
+            cur.execute("""
+                INSERT INTO user_settings (user_id, biometric_enabled, notifications_enabled, two_factor_enabled)
+                VALUES (%s, FALSE, TRUE, FALSE)
+                ON CONFLICT (user_id) DO NOTHING
+            """, (user[0],))
+        
+        print("Création des transactions crypto par défaut...")
+        cur.execute("""
+            INSERT INTO crypto_transactions (id, user_id, type, crypto, amount_bkn, amount_crypto, price_at_transaction, wallet_address)
+            VALUES 
+            ('CRYPTO1', '1', 'buy', 'bitcoin', 1000, 0.0222, 45000, 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh'),
+            ('CRYPTO2', '1', 'buy', 'ethereum', 500, 0.1786, 2800, '0x742d35Cc6634C0532925a3b844Bc5e9c5f3a7d3a'),
+            ('CRYPTO3', '2', 'buy', 'solana', 300, 3.0612, 98, '5YNmS1R9nNSCDzb5a7mMJ1dwK9uHeAAF4CmPEwKgVWr5')
+        """)
+        
+        print("Utilisateurs par défaut créés avec mot de passe: password123")
     
     conn.commit()
     cur.close()
     conn.close()
-    print("✅ Base de données initialisée avec succès!")
+    print("Base de données initialisée avec succès!")
 
-# ==================== UTIL ====================
+# Utilitaires réseau et mDNS
 def get_local_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
@@ -210,7 +327,7 @@ def register_mdns_service(port: int = 8000, name: str = "BKN API"):
     print(f"📡 Service mDNS '{name}' annoncé sur {local_ip}:{port}")
     return zeroconf, info
 
-# ==================== ROUTES API ====================
+# Routes API
 @app.get("/")
 async def root():
     return {
@@ -279,10 +396,19 @@ async def register(request: RegisterRequest):
             100.00, datetime.now()
         ))
         new_user = cur.fetchone()
+        
+        # Bonus de bienvenue
         cur.execute("""
             INSERT INTO transactions (id, type, montant, date, description, destinataire_id)
             VALUES (%s, %s, %s, %s, %s, %s)
         """, (f"WEL{user_id}", 'reception', 100.00, datetime.now(), '🎉 Bonus de bienvenue', user_id))
+        
+        # Paramètres par défaut
+        cur.execute("""
+            INSERT INTO user_settings (user_id, biometric_enabled, notifications_enabled, two_factor_enabled)
+            VALUES (%s, FALSE, TRUE, FALSE)
+        """, (user_id,))
+        
         conn.commit()
         return {"success": True, "user_id": new_user['id'], "pseudo": new_user['pseudo'], "email": new_user['email'], "bonus": 100}
     except Exception as e:
@@ -292,7 +418,6 @@ async def register(request: RegisterRequest):
         cur.close()
         conn.close()
 
-# ==================== AUTRES ROUTES ====================
 @app.get("/users")
 async def get_users():
     try:
@@ -509,10 +634,544 @@ async def get_stats():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# ==================== DÉMARRAGE ====================
+# Routes pour la gestion du profil et de la sécurité
+
+@app.put("/user/{user_id}")
+async def update_profile(user_id: str, request: UpdateProfileRequest):
+    """Mettre à jour le profil d'un utilisateur"""
+    conn = None
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        
+        # Vérifier si l'email ou pseudo existe déjà (sauf pour l'utilisateur actuel)
+        cur.execute("""
+            SELECT id FROM users 
+            WHERE (email = %s OR pseudo = %s) AND id != %s
+        """, (request.email, request.pseudo, user_id))
+        
+        if cur.fetchone():
+            raise HTTPException(status_code=400, detail="Email ou pseudo déjà utilisé")
+        
+        # Mettre à jour le profil
+        cur.execute("""
+            UPDATE users 
+            SET nom = %s, prenom = %s, email = %s, phone = %s, pseudo = %s
+            WHERE id = %s
+            RETURNING id, nom, prenom, email, phone, pseudo, solde, verification_level
+        """, (
+            request.nom, request.prenom, request.email, 
+            request.phone, request.pseudo, user_id
+        ))
+        
+        updated_user = cur.fetchone()
+        if not updated_user:
+            raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
+        
+        conn.commit()
+        
+        # Convertir les types pour JSON
+        updated_user['solde'] = float(updated_user['solde'])
+        
+        return {"success": True, "user": updated_user}
+        
+    except HTTPException:
+        if conn:
+            conn.rollback()
+        raise
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if conn:
+            cur.close()
+            conn.close()
+
+@app.post("/user/change-password")
+async def change_password(request: ChangePasswordRequest):
+    """Changer le mot de passe d'un utilisateur"""
+    conn = None
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        
+        # Récupérer le mot de passe actuel
+        cur.execute("SELECT password_hash FROM users WHERE id = %s", (request.user_id,))
+        user = cur.fetchone()
+        
+        if not user:
+            raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
+        
+        # Vérifier l'ancien mot de passe
+        if not verify_password(request.old_password, user['password_hash']):
+            raise HTTPException(status_code=401, detail="Ancien mot de passe incorrect")
+        
+        # Mettre à jour le mot de passe
+        cur.execute("""
+            UPDATE users 
+            SET password_hash = %s
+            WHERE id = %s
+        """, (hash_password(request.new_password), request.user_id))
+        
+        conn.commit()
+        return {"success": True, "message": "Mot de passe modifié avec succès"}
+        
+    except HTTPException:
+        if conn:
+            conn.rollback()
+        raise
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if conn:
+            cur.close()
+            conn.close()
+
+# Routes pour la gestion des paramètres de sécurité
+
+@app.get("/user/{user_id}/settings")
+async def get_user_settings(user_id: str):
+    """Récupérer les paramètres de sécurité d'un utilisateur"""
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        
+        # Récupérer ou créer les paramètres
+        cur.execute("""
+            INSERT INTO user_settings (user_id, biometric_enabled, notifications_enabled, two_factor_enabled)
+            VALUES (%s, FALSE, TRUE, FALSE)
+            ON CONFLICT (user_id) DO NOTHING
+            RETURNING *
+        """, (user_id,))
+        conn.commit()
+        
+        cur.execute("""
+            SELECT * FROM user_settings WHERE user_id = %s
+        """, (user_id,))
+        
+        settings = cur.fetchone()
+        cur.close()
+        conn.close()
+        
+        if not settings:
+            return {
+                "biometric_enabled": False,
+                "notifications_enabled": True,
+                "two_factor_enabled": False
+            }
+        
+        return settings
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.put("/user/{user_id}/settings")
+async def update_user_settings(user_id: str, request: UpdateSettingsRequest):
+    """Mettre à jour les paramètres de sécurité"""
+    conn = None
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        
+        # Construire la requête dynamiquement
+        updates = []
+        values = []
+        
+        if request.biometric_enabled is not None:
+            updates.append("biometric_enabled = %s")
+            values.append(request.biometric_enabled)
+        
+        if request.notifications_enabled is not None:
+            updates.append("notifications_enabled = %s")
+            values.append(request.notifications_enabled)
+        
+        if request.two_factor_enabled is not None:
+            updates.append("two_factor_enabled = %s")
+            values.append(request.two_factor_enabled)
+        
+        updates.append("updated_at = %s")
+        values.append(datetime.now())
+        values.append(user_id)
+        
+        query = f"""
+            UPDATE user_settings 
+            SET {', '.join(updates)}
+            WHERE user_id = %s
+            RETURNING *
+        """
+        
+        cur.execute(query, values)
+        updated_settings = cur.fetchone()
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        return {"success": True, "settings": updated_settings}
+        
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if conn:
+            cur.close()
+            conn.close()
+
+# Routes pour les sessions utilisateur
+
+@app.get("/user/{user_id}/sessions")
+async def get_user_sessions(user_id: str):
+    """Récupérer les sessions actives d'un utilisateur"""
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        
+        # Ajouter des sessions de test si aucune n'existe
+        cur.execute("SELECT COUNT(*) FROM user_sessions WHERE user_id = %s", (user_id,))
+        count = cur.fetchone()['count']
+        
+        if count == 0:
+            sessions_test = [
+                (f"SESS{uuid.uuid4().hex[:8]}", user_id, "iPhone 14 Pro", "mobile", "192.168.1.42"),
+                (f"SESS{uuid.uuid4().hex[:8]}", user_id, "MacBook Pro", "desktop", "192.168.1.42"),
+                (f"SESS{uuid.uuid4().hex[:8]}", user_id, "Chrome - Windows", "web", "89.123.45.67"),
+            ]
+            cur.executemany("""
+                INSERT INTO user_sessions (id, user_id, device_name, device_type, ip_address)
+                VALUES (%s, %s, %s, %s, %s)
+            """, sessions_test)
+            conn.commit()
+        
+        cur.execute("""
+            SELECT * FROM user_sessions 
+            WHERE user_id = %s AND is_active = TRUE
+            ORDER BY last_active DESC
+        """, (user_id,))
+        
+        sessions = cur.fetchall()
+        cur.close()
+        conn.close()
+        
+        for s in sessions:
+            s['created_at'] = s['created_at'].isoformat() if s['created_at'] else None
+            s['last_active'] = s['last_active'].isoformat() if s['last_active'] else None
+        
+        return {"sessions": sessions}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/user/session/{session_id}")
+async def terminate_session(session_id: str):
+    """Terminer une session spécifique"""
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        
+        cur.execute("""
+            UPDATE user_sessions 
+            SET is_active = FALSE 
+            WHERE id = %s
+            RETURNING id
+        """, (session_id,))
+        
+        result = cur.fetchone()
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        if not result:
+            raise HTTPException(status_code=404, detail="Session non trouvée")
+        
+        return {"success": True, "message": "Session terminée"}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/user/{user_id}/sessions")
+async def terminate_all_sessions(user_id: str):
+    """Terminer toutes les sessions d'un utilisateur"""
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        
+        cur.execute("""
+            UPDATE user_sessions 
+            SET is_active = FALSE 
+            WHERE user_id = %s
+            RETURNING id
+        """, (user_id,))
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        return {"success": True, "message": "Toutes les sessions ont été terminées"}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Routes pour la gestion des cryptomonnaies
+
+@app.get("/crypto/prices")
+async def get_crypto_prices():
+    """Récupère les prix actuels des cryptomonnaies"""
+    return {
+        "prices": CRYPTO_PRICES,
+        "base_fiat": "EUR",
+        "timestamp": datetime.now().isoformat()
+    }
+
+@app.post("/crypto/estimate")
+async def estimate_crypto(request: CryptoPriceRequest):
+    """Estime le montant de crypto pour un montant BKN donné"""
+    if request.crypto not in CRYPTO_PRICES:
+        raise HTTPException(status_code=400, detail="Cryptomonnaie non supportée")
+    
+    price = CRYPTO_PRICES[request.crypto]
+    return {
+        "crypto": request.crypto,
+        "price_eur": price,
+        "bkn_to_crypto_rate": 1 / price,
+        "timestamp": datetime.now().isoformat()
+    }
+
+@app.post("/crypto/buy")
+async def buy_crypto(request: CryptoBuyRequest):
+    """Acheter de la crypto avec des BKN"""
+    conn = None
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        
+        # Vérifier le solde BKN de l'utilisateur
+        cur.execute("SELECT solde FROM users WHERE id = %s", (request.user_id,))
+        user = cur.fetchone()
+        
+        if not user:
+            raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
+        
+        if float(user['solde']) < request.amount_bkn:
+            raise HTTPException(status_code=400, detail="Solde BKN insuffisant")
+        
+        # Calculer le montant de crypto
+        if request.crypto not in CRYPTO_PRICES:
+            raise HTTPException(status_code=400, detail="Cryptomonnaie non supportée")
+        
+        crypto_price = CRYPTO_PRICES[request.crypto]
+        amount_crypto = request.amount_bkn / crypto_price
+        
+        # Débiter les BKN
+        cur.execute("UPDATE users SET solde = solde - %s WHERE id = %s", 
+                   (request.amount_bkn, request.user_id))
+        
+        # Enregistrer la transaction crypto
+        transaction_id = f"CRYPTO{uuid.uuid4().hex[:8]}"
+        
+        cur.execute("""
+            INSERT INTO crypto_transactions 
+            (id, user_id, type, crypto, amount_bkn, amount_crypto, price_at_transaction, wallet_address)
+            VALUES (%s, %s, 'buy', %s, %s, %s, %s, %s)
+        """, (
+            transaction_id, request.user_id, request.crypto,
+            request.amount_bkn, amount_crypto, crypto_price,
+            request.wallet_address
+        ))
+        
+        # Ajouter une transaction standard
+        cur.execute("""
+            INSERT INTO transactions (id, type, montant, description, expediteur_id, metadata)
+            VALUES (%s, 'crypto_buy', %s, %s, %s, %s)
+        """, (
+            f"TR{uuid.uuid4().hex[:8]}",
+            request.amount_bkn,
+            f"Achat de {amount_crypto:.8f} {request.crypto}",
+            request.user_id,
+            {"crypto": request.crypto, "amount_crypto": amount_crypto}
+        ))
+        
+        conn.commit()
+        
+        return {
+            "success": True,
+            "message": f"Achat de {amount_crypto:.8f} {request.crypto} effectué",
+            "transaction_id": transaction_id,
+            "crypto_amount": amount_crypto,
+            "bkn_spent": request.amount_bkn,
+            "price": crypto_price
+        }
+        
+    except HTTPException:
+        if conn:
+            conn.rollback()
+        raise
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if conn:
+            cur.close()
+            conn.close()
+
+@app.post("/crypto/sell")
+async def sell_crypto(request: CryptoSellRequest):
+    """Vendre de la crypto pour des BKN"""
+    conn = None
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        
+        if request.crypto not in CRYPTO_PRICES:
+            raise HTTPException(status_code=400, detail="Cryptomonnaie non supportée")
+        
+        # Vérifier que l'utilisateur a assez de crypto
+        cur.execute("""
+            SELECT SUM(amount_crypto) as total_crypto
+            FROM crypto_transactions
+            WHERE user_id = %s AND crypto = %s AND type = 'buy'
+        """, (request.user_id, request.crypto))
+        
+        bought = cur.fetchone()['total_crypto'] or 0
+        
+        cur.execute("""
+            SELECT SUM(amount_crypto) as total_crypto
+            FROM crypto_transactions
+            WHERE user_id = %s AND crypto = %s AND type = 'sell'
+        """, (request.user_id, request.crypto))
+        
+        sold = cur.fetchone()['total_crypto'] or 0
+        
+        balance_crypto = float(bought) - float(sold)
+        
+        if balance_crypto < request.amount_crypto:
+            raise HTTPException(status_code=400, detail="Solde crypto insuffisant")
+        
+        # Calculer le montant BKN
+        crypto_price = CRYPTO_PRICES[request.crypto]
+        amount_bkn = request.amount_crypto * crypto_price
+        
+        # Créditer les BKN
+        cur.execute("UPDATE users SET solde = solde + %s WHERE id = %s", 
+                   (amount_bkn, request.user_id))
+        
+        # Enregistrer la vente
+        transaction_id = f"CRYPTO{uuid.uuid4().hex[:8]}"
+        
+        cur.execute("""
+            INSERT INTO crypto_transactions 
+            (id, user_id, type, crypto, amount_bkn, amount_crypto, price_at_transaction, wallet_address)
+            VALUES (%s, %s, 'sell', %s, %s, %s, %s, %s)
+        """, (
+            transaction_id, request.user_id, request.crypto,
+            amount_bkn, request.amount_crypto, crypto_price,
+            request.wallet_address
+        ))
+        
+        # Ajouter une transaction standard
+        cur.execute("""
+            INSERT INTO transactions (id, type, montant, description, destinataire_id, metadata)
+            VALUES (%s, 'crypto_sell', %s, %s, %s, %s)
+        """, (
+            f"TR{uuid.uuid4().hex[:8]}",
+            amount_bkn,
+            f"Vente de {request.amount_crypto:.8f} {request.crypto}",
+            request.user_id,
+            {"crypto": request.crypto, "amount_crypto": request.amount_crypto}
+        ))
+        
+        conn.commit()
+        
+        return {
+            "success": True,
+            "message": f"Vente de {request.amount_crypto:.8f} {request.crypto} effectuée",
+            "transaction_id": transaction_id,
+            "crypto_amount": request.amount_crypto,
+            "bkn_received": amount_bkn,
+            "price": crypto_price
+        }
+        
+    except HTTPException:
+        if conn:
+            conn.rollback()
+        raise
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if conn:
+            cur.close()
+            conn.close()
+
+@app.get("/crypto/balance/{user_id}")
+async def get_crypto_balance(user_id: str):
+    """Récupère le solde crypto d'un utilisateur"""
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        
+        cur.execute("""
+            SELECT 
+                crypto,
+                SUM(CASE WHEN type = 'buy' THEN amount_crypto ELSE 0 END) as total_bought,
+                SUM(CASE WHEN type = 'sell' THEN amount_crypto ELSE 0 END) as total_sold
+            FROM crypto_transactions
+            WHERE user_id = %s
+            GROUP BY crypto
+        """, (user_id,))
+        
+        balances = cur.fetchall()
+        cur.close()
+        conn.close()
+        
+        result = {}
+        for balance in balances:
+            bought = float(balance['total_bought']) if balance['total_bought'] else 0
+            sold = float(balance['total_sold']) if balance['total_sold'] else 0
+            result[balance['crypto']] = bought - sold
+        
+        return {"balances": result}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/crypto/history/{user_id}")
+async def get_crypto_history(user_id: str):
+    """Récupère l'historique des transactions crypto"""
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        
+        cur.execute("""
+            SELECT * FROM crypto_transactions
+            WHERE user_id = %s
+            ORDER BY created_at DESC
+        """, (user_id,))
+        
+        transactions = cur.fetchall()
+        cur.close()
+        conn.close()
+        
+        for t in transactions:
+            t['amount_bkn'] = float(t['amount_bkn'])
+            t['amount_crypto'] = float(t['amount_crypto'])
+            t['price_at_transaction'] = float(t['price_at_transaction'])
+            t['created_at'] = t['created_at'].isoformat() if t['created_at'] else None
+        
+        return {"transactions": transactions}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# DÉMARRAGE
 if __name__ == "__main__":
-    print("🎯 Dans if __name__ == '__main__'")
-    print("🔄 Initialisation de la base de données...")
+    print("Dans if __name__ == '__main__'")
+    print("Initialisation de la base de données...")
     init_database()
     
     print("📡 Configuration mDNS...")
@@ -521,20 +1180,26 @@ if __name__ == "__main__":
     
     try:
         print("\n" + "="*60)
-        print("🚀 BKN API DÉMARRÉE".center(60))
+        print("BKN API DÉMARRÉE".center(60))
         print("="*60)
-        print(f"📡 API réseau local: http://{local_ip}:8000")
-        print(f"📊 Swagger docs: http://{local_ip}:8000/docs")
-        print("📈 Adminer: http://localhost:8081")
+        print(f"API réseau local: http://{local_ip}:8000")
+        print(f"Swagger docs: http://{local_ip}:8000/docs")
         print("="*60)
-        print("👤 Utilisateurs par défaut: john.doe@email.com / password123")
+        print("Utilisateurs par défaut: john.doe@email.com / password123")
+        print("="*60)
+        print("Routes Crypto disponibles:")
+        print("   • GET /crypto/prices - Prix des cryptos")
+        print("   • POST /crypto/buy - Acheter crypto")
+        print("   • POST /crypto/sell - Vendre crypto")
+        print("   • GET /crypto/balance/{user_id} - Solde crypto")
+        print("   • GET /crypto/history/{user_id} - Historique crypto")
         print("="*60)
         
-        print("🚀 Lancement de uvicorn...")
+        print("Lancement de uvicorn...")
         uvicorn.run(app, host="0.0.0.0", port=8000)
     finally:
         if zeroconf:
             zeroconf.unregister_service(mdns_info)
             zeroconf.close()
 else:
-    print(f"⚠️ Le script est importé comme module (__name__ = {__name__})")
+    print(f"Le script est importé comme module (__name__ = {__name__})")

@@ -20,6 +20,7 @@ class _BuyScreenState extends State<BuyScreen> {
   
   final TextEditingController _cardController = TextEditingController();
   final TextEditingController _expiryController = TextEditingController();
+  final TextEditingController _cvvController = TextEditingController(); // AJOUT
   
   bool _isLoading = false;
 
@@ -36,7 +37,72 @@ class _BuyScreenState extends State<BuyScreen> {
   void dispose() {
     _cardController.dispose();
     _expiryController.dispose();
+    _cvvController.dispose(); // AJOUT
     super.dispose();
+  }
+
+  // Fonction pour formater automatiquement la date d'expiration
+  void _formatExpiryDate(String value) {
+    // Enlever tous les caractères non chiffres
+    String digits = value.replaceAll(RegExp(r'[^0-9]'), '');
+    
+    if (digits.length >= 3) {
+      // Format MM/YY
+      String month = digits.substring(0, 2);
+      String year = digits.substring(2, digits.length > 4 ? 4 : digits.length);
+      
+      // Valider le mois (01-12)
+      int monthInt = int.tryParse(month) ?? 0;
+      if (monthInt > 12) {
+        month = '12';
+      } else if (monthInt < 1 && digits.length >= 2) {
+        month = '01';
+      }
+      
+      String formatted = month;
+      if (year.isNotEmpty) {
+        formatted += '/$year';
+      }
+      
+      // Mettre à jour le texte sans déclencher un nouveau formatage
+      if (_expiryController.text != formatted) {
+        _expiryController.value = TextEditingValue(
+          text: formatted,
+          selection: TextSelection.collapsed(offset: formatted.length),
+        );
+      }
+    } else {
+      // Moins de 2 chiffres
+      if (_expiryController.text != digits) {
+        _expiryController.value = TextEditingValue(
+          text: digits,
+          selection: TextSelection.collapsed(offset: digits.length),
+        );
+      }
+    }
+  }
+
+  // Fonction pour formater le numéro de carte
+  void _formatCardNumber(String value) {
+    // Enlever tous les caractères non chiffres
+    String digits = value.replaceAll(RegExp(r'[^0-9]'), '');
+    
+    // Formater par groupes de 4
+    StringBuffer formatted = StringBuffer();
+    for (int i = 0; i < digits.length; i++) {
+      if (i > 0 && i % 4 == 0) {
+        formatted.write(' ');
+      }
+      formatted.write(digits[i]);
+    }
+    
+    // Mettre à jour le texte
+    if (_cardController.text != formatted.toString()) {
+      _cardController.value = TextEditingValue(
+        text: formatted.toString(),
+        selection: TextSelection.collapsed(offset: formatted.length),
+      );
+    }
   }
 
   Future<void> _handleBuy() async {
@@ -50,11 +116,14 @@ class _BuyScreenState extends State<BuyScreen> {
       methode: _selectedMethod,
     );
     
-    if (success && mounted) {
+    if (!mounted) return;
+    
+    if (success) {
       await context.read<UserProvider>().refreshSolde();
-      
+      if (!mounted) return;
       _showSuccessDialog();
-    } else if (mounted) {
+    } else {
+      if (!mounted) return;
       _showErrorDialog();
     }
     
@@ -104,9 +173,9 @@ class _BuyScreenState extends State<BuyScreen> {
               ),
             ),
             const SizedBox(height: 8),
-            Text(
+            const Text(
               'ajoutés à votre solde',
-              style: const TextStyle(
+              style: TextStyle(
                 color: AppTheme.textSecondary,
               ),
             ),
@@ -123,6 +192,8 @@ class _BuyScreenState extends State<BuyScreen> {
   }
 
   void _showErrorDialog() {
+    final error = context.read<TransactionProvider>().error;
+    
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -154,7 +225,7 @@ class _BuyScreenState extends State<BuyScreen> {
           ],
         ),
         content: Text(
-          context.watch<TransactionProvider>().error ?? 'Achat échoué',
+          error ?? 'Achat échoué',
           textAlign: TextAlign.center,
         ),
         actions: [
@@ -221,7 +292,7 @@ class _BuyScreenState extends State<BuyScreen> {
                   const SizedBox(height: 24),
                   
                   const Text(
-                    'Numéro CB',
+                    'Numéro de carte',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -239,9 +310,52 @@ class _BuyScreenState extends State<BuyScreen> {
                   
                   const SizedBox(height: 16),
                   
-                  _buildExpiryField()
-                      .animate()
-                      .fadeIn(duration: 400.ms, delay: 500.ms),
+                  Row(
+                    children: [
+                      // Champ Date d'expiration avec formatage automatique
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Date expiration',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: AppTheme.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            _buildExpiryField()
+                                .animate()
+                                .fadeIn(duration: 400.ms, delay: 500.ms),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      
+                      // Champ CVV (nouveau)
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'CVV',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: AppTheme.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            _buildCVVField()
+                                .animate()
+                                .fadeIn(duration: 400.ms, delay: 550.ms),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
                 
                 const SizedBox(height: 40),
@@ -416,9 +530,9 @@ class _BuyScreenState extends State<BuyScreen> {
       ),
       child: TextFormField(
         controller: _cardController,
-        keyboardType: TextInputType.number,
+        keyboardType: TextInputType.number, 
         decoration: InputDecoration(
-          hintText: '444 1234 5678 9012',
+          hintText: '4444 1234 5678 9012',
           prefixIcon: const Icon(Icons.credit_card, color: AppTheme.primaryBlue),
           filled: true,
           fillColor: Colors.white,
@@ -431,21 +545,19 @@ class _BuyScreenState extends State<BuyScreen> {
           if (value == null || value.isEmpty) {
             return 'Numéro de carte requis';
           }
-          if (value.length < 16) {
+          String digits = value.replaceAll(' ', '');
+          if (digits.length < 16) {
             return 'Numéro de carte invalide';
           }
           return null;
         },
-        onChanged: (value) {
-          if (!value.startsWith('444 ')) {
-            _cardController.text = '444 ';
-            _cardController.selection = TextSelection.collapsed(offset: 4);
-          }
-        },
+        onChanged: _formatCardNumber, // Formatage automatique
+        maxLength: 19, // 16 chiffres + 3 espaces
       ),
     );
   }
 
+  // ✅ NOUVEAU : Champ date d'expiration avec formatage automatique
   Widget _buildExpiryField() {
     return Container(
       decoration: BoxDecoration(
@@ -460,7 +572,7 @@ class _BuyScreenState extends State<BuyScreen> {
       ),
       child: TextFormField(
         controller: _expiryController,
-        keyboardType: TextInputType.datetime,
+        keyboardType: TextInputType.number,
         decoration: InputDecoration(
           hintText: 'MM/AA',
           prefixIcon: const Icon(Icons.calendar_today, color: AppTheme.primaryBlue),
@@ -470,16 +582,77 @@ class _BuyScreenState extends State<BuyScreen> {
             borderRadius: BorderRadius.circular(16),
             borderSide: BorderSide.none,
           ),
+          counterText: '', // Cache le compteur
         ),
         validator: (value) {
           if (value == null || value.isEmpty) {
             return 'Date d\'expiration requise';
           }
-          if (!RegExp(r'^\d{2}/\d{2}$').hasMatch(value)) {
+          // Enlever tous les caractères non chiffres pour la validation
+          String digits = value.replaceAll(RegExp(r'[^0-9]'), '');
+          if (digits.length < 4) {
             return 'Format invalide (MM/AA)';
+          }
+          
+          // Valider le mois
+          int month = int.tryParse(digits.substring(0, 2)) ?? 0;
+          if (month < 1 || month > 12) {
+            return 'Mois invalide';
+          }
+          
+          // Valider que la date n'est pas passée (optionnel)
+          int year = int.tryParse('20${digits.substring(2, 4)}') ?? 0;
+          DateTime now = DateTime.now();
+          if (year < now.year || (year == now.year && month < now.month)) {
+            return 'Carte expirée';
+          }
+          
+          return null;
+        },
+        onChanged: _formatExpiryDate, // Formatage automatique avec le /
+        maxLength: 5, // MM/AA = 5 caractères
+      ),
+    );
+  }
+
+  // ✅ NOUVEAU : Champ CVV
+  Widget _buildCVVField() {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha:0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: TextFormField(
+        controller: _cvvController,
+        keyboardType: TextInputType.number,
+        obscureText: true, // Masquer le CVV
+        decoration: InputDecoration(
+          hintText: '123',
+          prefixIcon: const Icon(Icons.lock_outline, color: AppTheme.primaryBlue),
+          filled: true,
+          fillColor: Colors.white,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide.none,
+          ),
+          counterText: '',
+        ),
+        validator: (value) {
+          if (value == null || value.isEmpty) {
+            return 'CVV requis';
+          }
+          if (value.length < 3) {
+            return 'CVV invalide';
           }
           return null;
         },
+        maxLength: 4, // 3 ou 4 chiffres
       ),
     );
   }

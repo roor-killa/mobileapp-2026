@@ -45,16 +45,36 @@ class ProfileScreen extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Column(
                         children: [
-                          _buildSettingTile(icon: Icons.edit_outlined, title: 'Modifier le profil', onTap: () {})
-                              .animate().fadeIn(duration: 400.ms, delay: 500.ms).slideX(begin: -0.1, end: 0),
-                          _buildSettingTile(icon: Icons.security_outlined, title: 'Paramètres de sécurité', onTap: () {})
-                              .animate().fadeIn(duration: 400.ms, delay: 600.ms).slideX(begin: -0.1, end: 0),
-                          _buildSettingTile(icon: Icons.help_outlined, title: 'Centre d\'aide', onTap: () => Navigator.pushNamed(context, '/chatbot'))
-                              .animate().fadeIn(duration: 400.ms, delay: 700.ms).slideX(begin: -0.1, end: 0),
-                          _buildSettingTile(icon: Icons.analytics_outlined, title: 'Statistiques', onTap: () => Navigator.pushNamed(context, '/analytics'))
-                              .animate().fadeIn(duration: 400.ms, delay: 800.ms).slideX(begin: -0.1, end: 0),
-                          _buildSettingTile(icon: Icons.logout, title: 'Déconnexion', color: AppTheme.errorRed, onTap: () => _showLogoutDialog(context))
-                              .animate().fadeIn(duration: 400.ms, delay: 900.ms).slideX(begin: -0.1, end: 0),
+                          _buildSettingTile(
+                            icon: Icons.edit_outlined, 
+                            title: 'Modifier le profil', 
+                            onTap: () => Navigator.pushNamed(context, '/edit_profile')
+                          ).animate().fadeIn(duration: 400.ms, delay: 500.ms).slideX(begin: -0.1, end: 0),
+                          
+                          _buildSettingTile(
+                            icon: Icons.security_outlined, 
+                            title: 'Paramètres de sécurité', 
+                            onTap: () => Navigator.pushNamed(context, '/security')
+                          ).animate().fadeIn(duration: 400.ms, delay: 600.ms).slideX(begin: -0.1, end: 0),
+                          
+                          _buildSettingTile(
+                            icon: Icons.help_outlined, 
+                            title: 'Centre d\'aide', 
+                            onTap: () => Navigator.pushNamed(context, '/chatbot')
+                          ).animate().fadeIn(duration: 400.ms, delay: 700.ms).slideX(begin: -0.1, end: 0),
+                          
+                          _buildSettingTile(
+                            icon: Icons.analytics_outlined, 
+                            title: 'Statistiques', 
+                            onTap: () => Navigator.pushNamed(context, '/analytics')
+                          ).animate().fadeIn(duration: 400.ms, delay: 800.ms).slideX(begin: -0.1, end: 0),
+                          
+                          _buildSettingTile(
+                            icon: Icons.logout, 
+                            title: 'Déconnexion', 
+                            color: AppTheme.errorRed, 
+                            onTap: () => _showLogoutDialog(context)
+                          ).animate().fadeIn(duration: 400.ms, delay: 900.ms).slideX(begin: -0.1, end: 0),
                         ],
                       ),
                     ),

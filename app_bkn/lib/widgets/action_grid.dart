@@ -9,8 +9,8 @@ class ActionGrid extends StatelessWidget {
     {'icon': Icons.monetization_on, 'label': 'Vendre', 'route': '/sell', 'gradient': [AppTheme.primaryPink, Color(0xFFFF4D8C)]},
     {'icon': Icons.send, 'label': 'Transférer', 'route': '/transfer', 'gradient': [AppTheme.accentPurple, Color(0xFFB983FF)]},
     {'icon': Icons.qr_code, 'label': 'Recevoir', 'route': '/qr_receive', 'gradient': [AppTheme.secondaryGreen, Color(0xFF4ECDC4)]},
+    {'icon': Icons.currency_bitcoin, 'label': 'Crypto', 'route': '/crypto', 'gradient': [Color(0xFFF7931A), Color(0xFFFFB347)]},
     {'icon': Icons.history, 'label': 'Historique', 'route': '/history', 'gradient': [AppTheme.warningOrange, Color(0xFFFFB347)]},
-    {'icon': Icons.chat, 'label': 'Chatbot', 'route': '/chatbot', 'gradient': [AppTheme.primaryPink, AppTheme.primaryBlue]},
   ];
 
   @override

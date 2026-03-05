@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'theme/app_theme.dart';
 import 'providers/user_provider.dart';
 import 'providers/transaction_provider.dart';
+import 'providers/crypto_provider.dart'; // AJOUT
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
@@ -16,6 +17,9 @@ import 'screens/history_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/chatbot_screen.dart';
 import 'screens/analytics_screen.dart';
+import 'screens/edit_profile_screen.dart';
+import 'screens/security_screen.dart';
+import 'screens/crypto_screen.dart'; // AJOUT
 
 void main() {
   runApp(const BKNApp());
@@ -30,6 +34,7 @@ class BKNApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => UserProvider()),
         ChangeNotifierProvider(create: (_) => TransactionProvider()),
+        ChangeNotifierProvider(create: (_) => CryptoProvider()), // AJOUT
       ],
       child: MaterialApp(
         title: 'BKN · Paiement étudiant',
@@ -50,6 +55,9 @@ class BKNApp extends StatelessWidget {
           '/profile': (context) => const ProfileScreen(),
           '/chatbot': (context) => const ChatbotScreen(),
           '/analytics': (context) => const AnalyticsScreen(),
+          '/edit_profile': (context) => const EditProfileScreen(),
+          '/security': (context) => const SecurityScreen(),
+          '/crypto': (context) => const CryptoScreen(), // AJOUT
         },
       ),
     );
