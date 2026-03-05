@@ -4,11 +4,14 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\Api\PaymentRequestController;
+use App\Http\Controllers\Api\ChatController;
 use Illuminate\Support\Facades\Route;
 
 // Routes d'authentification
 Route::post('/auth/register', [AuthController::class, 'register']);
 Route::post('/auth/login', [AuthController::class, 'login']);
+Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword']);
+Route::post('/auth/reset-password', [AuthController::class, 'resetPassword']);
 
 // Routes protégées par authentification
 Route::middleware('auth:sanctum')->group(function () {
@@ -33,4 +36,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/payment-requests', [PaymentRequestController::class, 'store']);
     Route::post('/payment-requests/{payment_request}/accept', [PaymentRequestController::class, 'accept']);
     Route::post('/payment-requests/{payment_request}/decline', [PaymentRequestController::class, 'decline']);
+
+    // Chatbot IA
+    Route::post('/chat', [ChatController::class, 'chat']);
 });

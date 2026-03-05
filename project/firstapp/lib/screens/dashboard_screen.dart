@@ -12,6 +12,8 @@ import 'cards_screen.dart';
 import 'analytics_screen.dart';
 import 'notifications_screen.dart';
 import 'request_money_screen.dart';
+import 'trading_screen.dart';
+import 'chat_screen.dart';
 import '../theme/design_system.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -25,6 +27,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final BankService _bankService = BankService();
   List<Account>? _accounts;
   List<Transaction>? _transactions;
+  List<Map<String, dynamic>> _stockTransactions = [];
   String? _errorMessage;
   String? _userName;
   final String _transactionFilter = 'all';
@@ -57,10 +60,47 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
       final accounts = await _bankService.getAccounts();
       final transactions = await _bankService.getTransactions();
-      
+      List<Map<String, dynamic>> stockTx = [];
+      for (final acc in accounts) {
+        final raw = prefs.getString('stock_transactions_${acc.id}');
+        if (raw != null) {
+          try {
+            final decoded = jsonDecode(raw) as List<dynamic>?;
+            if (decoded != null) {
+              for (final e in decoded) {
+                final m = Map<String, dynamic>.from(e as Map);
+                if (!m.containsKey('accountId')) m['accountId'] = acc.id;
+                stockTx.add(m);
+              }
+            }
+          } catch (_) {}
+        }
+      }
+      // Migration: anciennes données sans compte → premier compte
+      if (stockTx.isEmpty && accounts.isNotEmpty) {
+        final legacyRaw = prefs.getString('stock_transactions');
+        if (legacyRaw != null) {
+          try {
+            final decoded = jsonDecode(legacyRaw) as List<dynamic>?;
+            if (decoded != null && decoded.isNotEmpty) {
+              final firstId = accounts.first.id;
+              final migrated = <Map<String, dynamic>>[];
+              for (final e in decoded) {
+                final m = Map<String, dynamic>.from(e as Map);
+                m['accountId'] = firstId;
+                migrated.add(m);
+                stockTx.add(m);
+              }
+              await prefs.setString('stock_transactions_$firstId', jsonEncode(migrated));
+              await prefs.remove('stock_transactions');
+            }
+          } catch (_) {}
+        }
+      }
       setState(() {
         _accounts = accounts;
         _transactions = transactions;
+        _stockTransactions = stockTx;
         _errorMessage = null;
       });
     } catch (e) {
@@ -208,7 +248,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: DesignSystem.gray900),
                         ),
                         GestureDetector(
-                          onTap: (_accounts == null || _transactions == null)
+                          onTap: (_accounts == null && _stockTransactions.isEmpty)
                               ? null
                               : () {
                                   Navigator.push(
@@ -217,6 +257,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                       builder: (_) => TransactionsScreen(
                                         accounts: _accounts ?? const [],
                                         transactions: _transactions ?? const [],
+                                        stockTransactions: _stockTransactions,
                                         initialFilter: _transactionFilter,
                                       ),
                                     ),
@@ -235,7 +276,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         padding: EdgeInsets.only(top: 16),
                         child: Center(child: CircularProgressIndicator()),
                       )
-                    else if (_transactions!.isEmpty)
+                    else if (_transactions!.isEmpty && _stockTransactions.isEmpty)
                       const Padding(
                         padding: EdgeInsets.only(top: 8),
                         child: Text(
@@ -244,13 +285,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                       )
                     else
-                      ...[for (final t in _filteredTransactions(_transactions!).take(5)) _buildTransactionTile(t)],
+                      ..._buildRecentTransactionsList(),
                   ],
                 ),
               ),
             ),
           ),
           bottomNavigationBar: _buildBottomNav(),
+          floatingActionButton: FloatingActionButton(
+            onPressed: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const ChatScreen()));
+            },
+            backgroundColor: DesignSystem.indigo600,
+            child: const Icon(Icons.chat_rounded, color: Colors.white),
+          ),
+          floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
         );
   }
 
@@ -464,7 +513,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Navigator.push(context, MaterialPageRoute(builder: (_) => const RequestMoneyScreen()));
         }),
         _buildQuickAction('Recharger', Icons.add_rounded, DesignSystem.green50, DesignSystem.green600, () {}),
-        _buildQuickAction('Plus', Icons.chevron_right_rounded, DesignSystem.orange50, DesignSystem.orange600, () {}),
+        _buildQuickAction('Bourse', Icons.show_chart_rounded, DesignSystem.orange50, DesignSystem.orange600, () {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => TradingScreen(accounts: _accounts ?? [])));
+        }),
       ],
     );
   }
@@ -576,6 +627,90 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  List<Widget> _buildRecentTransactionsList() {
+    final dateFormat = DateFormat('dd/MM/yyyy HH:mm');
+    final List<(DateTime, bool, dynamic)> combined = [];
+    for (final t in _filteredTransactions(_transactions ?? [])) {
+      combined.add((t.transactionDate, false, t));
+    }
+    for (final s in _stockTransactions) {
+      try {
+        final date = DateTime.parse(s['date'] as String);
+        combined.add((date, true, s));
+      } catch (_) {}
+    }
+    combined.sort((a, b) => b.$1.compareTo(a.$1));
+    final take = combined.take(5).toList();
+    return take.map<Widget>((e) {
+      if (e.$2) return _buildStockTransactionTile(e.$3 as Map<String, dynamic>, dateFormat);
+      return _buildTransactionTile(e.$3 as Transaction);
+    }).toList();
+  }
+
+  Widget _buildStockTransactionTile(Map<String, dynamic> s, DateFormat dateFormat) {
+    final total = (s['total'] as num?)?.toDouble() ?? 0.0;
+    final quantity = s['quantity'] as int? ?? 0;
+    final symbol = s['symbol'] as String? ?? '';
+    final name = s['name'] as String? ?? '';
+    final accountId = s['accountId'] as int?;
+    String accountLabel = '';
+    if (accountId != null && _accounts != null) {
+      for (final a in _accounts!) {
+        if (a.id == accountId) {
+          accountLabel = a.accountType;
+          break;
+        }
+      }
+    }
+    String dateStr = '';
+    try {
+      dateStr = dateFormat.format(DateTime.parse(s['date'] as String));
+    } catch (_) {}
+    final subtitle = [if (accountLabel.isNotEmpty) accountLabel, name, dateStr].where((e) => e.isNotEmpty).join(' • ');
+    return Padding(
+      padding: const EdgeInsets.only(bottom: DesignSystem.space12),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: DesignSystem.orange50,
+              borderRadius: BorderRadius.circular(DesignSystem.radiusLg),
+            ),
+            child: const Icon(Icons.show_chart_rounded, color: DesignSystem.orange600, size: 22),
+          ),
+          const SizedBox(width: DesignSystem.space12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Achat Bourse: $quantity × $symbol',
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: DesignSystem.gray900),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: const TextStyle(fontSize: 12, color: DesignSystem.gray400),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: DesignSystem.space8),
+          Text(
+            '−${total.toStringAsFixed(2)} €',
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: DesignSystem.gray700),
+          ),
+        ],
+      ),
     );
   }
 

@@ -15,7 +15,9 @@ class NotificationsScreen extends StatefulWidget {
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
   static const String _storageKey = 'app_notifications';
+  static const String _dismissedKey = 'dismissed_notification_ids';
   List<_NotificationItem> _items = [];
+  Set<String> _dismissedIds = {};
   bool _loading = true;
   final BankService _bankService = BankService();
 
@@ -29,6 +31,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     setState(() => _loading = true);
     try {
       final prefs = await SharedPreferences.getInstance();
+      _dismissedIds = {};
+      final dismissedRaw = prefs.getString(_dismissedKey);
+      if (dismissedRaw != null) {
+        final list = jsonDecode(dismissedRaw) as List<dynamic>?;
+        if (list != null) _dismissedIds = list.map((e) => e.toString()).toSet();
+      }
+
       final raw = prefs.getString(_storageKey);
       List<_NotificationItem> local = [];
       if (raw != null) {
@@ -52,26 +61,31 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       }
 
       final paymentRequests = await _bankService.getPaymentRequests();
-      final requestItems = paymentRequests.map((pr) {
-        final fromName = pr['from_user_name'] as String? ?? 'Un utilisateur';
-        final amount = (pr['amount'] as num?)?.toDouble() ?? 0.0;
-        final msg = pr['message'] as String?;
-        final createdAt = pr['created_at'] as String? ?? '';
-        String dateStr = createdAt;
-        try {
-          final dt = DateTime.parse(createdAt);
-          dateStr = '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-        } catch (_) {}
-        return _NotificationItem(
-          id: 'pr_${pr['id']}',
-          title: 'Demande d\'argent',
-          body: '$fromName vous demande ${amount.toStringAsFixed(2)} €${msg != null && msg.isNotEmpty ? '\n$msg' : ''}',
-          date: dateStr,
-          read: false,
-          isPaymentRequest: true,
-          paymentRequestData: pr,
-        );
-      }).toList();
+      final requestItems = paymentRequests
+          .map((pr) {
+            final id = 'pr_${pr['id']}';
+            if (_dismissedIds.contains(id)) return null;
+            final fromName = pr['from_user_name'] as String? ?? 'Un utilisateur';
+            final amount = (pr['amount'] as num?)?.toDouble() ?? 0.0;
+            final msg = pr['message'] as String?;
+            final createdAt = pr['created_at'] as String? ?? '';
+            String dateStr = createdAt;
+            try {
+              final dt = DateTime.parse(createdAt);
+              dateStr = '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+            } catch (_) {}
+            return _NotificationItem(
+              id: id,
+              title: 'Demande d\'argent',
+              body: '$fromName vous demande ${amount.toStringAsFixed(2)} €${msg != null && msg.isNotEmpty ? '\n$msg' : ''}',
+              date: dateStr,
+              read: false,
+              isPaymentRequest: true,
+              paymentRequestData: pr,
+            );
+          })
+          .whereType<_NotificationItem>()
+          .toList();
 
       if (!mounted) return;
       setState(() {
@@ -110,10 +124,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   Future<void> _markRead(_NotificationItem item) async {
     if (item.isPaymentRequest == true) return;
-    final index = _items.indexWhere((e) => e.id == item.id);
-    if (index >= 0) {
+    if (_items.any((e) => e.id == item.id)) {
       setState(() {
-        _items = _items.map((e) => e.id == item.id ? _NotificationItem(id: e.id, title: e.title, body: e.body, date: e.date, read: true, isPaymentRequest: e.isPaymentRequest) : e).toList();
+        _items = _items.map((e) => e.id == item.id ? _NotificationItem(id: e.id, title: e.title, body: e.body, date: e.date, read: true, isPaymentRequest: e.isPaymentRequest, paymentRequestData: e.paymentRequestData) : e).toList();
       });
       final prefs = await SharedPreferences.getInstance();
       await _save(prefs);
@@ -123,9 +136,21 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   Future<void> _markAllRead() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      _items = _items.map((e) => _NotificationItem(id: e.id, title: e.title, body: e.body, date: e.date, read: true, isPaymentRequest: e.isPaymentRequest)).toList();
+      _items = _items.map((e) => _NotificationItem(id: e.id, title: e.title, body: e.body, date: e.date, read: true, isPaymentRequest: e.isPaymentRequest, paymentRequestData: e.paymentRequestData)).toList();
     });
     await _save(prefs);
+  }
+
+  Future<void> _deleteItem(_NotificationItem item) async {
+    setState(() => _items = _items.where((e) => e.id != item.id).toList());
+    final prefs = await SharedPreferences.getInstance();
+    if (item.isPaymentRequest == true) {
+      _dismissedIds.add(item.id);
+      await prefs.setString(_dismissedKey, jsonEncode(_dismissedIds.toList()));
+    } else {
+      final localOnly = _items.where((e) => e.isPaymentRequest != true).toList();
+      await _saveLocal(prefs, localOnly);
+    }
   }
 
   @override
@@ -163,52 +188,73 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   itemCount: _items.length,
                   itemBuilder: (context, index) {
                     final item = _items[index];
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Material(
-                        color: item.read ? DesignSystem.gray50 : DesignSystem.white,
-                        borderRadius: BorderRadius.circular(DesignSystem.radiusLg),
-                        child: InkWell(
-                          onTap: () {
-                            if (item.isPaymentRequest == true && item.paymentRequestData != null) {
-                              Navigator.of(context).push(
-                                MaterialPageRoute<void>(
-                                  builder: (_) => PaymentRequestResponseScreen(paymentRequest: item.paymentRequestData!),
-                                ),
-                              ).then((_) => _load());
-                            } else {
-                              _markRead(item);
-                            }
-                          },
+                    return Dismissible(
+                      key: ValueKey(item.id),
+                      direction: DismissDirection.endToStart,
+                      background: Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        alignment: Alignment.centerRight,
+                        padding: const EdgeInsets.only(right: 20),
+                        decoration: BoxDecoration(
+                          color: DesignSystem.red500,
                           borderRadius: BorderRadius.circular(DesignSystem.radiusLg),
-                          child: Padding(
-                            padding: const EdgeInsets.all(DesignSystem.space16),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Container(
-                                  width: 40,
-                                  height: 40,
-                                  decoration: BoxDecoration(
-                                    color: DesignSystem.indigo50,
-                                    borderRadius: BorderRadius.circular(DesignSystem.radiusMd),
+                        ),
+                        child: const Icon(Icons.delete_outline_rounded, color: Colors.white, size: 28),
+                      ),
+                      onDismissed: (_) => _deleteItem(item),
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Material(
+                          color: item.read ? DesignSystem.gray50 : DesignSystem.white,
+                          borderRadius: BorderRadius.circular(DesignSystem.radiusLg),
+                          child: InkWell(
+                            onTap: () {
+                              if (item.isPaymentRequest == true && item.paymentRequestData != null) {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute<void>(
+                                    builder: (_) => PaymentRequestResponseScreen(paymentRequest: item.paymentRequestData!),
                                   ),
-                                  child: Icon(item.read ? Icons.notifications_rounded : Icons.notifications_active_rounded, color: DesignSystem.indigo600, size: 22),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(item.title, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: DesignSystem.gray900)),
-                                      const SizedBox(height: 4),
-                                      Text(item.body, style: TextStyle(fontSize: 13, color: DesignSystem.gray600)),
-                                      const SizedBox(height: 4),
-                                      Text(item.date, style: TextStyle(fontSize: 11, color: DesignSystem.gray400)),
-                                    ],
+                                ).then((_) => _load());
+                              } else {
+                                _markRead(item);
+                              }
+                            },
+                            borderRadius: BorderRadius.circular(DesignSystem.radiusLg),
+                            child: Padding(
+                              padding: const EdgeInsets.all(DesignSystem.space16),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    width: 40,
+                                    height: 40,
+                                    decoration: BoxDecoration(
+                                      color: DesignSystem.indigo50,
+                                      borderRadius: BorderRadius.circular(DesignSystem.radiusMd),
+                                    ),
+                                    child: Icon(item.read ? Icons.notifications_rounded : Icons.notifications_active_rounded, color: DesignSystem.indigo600, size: 22),
                                   ),
-                                ),
-                              ],
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(item.title, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: DesignSystem.gray900)),
+                                        const SizedBox(height: 4),
+                                        Text(item.body, style: TextStyle(fontSize: 13, color: DesignSystem.gray600)),
+                                        const SizedBox(height: 4),
+                                        Text(item.date, style: TextStyle(fontSize: 11, color: DesignSystem.gray400)),
+                                      ],
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.delete_outline_rounded, size: 22, color: DesignSystem.gray400),
+                                    onPressed: () => _deleteItem(item),
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),

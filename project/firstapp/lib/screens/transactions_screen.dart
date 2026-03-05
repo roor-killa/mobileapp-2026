@@ -2,16 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../models/models.dart';
+import '../theme/design_system.dart';
 
 class TransactionsScreen extends StatefulWidget {
   final List<Account> accounts;
   final List<Transaction> transactions;
+  final List<Map<String, dynamic>> stockTransactions;
   final String initialFilter;
 
   const TransactionsScreen({
     super.key,
     required this.accounts,
     required this.transactions,
+    this.stockTransactions = const [],
     this.initialFilter = 'all',
   });
 
@@ -37,7 +40,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     super.dispose();
   }
 
-  List<Transaction> _filtered() {
+  List<Transaction> _filteredBank() {
     final ids = widget.accounts.map((a) => a.id).toSet();
     var list = widget.transactions.where((t) {
       final isOutgoing = ids.contains(t.fromAccountId) && (t.toAccountId == null || !ids.contains(t.toAccountId));
@@ -57,12 +60,37 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     return list;
   }
 
+  /// Liste fusionnée (banque + bourse) triée par date décroissante.
+  List<_TransactionItem> _combinedList() {
+    final bankList = _filteredBank();
+    final List<_TransactionItem> items = [];
+    for (final t in bankList) {
+      items.add(_TransactionItem(date: t.transactionDate, bank: t, stock: null));
+    }
+    for (final s in widget.stockTransactions) {
+      try {
+        final date = DateTime.parse(s['date'] as String);
+        final symbol = s['symbol'] as String? ?? '';
+        if (_searchQuery.isNotEmpty && !symbol.toLowerCase().contains(_searchQuery)) continue;
+        if (_filter != 'all' && _filter != 'bourse') continue;
+        items.add(_TransactionItem(date: date, bank: null, stock: s));
+      } catch (_) {}
+    }
+    if (_filter == 'outgoing' || _filter == 'incoming' || _filter == 'internal') {
+      items.removeWhere((e) => e.stock != null);
+    }
+    if (_filter == 'bourse') {
+      items.removeWhere((e) => e.bank != null);
+    }
+    items.sort((a, b) => b.date.compareTo(a.date));
+    return items;
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final ids = widget.accounts.map((a) => a.id).toSet();
     final dateFormat = DateFormat('dd/MM/yyyy HH:mm');
-    final list = _filtered();
+    final list = _combinedList();
 
     return Scaffold(
       appBar: AppBar(title: const Text('Transactions')),
@@ -91,6 +119,11 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                   label: const Text('Toutes'),
                   selected: _filter == 'all',
                   onSelected: (_) => setState(() => _filter = 'all'),
+                ),
+                FilterChip(
+                  label: const Text('Bourse'),
+                  selected: _filter == 'bourse',
+                  onSelected: (_) => setState(() => _filter = 'bourse'),
                 ),
                 FilterChip(
                   label: const Text('Entrant'),
@@ -123,7 +156,35 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                     itemCount: list.length,
                     separatorBuilder: (_, __) => Divider(color: scheme.outlineVariant),
                     itemBuilder: (context, i) {
-                      final t = list[i];
+                      final item = list[i];
+                      if (item.stock != null) {
+                        final s = item.stock!;
+                        final total = (s['total'] as num?)?.toDouble() ?? 0.0;
+                        final quantity = s['quantity'] as int? ?? 0;
+                        final symbol = s['symbol'] as String? ?? '';
+                        final name = s['name'] as String? ?? '';
+                        final accountId = s['accountId'] as int?;
+                        String accountLabel = '';
+                        for (final a in widget.accounts) {
+                          if (a.id == accountId) {
+                            accountLabel = a.accountType;
+                            break;
+                          }
+                        }
+                        final parts = [if (accountLabel.isNotEmpty) accountLabel, name, dateFormat.format(item.date)].where((e) => e.toString().isNotEmpty);
+                        return ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: const Icon(Icons.show_chart_rounded, color: DesignSystem.orange600),
+                          title: Text('Achat Bourse: $quantity × $symbol'),
+                          subtitle: Text(parts.join(' • ')),
+                          trailing: Text(
+                            '−${total.toStringAsFixed(2)} €',
+                            style: const TextStyle(fontWeight: FontWeight.w800, color: DesignSystem.gray700),
+                          ),
+                        );
+                      }
+                      final t = item.bank!;
+                      final ids = widget.accounts.map((a) => a.id).toSet();
                       final isOutgoing = ids.contains(t.fromAccountId) && (t.toAccountId == null || !ids.contains(t.toAccountId));
                       final isIncoming = t.toAccountId != null && ids.contains(t.toAccountId) && !ids.contains(t.fromAccountId);
                       final isInternal = t.toAccountId != null && ids.contains(t.toAccountId) && ids.contains(t.fromAccountId);
@@ -189,4 +250,11 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       ),
     );
   }
+}
+
+class _TransactionItem {
+  final DateTime date;
+  final Transaction? bank;
+  final Map<String, dynamic>? stock;
+  _TransactionItem({required this.date, this.bank, this.stock});
 }

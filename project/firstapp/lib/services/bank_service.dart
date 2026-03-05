@@ -211,6 +211,95 @@ class BankService {
     }
   }
 
+  /// Demande d'envoi d'un code de réinitialisation par email.
+  Future<void> requestPasswordReset(String email) async {
+    await init();
+    try {
+      final response = await http
+          .post(
+            Uri.parse('${ApiConfig.baseUrl}${ApiConfig.forgotPasswordEndpoint}'),
+            headers: _jsonHeaders(),
+            body: jsonEncode({'email': email}),
+          )
+          .timeout(const Duration(seconds: 20));
+
+      if (response.statusCode == 200) return;
+      throw Exception(_extractErrorMessage(response));
+    } on TimeoutException catch (e) {
+      throw _networkException(e);
+    } on http.ClientException catch (e) {
+      throw _networkException(e);
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw _networkException(e);
+    }
+  }
+
+  /// Réinitialise le mot de passe avec le code reçu par email.
+  Future<void> resetPassword({
+    required String email,
+    required String token,
+    required String password,
+    required String passwordConfirmation,
+  }) async {
+    await init();
+    try {
+      final response = await http
+          .post(
+            Uri.parse('${ApiConfig.baseUrl}${ApiConfig.resetPasswordEndpoint}'),
+            headers: _jsonHeaders(),
+            body: jsonEncode({
+              'email': email,
+              'token': token,
+              'password': password,
+              'password_confirmation': passwordConfirmation,
+            }),
+          )
+          .timeout(const Duration(seconds: 20));
+
+      if (response.statusCode == 200) return;
+      throw Exception(_extractErrorMessage(response));
+    } on TimeoutException catch (e) {
+      throw _networkException(e);
+    } on http.ClientException catch (e) {
+      throw _networkException(e);
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw _networkException(e);
+    }
+  }
+
+  /// Envoie un message au chatbot et retourne la réponse (nécessite d'être connecté).
+  Future<String> chat(String message) async {
+    await init();
+    try {
+      final response = await http
+          .post(
+            Uri.parse('${ApiConfig.baseUrl}${ApiConfig.chatEndpoint}'),
+            headers: _jsonHeaders(withAuth: true),
+            body: jsonEncode({'message': message}),
+          )
+          .timeout(const Duration(seconds: 35));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return (data['reply'] as String?) ?? 'Pas de réponse.';
+      }
+      if (response.statusCode == 401) {
+        await _handleUnauthorized();
+        throw Exception('Session expirée. Merci de vous reconnecter.');
+      }
+      throw Exception(_extractErrorMessage(response));
+    } on TimeoutException catch (e) {
+      throw _networkException(e);
+    } on http.ClientException catch (e) {
+      throw _networkException(e);
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw _networkException(e);
+    }
+  }
+
   // Comptes
   Future<List<Account>> getAccounts() async {
     await init();

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../services/bank_service.dart';
 import 'dashboard_screen.dart';
+import 'forgot_password_screen.dart';
 import '../theme/design_system.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -392,12 +393,38 @@ class _LoginScreenState extends State<LoginScreen> {
           validator: (v) => (v?.isEmpty ?? true) ? 'Veuillez entrer votre email' : null,
         ),
         const SizedBox(height: 16),
-        _buildFigmaPasswordField(
-          label: 'Mot de passe',
+        const Text('Mot de passe', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: DesignSystem.gray600)),
+        const SizedBox(height: 6),
+        TextFormField(
           controller: _passwordController,
+          obscureText: !_showPassword,
           validator: (v) => (v?.isEmpty ?? true) ? 'Veuillez entrer votre mot de passe' : null,
+          decoration: InputDecoration(
+            hintText: '••••••••',
+            prefixIcon: const Icon(Icons.lock_outline_rounded, size: 20, color: DesignSystem.gray400),
+            suffixIcon: IconButton(
+              icon: Icon(_showPassword ? Icons.visibility_off_rounded : Icons.visibility_rounded, size: 20, color: DesignSystem.gray400),
+              onPressed: () => setState(() => _showPassword = !_showPassword),
+            ),
+            filled: true,
+            fillColor: DesignSystem.gray50,
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: DesignSystem.indigo600, width: 1.5)),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 12),
+        Align(
+          alignment: Alignment.centerRight,
+          child: GestureDetector(
+            onTap: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()));
+            },
+            child: const Text('Mot de passe oublié ?', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: DesignSystem.indigo600)),
+          ),
+        ),
+        const SizedBox(height: 20),
         SizedBox(
           height: 52,
           child: ElevatedButton(
@@ -610,8 +637,10 @@ class _LoginScreenState extends State<LoginScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: DesignSystem.gray600)),
-        const SizedBox(height: 6),
+        if (label.isNotEmpty) ...[
+          Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: DesignSystem.gray600)),
+          const SizedBox(height: 6),
+        ],
         TextFormField(
           controller: controller,
           obscureText: !_showPassword,

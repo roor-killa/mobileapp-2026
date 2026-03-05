@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends \App\Http\Controllers\Controller
@@ -113,6 +114,61 @@ class AuthController extends \App\Http\Controllers\Controller
 
         return response()->json([
             'message' => 'Mot de passe modifié avec succès.',
+        ]);
+    }
+
+    /**
+     * Demande de réinitialisation de mot de passe (envoi d'un email avec le code).
+     */
+    public function forgotPassword(Request $request)
+    {
+        $request->validate([
+            'email' => ['required', 'string', 'email'],
+        ]);
+
+        $status = Password::sendResetLink(
+            $request->only('email')
+        );
+
+        if ($status !== Password::RESET_LINK_SENT) {
+            throw ValidationException::withMessages([
+                'email' => [__($status)],
+            ]);
+        }
+
+        return response()->json([
+            'message' => 'Si un compte existe avec cette adresse email, vous recevrez un code de réinitialisation par email.',
+        ]);
+    }
+
+    /**
+     * Réinitialisation du mot de passe avec le code reçu par email.
+     */
+    public function resetPassword(Request $request)
+    {
+        $validated = $request->validate([
+            'email' => ['required', 'string', 'email'],
+            'token' => ['required', 'string'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        $status = Password::reset(
+            $validated,
+            function (User $user, string $password): void {
+                $user->forceFill([
+                    'password' => Hash::make($password),
+                ])->save();
+            }
+        );
+
+        if ($status !== Password::PASSWORD_RESET) {
+            throw ValidationException::withMessages([
+                'email' => [__($status)],
+            ]);
+        }
+
+        return response()->json([
+            'message' => 'Mot de passe réinitialisé avec succès. Vous pouvez vous connecter.',
         ]);
     }
 
