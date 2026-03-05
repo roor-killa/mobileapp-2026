@@ -1,0 +1,71 @@
+name: app_bkn
+description: BKN - Paiement étudiant nouvelle génération
+publish_to: 'none'
+version: 2.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Icônes Apple style
+  cupertino_icons: ^1.0.8
+
+  # HTTP et URL
+  http: ^1.2.1
+  url_launcher: ^6.2.4
+
+  # State management
+  provider: ^6.1.2
+
+  # Animations & UI
+  flutter_animate: ^4.5.0
+  shimmer: ^3.0.0
+  google_fonts: ^6.2.1
+
+  # Internationalisation et stockage local
+  intl: ^0.18.0
+  shared_preferences: ^2.2.2
+
+  # QR code et scanner
+  qr_flutter: ^4.1.0
+  mobile_scanner: ^5.1.0
+
+  # Découverte réseau / Bonjour pour iOS & Android
+  bonsoir: ^6.0.1
+  flutter_secure_storage: ^10.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.14.4
+  flutter_native_splash: ^2.4.7
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/icon/
+    - assets/images/
+    - assets/animations/
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/icon.png"
+  adaptive_icon_background: "#3A86FF"
+  adaptive_icon_foreground: "assets/icon/icon_adaptive.png"
+  remove_alpha_ios: true
+  min_sdk_android: 21
+
+flutter_native_splash:
+  color: "#3A86FF"
+  image: assets/icon/icon.png
+  android: true
+  ios: true
+  android_gravity: center
+  ios_content_mode: center
+  fullscreen: true
