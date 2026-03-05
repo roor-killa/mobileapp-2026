@@ -1,0 +1,30 @@
+name: transfer_app
+description: "Application de transfert d'argent avec Laravel API"
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # Package HTTP pour les appels API
+  http: ^1.2.0
+  
+  # Package pour gérer les permissions (si nécessaire)
+  permission_handler: ^11.3.0
+  
+  # Icônes Cupertino
+  cupertino_icons: ^1.0.6
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
