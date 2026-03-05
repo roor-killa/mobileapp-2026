@@ -8,6 +8,7 @@ class TransactionsScreen extends StatefulWidget {
   final List<Account> accounts;
   final List<Transaction> transactions;
   final List<Map<String, dynamic>> stockTransactions;
+  final List<Map<String, dynamic>> cryptoTransactions;
   final String initialFilter;
 
   const TransactionsScreen({
@@ -15,6 +16,7 @@ class TransactionsScreen extends StatefulWidget {
     required this.accounts,
     required this.transactions,
     this.stockTransactions = const [],
+    this.cryptoTransactions = const [],
     this.initialFilter = 'all',
   });
 
@@ -60,12 +62,12 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     return list;
   }
 
-  /// Liste fusionnée (banque + bourse) triée par date décroissante.
+  /// Liste fusionnée (banque + bourse + crypto) triée par date décroissante.
   List<_TransactionItem> _combinedList() {
     final bankList = _filteredBank();
     final List<_TransactionItem> items = [];
     for (final t in bankList) {
-      items.add(_TransactionItem(date: t.transactionDate, bank: t, stock: null));
+      items.add(_TransactionItem(date: t.transactionDate, bank: t, stock: null, crypto: null));
     }
     for (final s in widget.stockTransactions) {
       try {
@@ -73,14 +75,26 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         final symbol = s['symbol'] as String? ?? '';
         if (_searchQuery.isNotEmpty && !symbol.toLowerCase().contains(_searchQuery)) continue;
         if (_filter != 'all' && _filter != 'bourse') continue;
-        items.add(_TransactionItem(date: date, bank: null, stock: s));
+        items.add(_TransactionItem(date: date, bank: null, stock: s, crypto: null));
+      } catch (_) {}
+    }
+    for (final c in widget.cryptoTransactions) {
+      try {
+        final date = DateTime.parse(c['date'] as String);
+        final symbol = c['symbol'] as String? ?? '';
+        if (_searchQuery.isNotEmpty && !symbol.toLowerCase().contains(_searchQuery)) continue;
+        if (_filter != 'all' && _filter != 'crypto') continue;
+        items.add(_TransactionItem(date: date, bank: null, stock: null, crypto: c));
       } catch (_) {}
     }
     if (_filter == 'outgoing' || _filter == 'incoming' || _filter == 'internal') {
-      items.removeWhere((e) => e.stock != null);
+      items.removeWhere((e) => e.stock != null || e.crypto != null);
     }
     if (_filter == 'bourse') {
-      items.removeWhere((e) => e.bank != null);
+      items.removeWhere((e) => e.bank != null || e.crypto != null);
+    }
+    if (_filter == 'crypto') {
+      items.removeWhere((e) => e.bank != null || e.stock != null);
     }
     items.sort((a, b) => b.date.compareTo(a.date));
     return items;
@@ -126,6 +140,11 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                   onSelected: (_) => setState(() => _filter = 'bourse'),
                 ),
                 FilterChip(
+                  label: const Text('Crypto'),
+                  selected: _filter == 'crypto',
+                  onSelected: (_) => setState(() => _filter = 'crypto'),
+                ),
+                FilterChip(
                   label: const Text('Entrant'),
                   selected: _filter == 'incoming',
                   onSelected: (_) => setState(() => _filter = 'incoming'),
@@ -157,6 +176,32 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                     separatorBuilder: (_, __) => Divider(color: scheme.outlineVariant),
                     itemBuilder: (context, i) {
                       final item = list[i];
+                      if (item.crypto != null) {
+                        final c = item.crypto!;
+                        final total = (c['total'] as num?)?.toDouble() ?? 0.0;
+                        final quantity = c['quantity'] as int? ?? 0;
+                        final symbol = c['symbol'] as String? ?? '';
+                        final name = c['name'] as String? ?? '';
+                        final accountId = c['accountId'] as int?;
+                        String accountLabel = '';
+                        for (final a in widget.accounts) {
+                          if (a.id == accountId) {
+                            accountLabel = a.accountType;
+                            break;
+                          }
+                        }
+                        final parts = [if (accountLabel.isNotEmpty) accountLabel, name, dateFormat.format(item.date)].where((e) => e.toString().isNotEmpty);
+                        return ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: const Icon(Icons.currency_bitcoin_rounded, color: DesignSystem.orange600),
+                          title: Text('Achat Crypto: $quantity × $symbol'),
+                          subtitle: Text(parts.join(' • ')),
+                          trailing: Text(
+                            '−${total.toStringAsFixed(2)} €',
+                            style: const TextStyle(fontWeight: FontWeight.w800, color: DesignSystem.gray700),
+                          ),
+                        );
+                      }
                       if (item.stock != null) {
                         final s = item.stock!;
                         final total = (s['total'] as num?)?.toDouble() ?? 0.0;
@@ -256,5 +301,6 @@ class _TransactionItem {
   final DateTime date;
   final Transaction? bank;
   final Map<String, dynamic>? stock;
-  _TransactionItem({required this.date, this.bank, this.stock});
+  final Map<String, dynamic>? crypto;
+  _TransactionItem({required this.date, this.bank, this.stock, this.crypto});
 }

@@ -6,18 +6,16 @@ import '../theme/design_system.dart';
 import '../models/models.dart';
 import '../services/bank_service.dart';
 
-/// Détail d'une action : graphique, prix, quantité, bouton Acheter.
-class StockDetailScreen extends StatefulWidget {
+/// Détail d'une crypto : graphique, prix, quantité, bouton Acheter.
+class CryptoDetailScreen extends StatefulWidget {
   final String symbol;
   final String name;
   final double price;
   final double changePercent;
-  /// Comptes pour choisir sur lequel débiter l'achat (un achat = un seul compte).
   final List<Account> accounts;
-  /// Compte présélectionné (ex. celui affiché dans l'écran Bourse).
   final int? selectedAccountId;
 
-  const StockDetailScreen({
+  const CryptoDetailScreen({
     super.key,
     required this.symbol,
     required this.name,
@@ -28,13 +26,12 @@ class StockDetailScreen extends StatefulWidget {
   });
 
   @override
-  State<StockDetailScreen> createState() => _StockDetailScreenState();
+  State<CryptoDetailScreen> createState() => _CryptoDetailScreenState();
 }
 
-class _StockDetailScreenState extends State<StockDetailScreen> {
+class _CryptoDetailScreenState extends State<CryptoDetailScreen> {
   int _quantity = 1;
   bool _loading = false;
-  /// Compte sur lequel l'achat sera enregistré (par défaut: selectedAccountId ou premier compte).
   int? _selectedAccountId;
 
   @override
@@ -46,7 +43,6 @@ class _StockDetailScreenState extends State<StockDetailScreen> {
     }
   }
 
-  /// Données simulées pour le graphique (30 points, tendance selon changePercent).
   List<double> get _chartData {
     final rand = math.Random(symbolToSeed(widget.symbol));
     final points = <double>[];
@@ -72,7 +68,13 @@ class _StockDetailScreenState extends State<StockDetailScreen> {
     return Scaffold(
       backgroundColor: DesignSystem.gray50,
       appBar: AppBar(
-        title: Text(widget.symbol),
+        title: Row(
+          children: [
+            Icon(Icons.currency_bitcoin_rounded, color: DesignSystem.orange600, size: 22),
+            const SizedBox(width: 8),
+            Text(widget.symbol),
+          ],
+        ),
         backgroundColor: DesignSystem.gray50,
         foregroundColor: DesignSystem.gray900,
         elevation: 0,
@@ -105,7 +107,6 @@ class _StockDetailScreenState extends State<StockDetailScreen> {
               ],
             ),
             const SizedBox(height: 24),
-            // Graphique
             Container(
               height: 200,
               padding: const EdgeInsets.all(16),
@@ -118,7 +119,7 @@ class _StockDetailScreenState extends State<StockDetailScreen> {
               ),
               child: CustomPaint(
                 size: const Size(double.infinity, 200),
-                painter: _LineChartPainter(
+                painter: _CryptoLineChartPainter(
                   data: data,
                   lineColor: isPositive ? DesignSystem.green500 : DesignSystem.red500,
                   fillColor: (isPositive ? DesignSystem.green500 : DesignSystem.red500).withValues(alpha: 0.1),
@@ -126,7 +127,6 @@ class _StockDetailScreenState extends State<StockDetailScreen> {
               ),
             ),
             const SizedBox(height: 24),
-            // Quantité
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -181,7 +181,7 @@ class _StockDetailScreenState extends State<StockDetailScreen> {
                       const Text('Total', style: TextStyle(fontSize: 14, color: DesignSystem.gray600)),
                       Text(
                         '${total.toStringAsFixed(2)} €',
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: DesignSystem.indigo600),
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: DesignSystem.orange600),
                       ),
                     ],
                   ),
@@ -192,7 +192,7 @@ class _StockDetailScreenState extends State<StockDetailScreen> {
                     child: FilledButton(
                       onPressed: (_loading || widget.accounts.isEmpty) ? null : _buy,
                       style: FilledButton.styleFrom(
-                        backgroundColor: DesignSystem.indigo600,
+                        backgroundColor: DesignSystem.orange600,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       ),
@@ -249,10 +249,10 @@ class _StockDetailScreenState extends State<StockDetailScreen> {
       await BankService().debitAccount(
         accountId,
         total,
-        description: 'Achat Bourse: $_quantity × ${widget.symbol}',
+        description: 'Achat Crypto: $_quantity × ${widget.symbol}',
       );
       final prefs = await SharedPreferences.getInstance();
-      final key = 'stock_portfolio_$accountId';
+      final key = 'crypto_portfolio_$accountId';
       final raw = prefs.getString(key);
       List<Map<String, dynamic>> positions = [];
       if (raw != null) {
@@ -276,7 +276,7 @@ class _StockDetailScreenState extends State<StockDetailScreen> {
         });
       }
       await prefs.setString(key, jsonEncode(positions));
-      final txKey = 'stock_transactions_$accountId';
+      final txKey = 'crypto_transactions_$accountId';
       final txRaw = prefs.getString(txKey);
       List<Map<String, dynamic>> txList = [];
       if (txRaw != null) {
@@ -291,6 +291,7 @@ class _StockDetailScreenState extends State<StockDetailScreen> {
         'quantity': q,
         'total': totalCost,
         'accountId': accountId,
+        'type': 'crypto',
       });
       await prefs.setString(txKey, jsonEncode(txList));
       if (!mounted) return;
@@ -315,12 +316,12 @@ class _StockDetailScreenState extends State<StockDetailScreen> {
   }
 }
 
-class _LineChartPainter extends CustomPainter {
+class _CryptoLineChartPainter extends CustomPainter {
   final List<double> data;
   final Color lineColor;
   final Color fillColor;
 
-  _LineChartPainter({required this.data, required this.lineColor, required this.fillColor});
+  _CryptoLineChartPainter({required this.data, required this.lineColor, required this.fillColor});
 
   @override
   void paint(Canvas canvas, Size size) {

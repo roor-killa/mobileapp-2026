@@ -28,6 +28,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   List<Account>? _accounts;
   List<Transaction>? _transactions;
   List<Map<String, dynamic>> _stockTransactions = [];
+  List<Map<String, dynamic>> _cryptoTransactions = [];
   String? _errorMessage;
   String? _userName;
   final String _transactionFilter = 'all';
@@ -61,6 +62,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final accounts = await _bankService.getAccounts();
       final transactions = await _bankService.getTransactions();
       List<Map<String, dynamic>> stockTx = [];
+      List<Map<String, dynamic>> cryptoTx = [];
       for (final acc in accounts) {
         final raw = prefs.getString('stock_transactions_${acc.id}');
         if (raw != null) {
@@ -71,6 +73,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 final m = Map<String, dynamic>.from(e as Map);
                 if (!m.containsKey('accountId')) m['accountId'] = acc.id;
                 stockTx.add(m);
+              }
+            }
+          } catch (_) {}
+        }
+        final cryptoRaw = prefs.getString('crypto_transactions_${acc.id}');
+        if (cryptoRaw != null) {
+          try {
+            final decoded = jsonDecode(cryptoRaw) as List<dynamic>?;
+            if (decoded != null) {
+              for (final e in decoded) {
+                final m = Map<String, dynamic>.from(e as Map);
+                if (!m.containsKey('accountId')) m['accountId'] = acc.id;
+                m['type'] = 'crypto';
+                cryptoTx.add(m);
               }
             }
           } catch (_) {}
@@ -97,10 +113,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
           } catch (_) {}
         }
       }
+      if (!mounted) return;
       setState(() {
         _accounts = accounts;
         _transactions = transactions;
         _stockTransactions = stockTx;
+        _cryptoTransactions = cryptoTx;
         _errorMessage = null;
       });
     } catch (e) {
@@ -109,6 +127,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         await _logout();
         return;
       }
+      if (!mounted) return;
       setState(() => _errorMessage = msg);
     }
   }
@@ -248,7 +267,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: DesignSystem.gray900),
                         ),
                         GestureDetector(
-                          onTap: (_accounts == null && _stockTransactions.isEmpty)
+                          onTap: (_accounts == null && _stockTransactions.isEmpty && _cryptoTransactions.isEmpty)
                               ? null
                               : () {
                                   Navigator.push(
@@ -258,6 +277,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                         accounts: _accounts ?? const [],
                                         transactions: _transactions ?? const [],
                                         stockTransactions: _stockTransactions,
+                                        cryptoTransactions: _cryptoTransactions,
                                         initialFilter: _transactionFilter,
                                       ),
                                     ),
@@ -276,7 +296,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         padding: EdgeInsets.only(top: 16),
                         child: Center(child: CircularProgressIndicator()),
                       )
-                    else if (_transactions!.isEmpty && _stockTransactions.isEmpty)
+                    else if (_transactions!.isEmpty && _stockTransactions.isEmpty && _cryptoTransactions.isEmpty)
                       const Padding(
                         padding: EdgeInsets.only(top: 8),
                         child: Text(
@@ -514,7 +534,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         }),
         _buildQuickAction('Recharger', Icons.add_rounded, DesignSystem.green50, DesignSystem.green600, () {}),
         _buildQuickAction('Bourse', Icons.show_chart_rounded, DesignSystem.orange50, DesignSystem.orange600, () {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => TradingScreen(accounts: _accounts ?? [])));
+          Navigator.push(context, MaterialPageRoute(builder: (_) => TradingScreen(accounts: _accounts ?? []))).then((_) => _loadData());
         }),
       ],
     );
@@ -632,22 +652,93 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   List<Widget> _buildRecentTransactionsList() {
     final dateFormat = DateFormat('dd/MM/yyyy HH:mm');
-    final List<(DateTime, bool, dynamic)> combined = [];
+    final List<(DateTime, int, dynamic)> combined = []; // 0=bank, 1=stock, 2=crypto
     for (final t in _filteredTransactions(_transactions ?? [])) {
-      combined.add((t.transactionDate, false, t));
+      combined.add((t.transactionDate, 0, t));
     }
     for (final s in _stockTransactions) {
       try {
         final date = DateTime.parse(s['date'] as String);
-        combined.add((date, true, s));
+        combined.add((date, 1, s));
+      } catch (_) {}
+    }
+    for (final c in _cryptoTransactions) {
+      try {
+        final date = DateTime.parse(c['date'] as String);
+        combined.add((date, 2, c));
       } catch (_) {}
     }
     combined.sort((a, b) => b.$1.compareTo(a.$1));
     final take = combined.take(5).toList();
     return take.map<Widget>((e) {
-      if (e.$2) return _buildStockTransactionTile(e.$3 as Map<String, dynamic>, dateFormat);
+      if (e.$2 == 1) return _buildStockTransactionTile(e.$3 as Map<String, dynamic>, dateFormat);
+      if (e.$2 == 2) return _buildCryptoTransactionTile(e.$3 as Map<String, dynamic>, dateFormat);
       return _buildTransactionTile(e.$3 as Transaction);
     }).toList();
+  }
+
+  Widget _buildCryptoTransactionTile(Map<String, dynamic> c, DateFormat dateFormat) {
+    final total = (c['total'] as num?)?.toDouble() ?? 0.0;
+    final quantity = c['quantity'] as int? ?? 0;
+    final symbol = c['symbol'] as String? ?? '';
+    final name = c['name'] as String? ?? '';
+    final accountId = c['accountId'] as int?;
+    String accountLabel = '';
+    if (accountId != null && _accounts != null) {
+      for (final a in _accounts!) {
+        if (a.id == accountId) {
+          accountLabel = a.accountType;
+          break;
+        }
+      }
+    }
+    String dateStr = '';
+    try {
+      dateStr = dateFormat.format(DateTime.parse(c['date'] as String));
+    } catch (_) {}
+    final subtitle = [if (accountLabel.isNotEmpty) accountLabel, name, dateStr].where((e) => e.toString().isNotEmpty).join(' • ');
+    return Padding(
+      padding: const EdgeInsets.only(bottom: DesignSystem.space12),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: DesignSystem.orange50,
+              borderRadius: BorderRadius.circular(DesignSystem.radiusLg),
+            ),
+            child: const Icon(Icons.currency_bitcoin_rounded, color: DesignSystem.orange600, size: 22),
+          ),
+          const SizedBox(width: DesignSystem.space12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Achat Crypto: $quantity × $symbol',
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: DesignSystem.gray900),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: const TextStyle(fontSize: 12, color: DesignSystem.gray400),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: DesignSystem.space8),
+          Text(
+            '−${total.toStringAsFixed(2)} €',
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: DesignSystem.gray700),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildStockTransactionTile(Map<String, dynamic> s, DateFormat dateFormat) {

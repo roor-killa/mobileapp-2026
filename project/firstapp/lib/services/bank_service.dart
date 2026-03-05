@@ -491,6 +491,80 @@ class BankService {
     }
   }
 
+  /// Débiter un compte (achat bourse / crypto). Retourne le nouveau solde.
+  Future<double> debitAccount(int accountId, double amount, {String description = 'Achat Bourse'}) async {
+    await init();
+    try {
+      final response = await http
+          .post(
+            Uri.parse('${ApiConfig.baseUrl}${ApiConfig.accountDebitEndpoint(accountId)}'),
+            headers: _jsonHeaders(withAuth: true),
+            body: jsonEncode({
+              'amount': amount,
+              'description': description,
+            }),
+          )
+          .timeout(const Duration(seconds: 20));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data is Map<String, dynamic> && data['balance'] != null) {
+          return (data['balance'] as num).toDouble();
+        }
+        return 0;
+      } else if (response.statusCode == 401) {
+        await _handleUnauthorized();
+        throw Exception('Session expirée. Merci de vous reconnecter.');
+      } else {
+        throw Exception(_extractErrorMessage(response));
+      }
+    } on TimeoutException catch (e) {
+      throw _networkException(e);
+    } on http.ClientException catch (e) {
+      throw _networkException(e);
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw _networkException(e);
+    }
+  }
+
+  /// Créditer un compte (ex. vente bourse / crypto). Retourne le nouveau solde.
+  Future<double> creditAccount(int accountId, double amount, {String description = 'Vente Bourse'}) async {
+    await init();
+    try {
+      final response = await http
+          .post(
+            Uri.parse('${ApiConfig.baseUrl}${ApiConfig.accountCreditEndpoint(accountId)}'),
+            headers: _jsonHeaders(withAuth: true),
+            body: jsonEncode({
+              'amount': amount,
+              'description': description,
+            }),
+          )
+          .timeout(const Duration(seconds: 20));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data is Map<String, dynamic> && data['balance'] != null) {
+          return (data['balance'] as num).toDouble();
+        }
+        return 0;
+      } else if (response.statusCode == 401) {
+        await _handleUnauthorized();
+        throw Exception('Session expirée. Merci de vous reconnecter.');
+      } else {
+        throw Exception(_extractErrorMessage(response));
+      }
+    } on TimeoutException catch (e) {
+      throw _networkException(e);
+    } on http.ClientException catch (e) {
+      throw _networkException(e);
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw _networkException(e);
+    }
+  }
+
   // Virement
   Future<Map<String, dynamic>> transfer(
     int fromAccountId,

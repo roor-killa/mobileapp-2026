@@ -23,6 +23,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/accounts', [AccountController::class, 'getAccounts']);
     Route::get('/accounts/{account}', [AccountController::class, 'getAccount']);
     Route::post('/accounts', [AccountController::class, 'createAccount']);
+    Route::post('/accounts/{account}/debit', [AccountController::class, 'debitAccount']);
+    Route::post('/accounts/{account}/credit', [AccountController::class, 'creditAccount']);
     Route::delete('/accounts/{account}', [AccountController::class, 'deleteAccount']);
     Route::get('/beneficiaries', [AccountController::class, 'getBeneficiaries']);
 

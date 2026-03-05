@@ -31,11 +31,15 @@ class TransactionController extends \App\Http\Controllers\Controller
             ->limit(200)
             ->get()
             ->map(function (Transaction $t) use ($accountIds) {
-                $isOutgoing = in_array($t->from_account_id, $accountIds, true) && (! $t->to_account_id || ! in_array($t->to_account_id, $accountIds, true));
-                $isIncoming = $t->to_account_id && in_array($t->to_account_id, $accountIds, true) && (! in_array($t->from_account_id, $accountIds, true));
-                $isInternal = $t->to_account_id && in_array($t->from_account_id, $accountIds, true) && in_array($t->to_account_id, $accountIds, true);
-
-                $direction = $isInternal ? 'internal' : ($isIncoming ? 'incoming' : ($isOutgoing ? 'outgoing' : 'unknown'));
+                // Vente bourse/crypto : crédit sur le compte (affiché comme entrant)
+                if ($t->transaction_type === 'bourse_credit') {
+                    $direction = 'incoming';
+                } else {
+                    $isOutgoing = in_array($t->from_account_id, $accountIds, true) && (! $t->to_account_id || ! in_array($t->to_account_id, $accountIds, true));
+                    $isIncoming = $t->to_account_id && in_array($t->to_account_id, $accountIds, true) && (! in_array($t->from_account_id, $accountIds, true));
+                    $isInternal = $t->to_account_id && in_array($t->from_account_id, $accountIds, true) && in_array($t->to_account_id, $accountIds, true);
+                    $direction = $isInternal ? 'internal' : ($isIncoming ? 'incoming' : ($isOutgoing ? 'outgoing' : 'unknown'));
+                }
 
                 return [
                     'id' => $t->id,
@@ -46,7 +50,7 @@ class TransactionController extends \App\Http\Controllers\Controller
                     'description' => $t->description,
                     'status' => $t->status,
                     'reference_number' => $t->reference_number,
-                    'transaction_date' => $t->transaction_date?->toISOString(),
+                    'transaction_date' => $t->transaction_date?->toIso8601String(),
                     'direction' => $direction,
                     'from_account' => $t->fromAccount ? [
                         'id' => $t->fromAccount->id,

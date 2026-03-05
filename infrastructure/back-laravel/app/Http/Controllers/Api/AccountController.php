@@ -3,7 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Models\Account;
+use App\Models\Transaction;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\Response;
 
 class AccountController extends \App\Http\Controllers\Controller
 {
@@ -111,6 +115,107 @@ class AccountController extends \App\Http\Controllers\Controller
 
         $account->delete();
         return response()->json(['message' => 'Compte supprimé avec succès']);
+    }
+
+    /**
+     * Débiter un compte (ex. achat bourse / crypto). Crée une transaction et met à jour le solde.
+     */
+    public function debitAccount(Request $request, Account $account)
+    {
+        if ($account->user_id !== $request->user()->id) {
+            return response()->json(['message' => 'Non autorisé'], Response::HTTP_FORBIDDEN);
+        }
+
+        $validated = $request->validate([
+            'amount' => 'required|numeric|min:0.01',
+            'description' => 'nullable|string|max:255',
+        ]);
+
+        $amount = (float) $validated['amount'];
+        $description = $validated['description'] ?? 'Achat Bourse';
+
+        if ((float) $account->balance < $amount) {
+            return response()->json([
+                'message' => 'Solde insuffisant',
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        try {
+            DB::transaction(function () use ($account, $amount, $description) {
+                $locked = Account::where('id', $account->id)->lockForUpdate()->firstOrFail();
+                $locked->balance = (float) $locked->balance - $amount;
+                $locked->save();
+
+                Transaction::create([
+                    'from_account_id' => $locked->id,
+                    'to_account_id' => null,
+                    'transaction_type' => 'bourse',
+                    'amount' => $amount,
+                    'description' => $description,
+                    'status' => 'completed',
+                    'reference_number' => 'BRS' . Str::upper(Str::random(12)),
+                    'transaction_date' => now(),
+                ]);
+            });
+        } catch (\Throwable $e) {
+            return response()->json([
+                'message' => 'Erreur lors du débit du compte',
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+
+        $account->refresh();
+        return response()->json([
+            'message' => 'Débit effectué',
+            'balance' => (float) $account->balance,
+        ]);
+    }
+
+    /**
+     * Créditer un compte (ex. vente bourse / crypto). Ajoute au solde et crée une transaction.
+     */
+    public function creditAccount(Request $request, Account $account)
+    {
+        if ($account->user_id !== $request->user()->id) {
+            return response()->json(['message' => 'Non autorisé'], Response::HTTP_FORBIDDEN);
+        }
+
+        $validated = $request->validate([
+            'amount' => 'required|numeric|min:0.01',
+            'description' => 'nullable|string|max:255',
+        ]);
+
+        $amount = (float) $validated['amount'];
+        $description = $validated['description'] ?? 'Vente Bourse';
+
+        try {
+            DB::transaction(function () use ($account, $amount, $description) {
+                $locked = Account::where('id', $account->id)->lockForUpdate()->firstOrFail();
+                $locked->balance = (float) $locked->balance + $amount;
+                $locked->save();
+
+                // Même compte en from/to + type bourse_credit pour éviter from_account_id NULL (compatible sans migration)
+                Transaction::create([
+                    'from_account_id' => $locked->id,
+                    'to_account_id' => $locked->id,
+                    'transaction_type' => 'bourse_credit',
+                    'amount' => $amount,
+                    'description' => $description,
+                    'status' => 'completed',
+                    'reference_number' => 'VNT' . Str::upper(Str::random(12)),
+                    'transaction_date' => now(),
+                ]);
+            });
+        } catch (\Throwable $e) {
+            return response()->json([
+                'message' => 'Erreur lors du crédit du compte',
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+
+        $account->refresh();
+        return response()->json([
+            'message' => 'Crédit effectué',
+            'balance' => (float) $account->balance,
+        ]);
     }
 
     private function generateIBAN($userId): string

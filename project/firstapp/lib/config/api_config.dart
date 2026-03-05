@@ -21,6 +21,8 @@ class ApiConfig {
   static const String accountsEndpoint = '/accounts';
   static const String beneficiariesEndpoint = '/beneficiaries';
   static const String transactionEndpoint = '/transactions/transfer';
+  static String accountDebitEndpoint(int accountId) => '/accounts/$accountId/debit';
+  static String accountCreditEndpoint(int accountId) => '/accounts/$accountId/credit';
   static const String historyEndpoint = '/transactions';
   static const String paymentRequestsEndpoint = '/payment-requests';
   static const String chatEndpoint = '/chat';
