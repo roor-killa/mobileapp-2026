@@ -1,0 +1,56 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  supabaseId   String?  @unique // id utilisateur Supabase Auth (pour connexion via l'app)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  wallets      Wallet[]
+}
+
+model Wallet {
+  id             String        @id @default(uuid())
+  userId         String
+  chain          String        // ETH, SOL ou BTC
+  address        String
+  keyShareServer String        // Moitié serveur de la clé privée (chiffrée)
+  createdAt      DateTime      @default(now())
+  user           User          @relation(fields: [userId], references: [id])
+  transactions   Transaction[]
+
+  @@index([userId])
+}
+
+model Transaction {
+  id          String   @id @default(uuid())
+  walletId    String
+  txHash      String?
+  chain       String
+  type        String   // "send" ou "receive"
+  amount      Decimal
+  tokenSymbol String
+  toAddress   String
+  fromAddress String
+  status      String   @default("pending") // pending, confirmed, failed
+  createdAt   DateTime @default(now())
+  wallet      Wallet   @relation(fields: [walletId], references: [id])
+
+  @@index([walletId])
+}
+
+model PriceCache {
+  id        String   @id @default(uuid())
+  symbol    String   @unique
+  priceEur  Decimal
+  updatedAt DateTime @updatedAt
+}

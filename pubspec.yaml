@@ -34,6 +34,15 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
+  
+  # HTTP package for API calls
+  http: ^1.1.0
+  # Stockage du token de connexion
+  shared_preferences: ^2.2.2
+  # Paiement carte via Stripe
+  flutter_stripe: ^11.2.0
+  # Ouvrir l'URL Stripe Checkout dans le navigateur (web / Chrome)
+  url_launcher: ^6.2.5
 
 dev_dependencies:
   flutter_test:
