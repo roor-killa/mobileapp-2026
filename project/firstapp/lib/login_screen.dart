@@ -46,17 +46,21 @@ class _LoginScreenState extends State<LoginScreen> {
         final data = jsonDecode(response.body);
         String token = data['access_token'];
         
-        print("✅ Login réussi ! Token: $token");
+        // --- MODIFICATION ICI ---
+        // On récupère l'ID de l'utilisateur depuis la réponse JSON
+        // Laravel renvoie généralement l'utilisateur dans data['user']
+        var userId = data['user']['id']; 
+        
+        print("✅ Login réussi ! Token: $token, ID: $userId");
 
-        // --- ÉTAPE CRUCIALE ---
-        // On enregistre le token dans l'ApiService AVANT de changer d'écran
+        // On enregistre les deux informations dans le Singleton
         _apiService.token = token; 
+        _apiService.currentUserId = userId; // Indispensable pour la couleur de l'historique
 
         if (!mounted) return;
         
         setState(() => _isLoading = false);
 
-        // Navigation vers l'écran de transfert
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const TransferScreen()),

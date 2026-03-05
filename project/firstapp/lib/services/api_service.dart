@@ -5,22 +5,27 @@ import '../models/transfer_response.dart';
 import '../models/transaction.dart';
 
 class ApiService {
-  // Instance unique (Singleton)
+  // Instance unique (Singleton) pour partager les données entre les écrans
   static final ApiService _instance = ApiService._internal();
   factory ApiService() => _instance;
   ApiService._internal();
   
   static const String baseUrl = 'http://10.0.2.2:8000/api';
   
-  // Le token sera stocké ici une fois le login réussi
+  // Données de session stockées après le login
   String? token; 
+  dynamic currentUserId; // Stocke l'ID (souvent int ou String selon Laravel)
+
+  /// Récupérer l'ID de l'utilisateur stocké
+  Future<dynamic> getCurrentUserId() async {
+    return currentUserId;
+  }
 
   /// RÉEL : Envoi du virement au serveur Laravel
   Future<TransferResponse> transfererMontant({
     required String email, 
     required double montant
   }) async {
-    // Vérifie bien que c'est /send-money dans ton routes/api.php
     final url = Uri.parse('$baseUrl/send-money');
     
     try {
@@ -74,7 +79,7 @@ class ApiService {
     }
   }
 
-  /// RÉEL : Récupérer le solde actuel
+  /// RÉEL : Récupérer le solde actuel et les infos utilisateur
   Future<double> getSoldeActuel() async {
     final url = Uri.parse('$baseUrl/user'); 
     
@@ -89,7 +94,12 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        // On récupère le champ 'balance' (assure-toi qu'il existe dans ta table users)
+        
+        // On profite de cet appel pour mettre à jour l'ID utilisateur si besoin
+        if (currentUserId == null) {
+          currentUserId = data['id'];
+        }
+
         return double.parse(data['balance'].toString());
       }
       return 0.0;

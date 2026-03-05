@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'dart:convert';
 import '../models/transfer_response.dart';
-import '../models/transaction.dart'; // Assure-toi d'avoir créé ce modèle
+import '../models/transaction.dart';
 import '../services/api_service.dart';
+import '../login_screen.dart' show LoginScreen; // Import nécessaire pour la déconnexion
 
 class TransferScreen extends StatefulWidget {
   const TransferScreen({super.key});
@@ -15,12 +15,17 @@ class TransferScreen extends StatefulWidget {
 class _TransferScreenState extends State<TransferScreen> {
   final TextEditingController _montantController = TextEditingController();
   final TextEditingController _emailDestinataireController = TextEditingController();
+  
+  // Utilisation du Singleton
   final ApiService _apiService = ApiService();
 
   bool _isLoading = false;
   bool _isLoadingHistory = true;
   double? _soldeActuel;
   List<Transaction> _history = [];
+  
+  // Utilisation d'un type dynamique pour éviter les erreurs de comparaison String/int
+  dynamic _currentUserId;
 
   @override
   void initState() {
@@ -35,30 +40,51 @@ class _TransferScreenState extends State<TransferScreen> {
     super.dispose();
   }
 
-  // Charge le solde ET l'historique au démarrage
+  /// Déconnexion de l'utilisateur
+  void _deconnexion() {
+    _apiService.token = null; // Efface le token
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => const LoginScreen()),
+      (route) => false,
+    );
+  }
+
   Future<void> _chargerDonneesInitiales() async {
-    setState(() => _isLoadingHistory = true);
+    if (mounted) setState(() => _isLoadingHistory = true);
+    
+    // On récupère l'ID utilisateur stocké dans le service lors du login
+    _currentUserId = _apiService.currentUserId;
+
     await Future.wait([
       _chargerSoldeInitial(),
       _chargerHistorique(),
     ]);
-    setState(() => _isLoadingHistory = false);
+    
+    if (mounted) setState(() => _isLoadingHistory = false);
   }
 
   Future<void> _chargerSoldeInitial() async {
     try {
       final solde = await _apiService.getSoldeActuel();
-      if (mounted) setState(() => _soldeActuel = solde);
+      if (mounted) {
+        setState(() {
+          _soldeActuel = solde;
+        });
+      }
     } catch (e) {
-      _afficherErreur('Erreur solde: $e');
+      print('Erreur solde: $e');
     }
   }
 
   Future<void> _chargerHistorique() async {
     try {
-      // Note: Tu dois ajouter cette méthode dans ton ApiService
-      final transactions = await _apiService.getTransactions(); 
-      if (mounted) setState(() => _history = transactions);
+      final transactions = await _apiService.getTransactions();
+      if (mounted) {
+        setState(() {
+          _history = transactions;
+        });
+      }
     } catch (e) {
       print('Erreur historique: $e');
     }
@@ -98,11 +124,8 @@ class _TransferScreenState extends State<TransferScreen> {
         _montantController.clear();
         _emailDestinataireController.clear();
         
-        // Affiche la boîte de dialogue de succès
         _showSuccessDialog(response);
-        
-        // Rafraîchit l'historique pour voir la nouvelle ligne
-        _chargerHistorique();
+        _chargerHistorique(); // Rafraîchissement automatique
       }
     } catch (e) {
       if (mounted) setState(() => _isLoading = false);
@@ -173,7 +196,16 @@ class _TransferScreenState extends State<TransferScreen> {
         backgroundColor: Colors.blue,
         foregroundColor: Colors.white,
         actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _chargerDonneesInitiales)
+          IconButton(
+            icon: const Icon(Icons.refresh), 
+            onPressed: _chargerDonneesInitiales,
+            tooltip: "Actualiser",
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout), 
+            onPressed: _deconnexion,
+            tooltip: "Déconnexion",
+          ),
         ],
       ),
       body: RefreshIndicator(
@@ -281,27 +313,33 @@ class _TransferScreenState extends State<TransferScreen> {
     }
 
     return ListView.builder(
-      shrinkWrap: true, // Nécessaire pour fonctionner dans SingleChildScrollView
-      physics: const NeverScrollableScrollPhysics(), // Désactive le scroll de la liste
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       itemCount: _history.length,
       itemBuilder: (context, index) {
         final tx = _history[index];
-        // Note: Ici on suppose que tu as accès à l'ID de l'utilisateur connecté 
-        // Si tu n'as pas l'ID, tu peux comparer par email
-        bool isSent = tx.senderName != "LeNomDuDestinataire"; 
+        
+        // Comparaison robuste en transformant les deux IDs en String
+        bool isSent = tx.senderId.toString() == _currentUserId.toString();
 
         return Card(
           margin: const EdgeInsets.symmetric(vertical: 5),
           child: ListTile(
             leading: CircleAvatar(
               backgroundColor: isSent ? Colors.red.shade50 : Colors.green.shade50,
-              child: Icon(isSent ? Icons.north_east : Icons.south_west, color: isSent ? Colors.red : Colors.green),
+              child: Icon(
+                isSent ? Icons.north_east : Icons.south_west, 
+                color: isSent ? Colors.red : Colors.green
+              ),
             ),
             title: Text(isSent ? "Vers ${tx.receiverName}" : "De ${tx.senderName}"),
             subtitle: Text(tx.date.substring(0, 10)),
             trailing: Text(
               "${isSent ? '-' : '+'}${tx.amount.toStringAsFixed(2)} €",
-              style: TextStyle(fontWeight: FontWeight.bold, color: isSent ? Colors.red : Colors.green),
+              style: TextStyle(
+                fontWeight: FontWeight.bold, 
+                color: isSent ? Colors.red : Colors.green
+              ),
             ),
           ),
         );
