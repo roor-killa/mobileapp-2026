@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
-import 'etudiants_screen.dart'; // Écran vers lequel on redirige après connexion
-import 'inscription_professeur_screen.dart'; // Écran d'inscription
+import 'etudiants_screen.dart';
+import 'login_admin_screen.dart'; // Écran de connexion admin
 
 // Écran de connexion pour les professeurs
 // C'est le premier écran affiché au démarrage de l'app
@@ -13,22 +13,14 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  // Contrôleurs pour récupérer ce que tape le professeur
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-
-  // Service pour appeler l'API Laravel
   final ApiService _apiService = ApiService();
-
-  // État du chargement (true = spinner affiché)
   bool _isLoading = false;
-
-  // Masquer/afficher le mot de passe
   bool _passwordVisible = false;
 
-  // Fonction appelée quand on appuie sur "Se connecter"
+  /// Fonction appelée quand on appuie sur "Se connecter"
   Future<void> _seConnecter() async {
-    // Vérification que les champs ne sont pas vides
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -39,25 +31,21 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    // Active le spinner de chargement
     setState(() => _isLoading = true);
 
     try {
-      // Appel à l'API de connexion
       final success = await _apiService.login(
         _emailController.text,
         _passwordController.text,
       );
 
       if (success) {
-        // Connexion réussie : on va vers l'écran des étudiants
-        // pushReplacement empêche de revenir au login avec le bouton retour
+        // Connexion réussie : redirige vers l'écran des étudiants
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const EtudiantsScreen()),
         );
       } else {
-        // Connexion échouée : on affiche un message d'erreur
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Email ou mot de passe incorrect'),
@@ -66,7 +54,6 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       }
     } catch (e) {
-      // Erreur réseau ou serveur
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Erreur de connexion au serveur'),
@@ -75,7 +62,6 @@ class _LoginScreenState extends State<LoginScreen> {
       );
     }
 
-    // Désactive le spinner
     setState(() => _isLoading = false);
   }
 
@@ -104,7 +90,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
             const SizedBox(height: 30),
 
-            // Titre
             const Text(
               'Espace Professeur',
               style: TextStyle(
@@ -116,7 +101,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
             const SizedBox(height: 8),
 
-            // Sous-titre
             Text(
               'Connectez-vous pour gérer vos étudiants',
               style: TextStyle(fontSize: 14, color: Colors.grey.shade500),
@@ -142,8 +126,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 keyboardType: TextInputType.emailAddress,
                 decoration: InputDecoration(
                   labelText: 'Email',
-                  prefixIcon:
-                      const Icon(Icons.email_outlined, color: Color(0xFF6C63FF)),
+                  prefixIcon: const Icon(Icons.email_outlined,
+                      color: Color(0xFF6C63FF)),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
                     borderSide: BorderSide.none,
@@ -177,12 +161,11 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               child: TextField(
                 controller: _passwordController,
-                obscureText: !_passwordVisible, // Cache le mot de passe
+                obscureText: !_passwordVisible,
                 decoration: InputDecoration(
                   labelText: 'Mot de passe',
-                  prefixIcon:
-                      const Icon(Icons.lock_outline, color: Color(0xFF6C63FF)),
-                  // Bouton pour afficher/masquer le mot de passe
+                  prefixIcon: const Icon(Icons.lock_outline,
+                      color: Color(0xFF6C63FF)),
                   suffixIcon: IconButton(
                     icon: Icon(
                       _passwordVisible
@@ -190,9 +173,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           : Icons.visibility,
                       color: Colors.grey,
                     ),
-                    onPressed: () {
-                      setState(() => _passwordVisible = !_passwordVisible);
-                    },
+                    onPressed: () =>
+                        setState(() => _passwordVisible = !_passwordVisible),
                   ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
@@ -225,7 +207,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   elevation: 3,
                 ),
-                // Affiche un spinner si chargement, sinon le texte
                 child: _isLoading
                     ? const CircularProgressIndicator(color: Colors.white)
                     : const Text(
@@ -239,25 +220,24 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 60),
 
-            // Bouton pour aller vers l'écran d'inscription
-            TextButton(
-              onPressed: () {
-                // Navigue vers l'écran d'inscription
+            // Bouton admin discret tout en bas
+            // Volontairement peu visible pour ne pas attirer l'attention
+            GestureDetector(
+              onTap: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const InscriptionProfesseurScreen(),
+                    builder: (context) => const LoginAdminScreen(),
                   ),
                 );
               },
-              child: const Text(
-                'Pas encore de compte ? S\'inscrire',
+              child: Text(
+                'Accès administrateur',
                 style: TextStyle(
-                  color: Color(0xFF6C63FF),
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
+                  color: Colors.grey.shade400,
+                  fontSize: 12,
                 ),
               ),
             ),

@@ -5,6 +5,7 @@ use App\Http\Controllers\EtudiantController;
 use App\Http\Controllers\ProfesseurController;
 use App\Http\Controllers\MatiereController;
 use App\Http\Controllers\NoteController;
+use App\Http\Controllers\AdminController;
 
 /*
 |--------------------------------------------------------------------------
@@ -12,11 +13,23 @@ use App\Http\Controllers\NoteController;
 |--------------------------------------------------------------------------
 */
 
-// ─── AUTHENTIFICATION ───────────────────────────────────────────────────────
+// ─── AUTHENTIFICATION PROFESSEUR ────────────────────────────────────────────
 // POST /api/login    → connexion professeur
 Route::post('/login', [ProfesseurController::class, 'login']);
-// POST /api/register → inscription professeur
-Route::post('/register', [ProfesseurController::class, 'register']);
+
+// ─── AUTHENTIFICATION ADMIN ─────────────────────────────────────────────────
+// POST /api/admin/login → connexion admin
+Route::post('/admin/login', [AdminController::class, 'login']);
+
+// ─── GESTION PROFESSEURS (admin seulement) ──────────────────────────────────
+// GET    /api/admin/professeurs          → liste tous les professeurs
+Route::get('/admin/professeurs',                      [AdminController::class, 'listeProfesseurs']);
+// POST   /api/admin/professeurs          → crée un professeur
+Route::post('/admin/professeurs',                     [AdminController::class, 'creerProfesseur']);
+// PUT    /api/admin/professeurs/{id}/matieres → modifie les matières d'un prof
+Route::put('/admin/professeurs/{id}/matieres',        [AdminController::class, 'modifierMatieres']);
+// DELETE /api/admin/professeurs/{id}     → supprime un professeur
+Route::delete('/admin/professeurs/{id}',              [AdminController::class, 'supprimerProfesseur']);
 
 // ─── ÉTUDIANTS ──────────────────────────────────────────────────────────────
 // GET    /api/etudiants       → liste tous les étudiants
