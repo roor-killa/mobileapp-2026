@@ -1,0 +1,47 @@
+name: money_transfer_app
+description: Application mobile de transfert d'argent
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # ─── State Management ─────────────────────────────────────────
+  provider: ^6.1.2
+
+  # ─── HTTP & Stockage ──────────────────────────────────────────
+  http: ^1.2.0
+  shared_preferences: ^2.2.3
+
+  # ─── QR Code ──────────────────────────────────────────────────
+  qr_flutter: ^4.1.0
+  mobile_scanner: ^5.2.3
+
+  # ─── UI ───────────────────────────────────────────────────────
+  google_fonts: ^6.2.1
+  flutter_animate: ^4.5.0
+  shimmer: ^3.0.0
+
+  # ─── Formatage ────────────────────────────────────────────────
+  intl: ^0.19.0
+
+  # ─── Paiement Stripe ──────────────────────────────────────────
+  flutter_stripe: ^10.1.1
+
+  # ─── Icônes ───────────────────────────────────────────────────
+  cupertino_icons: ^1.0.8
+  url_launcher: ^6.3.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
