@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import '../models/etudiant.dart';
 
+// Écran pour modifier un étudiant existant
+// Les notes sont gérées séparément par matière
 class ModifierEtudiantScreen extends StatefulWidget {
-  // L'étudiant à modifier, reçu en paramètre depuis la liste
-  final Etudiant etudiant;
+  final Etudiant etudiant; // L'étudiant à modifier, reçu en paramètre
 
   const ModifierEtudiantScreen({super.key, required this.etudiant});
 
@@ -12,47 +13,47 @@ class ModifierEtudiantScreen extends StatefulWidget {
 }
 
 class _ModifierEtudiantScreenState extends State<ModifierEtudiantScreen> {
-  // Contrôleurs pour chaque champ du formulaire
+  // Contrôleurs pré-remplis avec les données de l'étudiant existant
   late TextEditingController _nomController;
   late TextEditingController _prenomController;
   late TextEditingController _emailController;
-  late TextEditingController _noteController;
 
   @override
   void initState() {
     super.initState();
-    // On pré-remplit les champs avec les données de l'étudiant existant
+    // On pré-remplit les champs avec les données actuelles de l'étudiant
     _nomController = TextEditingController(text: widget.etudiant.nom);
     _prenomController = TextEditingController(text: widget.etudiant.prenom);
     _emailController = TextEditingController(text: widget.etudiant.email);
-    _noteController = TextEditingController(text: widget.etudiant.note.toString());
   }
 
-  // Vérifie les champs et retourne l'étudiant modifié à l'écran précédent
+  // Vérifie les champs et retourne l'étudiant modifié
   void _sauvegarder() {
-    // Vérification que tous les champs sont remplis
-    if (_nomController.text.isEmpty || _prenomController.text.isEmpty ||
-        _emailController.text.isEmpty || _noteController.text.isEmpty) {
+    if (_nomController.text.isEmpty ||
+        _prenomController.text.isEmpty ||
+        _emailController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Remplissez tous les champs'), backgroundColor: Colors.red),
+        const SnackBar(
+          content: Text('Remplissez tous les champs'),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
 
-    // Création de l'étudiant modifié avec les nouvelles valeurs
+    // Crée l'étudiant modifié avec les nouvelles valeurs
     final etudiantModifie = Etudiant(
       id: widget.etudiant.id, // On garde le même id
       nom: _nomController.text,
       prenom: _prenomController.text,
       email: _emailController.text,
-      note: double.parse(_noteController.text),
     );
 
-    // On retourne l'étudiant modifié à l'écran précédent
+    // Retourne l'étudiant modifié à l'écran précédent
     Navigator.pop(context, etudiantModifie);
   }
 
-  // Widget réutilisable pour créer un champ de formulaire stylisé
+  // Widget réutilisable pour créer un champ stylisé
   Widget _buildChamp({
     required TextEditingController controller,
     required String label,
@@ -64,7 +65,6 @@ class _ModifierEtudiantScreenState extends State<ModifierEtudiantScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        // Ombre légère sous chaque champ
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
@@ -78,7 +78,6 @@ class _ModifierEtudiantScreenState extends State<ModifierEtudiantScreen> {
         keyboardType: type,
         decoration: InputDecoration(
           labelText: label,
-          // Icône orange à gauche du champ
           prefixIcon: Icon(icon, color: const Color(0xFFFF9800)),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
@@ -100,12 +99,14 @@ class _ModifierEtudiantScreenState extends State<ModifierEtudiantScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Fond gris clair pour toute la page
       backgroundColor: const Color(0xFFF5F6FA),
       appBar: AppBar(
-        backgroundColor: const Color(0xFFFF9800), // Orange pour différencier de l'ajout
-        title: const Text('Modifier un étudiant', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        iconTheme: const IconThemeData(color: Colors.white), // Flèche retour en blanc
+        backgroundColor: const Color(0xFFFF9800), // Orange pour différencier
+        title: const Text(
+          'Modifier un étudiant',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -113,7 +114,7 @@ class _ModifierEtudiantScreenState extends State<ModifierEtudiantScreen> {
           children: [
             const SizedBox(height: 10),
 
-            // Icône décorative en haut de la page
+            // Icône décorative
             Container(
               width: 80,
               height: 80,
@@ -128,15 +129,27 @@ class _ModifierEtudiantScreenState extends State<ModifierEtudiantScreen> {
 
             const SizedBox(height: 30),
 
-            // Champs du formulaire
-            _buildChamp(controller: _prenomController, label: 'Prénom', icon: Icons.person_outline),
-            _buildChamp(controller: _nomController, label: 'Nom', icon: Icons.person),
-            _buildChamp(controller: _emailController, label: 'Email', icon: Icons.email_outlined, type: TextInputType.emailAddress),
-            _buildChamp(controller: _noteController, label: 'Note (/20)', icon: Icons.grade_outlined, type: TextInputType.number),
+            // Champs du formulaire (sans le champ note)
+            _buildChamp(
+              controller: _prenomController,
+              label: 'Prénom',
+              icon: Icons.person_outline,
+            ),
+            _buildChamp(
+              controller: _nomController,
+              label: 'Nom',
+              icon: Icons.person,
+            ),
+            _buildChamp(
+              controller: _emailController,
+              label: 'Email',
+              icon: Icons.email_outlined,
+              type: TextInputType.emailAddress,
+            ),
 
             const SizedBox(height: 10),
 
-            // Bouton de sauvegarde
+            // Bouton sauvegarder
             SizedBox(
               width: double.infinity,
               height: 55,
@@ -144,10 +157,19 @@ class _ModifierEtudiantScreenState extends State<ModifierEtudiantScreen> {
                 onPressed: _sauvegarder,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFFF9800),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
                   elevation: 3,
                 ),
-                child: const Text('Sauvegarder', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                child: const Text(
+                  'Sauvegarder',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ),
           ],

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/etudiant.dart';
 
+// Écran pour ajouter un nouvel étudiant
+// Les notes sont maintenant gérées séparément par matière
 class AjouterEtudiantScreen extends StatefulWidget {
   const AjouterEtudiantScreen({super.key});
 
@@ -9,31 +11,42 @@ class AjouterEtudiantScreen extends StatefulWidget {
 }
 
 class _AjouterEtudiantScreenState extends State<AjouterEtudiantScreen> {
+  // Contrôleurs pour chaque champ du formulaire
   final _nomController = TextEditingController();
   final _prenomController = TextEditingController();
   final _emailController = TextEditingController();
-  final _noteController = TextEditingController();
 
+  // Vérifie les champs et retourne l'étudiant à l'écran précédent
   void _sauvegarder() {
-    if (_nomController.text.isEmpty || _prenomController.text.isEmpty ||
-        _emailController.text.isEmpty || _noteController.text.isEmpty) {
+    if (_nomController.text.isEmpty ||
+        _prenomController.text.isEmpty ||
+        _emailController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Remplissez tous les champs'), backgroundColor: Colors.red),
+        const SnackBar(
+          content: Text('Remplissez tous les champs'),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
 
+    // Crée l'étudiant sans note (les notes sont gérées par matière)
     final etudiant = Etudiant(
       nom: _nomController.text,
       prenom: _prenomController.text,
       email: _emailController.text,
-      note: double.parse(_noteController.text),
     );
 
     Navigator.pop(context, etudiant);
   }
 
-  Widget _buildChamp({required TextEditingController controller, required String label, required IconData icon, TextInputType type = TextInputType.text}) {
+  // Widget réutilisable pour créer un champ stylisé
+  Widget _buildChamp({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    TextInputType type = TextInputType.text,
+  }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
@@ -75,7 +88,10 @@ class _AjouterEtudiantScreenState extends State<AjouterEtudiantScreen> {
       backgroundColor: const Color(0xFFF5F6FA),
       appBar: AppBar(
         backgroundColor: const Color(0xFF6C63FF),
-        title: const Text('Ajouter un étudiant', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Ajouter un étudiant',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: SingleChildScrollView(
@@ -84,7 +100,7 @@ class _AjouterEtudiantScreenState extends State<AjouterEtudiantScreen> {
           children: [
             const SizedBox(height: 10),
 
-            // Icône en haut
+            // Icône décorative
             Container(
               width: 80,
               height: 80,
@@ -99,10 +115,23 @@ class _AjouterEtudiantScreenState extends State<AjouterEtudiantScreen> {
 
             const SizedBox(height: 30),
 
-            _buildChamp(controller: _prenomController, label: 'Prénom', icon: Icons.person_outline),
-            _buildChamp(controller: _nomController, label: 'Nom', icon: Icons.person),
-            _buildChamp(controller: _emailController, label: 'Email', icon: Icons.email_outlined, type: TextInputType.emailAddress),
-            _buildChamp(controller: _noteController, label: 'Note (/20)', icon: Icons.grade_outlined, type: TextInputType.number),
+            // Champs du formulaire (sans le champ note)
+            _buildChamp(
+              controller: _prenomController,
+              label: 'Prénom',
+              icon: Icons.person_outline,
+            ),
+            _buildChamp(
+              controller: _nomController,
+              label: 'Nom',
+              icon: Icons.person,
+            ),
+            _buildChamp(
+              controller: _emailController,
+              label: 'Email',
+              icon: Icons.email_outlined,
+              type: TextInputType.emailAddress,
+            ),
 
             const SizedBox(height: 10),
 
@@ -114,10 +143,19 @@ class _AjouterEtudiantScreenState extends State<AjouterEtudiantScreen> {
                 onPressed: _sauvegarder,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF6C63FF),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
                   elevation: 3,
                 ),
-                child: const Text('Sauvegarder', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                child: const Text(
+                  'Sauvegarder',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ),
           ],

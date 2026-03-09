@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import '../models/etudiant.dart';
 import '../services/api_service.dart';
-import 'ajouter_etudiant_screen.dart'; // Import écran ajout
-import 'modifier_etudiant_screen.dart'; // Import écran modification
-import 'login_screen.dart'; // Import écran login pour la déconnexion
+import 'ajouter_etudiant_screen.dart';
+import 'modifier_etudiant_screen.dart';
+import 'login_screen.dart';
+import 'notes_screen.dart';
+import 'mes_matieres_screen.dart'; // Écran pour gérer les matières du prof
 
 class EtudiantsScreen extends StatefulWidget {
   const EtudiantsScreen({super.key});
@@ -13,19 +15,13 @@ class EtudiantsScreen extends StatefulWidget {
 }
 
 class _EtudiantsScreenState extends State<EtudiantsScreen> {
-  // Service pour communiquer avec l'API Laravel
   final ApiService _apiService = ApiService();
-
-  // Liste des étudiants affichés à l'écran
   List<Etudiant> etudiants = [];
-
-  // true = spinner de chargement affiché
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    // Charge les étudiants dès que l'écran s'ouvre
     _chargerEtudiants();
   }
 
@@ -35,7 +31,7 @@ class _EtudiantsScreenState extends State<EtudiantsScreen> {
     try {
       final liste = await _apiService.getEtudiants().timeout(
         const Duration(seconds: 5),
-        onTimeout: () => [], // Retourne liste vide si timeout
+        onTimeout: () => [],
       );
       setState(() {
         etudiants = liste;
@@ -57,9 +53,9 @@ class _EtudiantsScreenState extends State<EtudiantsScreen> {
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         actions: [
-          // Nombre d'étudiants affiché en haut à droite
+          // Nombre d'étudiants
           Padding(
-            padding: const EdgeInsets.only(right: 8),
+            padding: const EdgeInsets.only(right: 4),
             child: Center(
               child: Text(
                 '${etudiants.length} étudiant(s)',
@@ -67,13 +63,25 @@ class _EtudiantsScreenState extends State<EtudiantsScreen> {
               ),
             ),
           ),
+          // Bouton pour gérer ses matières
+          IconButton(
+            icon: const Icon(Icons.book, color: Colors.white),
+            tooltip: 'Mes matières',
+            onPressed: () {
+              // Navigue vers l'écran de gestion des matières
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const MesMatieresScreen(),
+                ),
+              );
+            },
+          ),
           // Bouton de déconnexion
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.white),
             tooltip: 'Se déconnecter',
             onPressed: () {
-              // Retourne au login et efface tout l'historique de navigation
-              // Le professeur ne peut plus revenir en arrière avec le bouton retour
               Navigator.pushAndRemoveUntil(
                 context,
                 MaterialPageRoute(builder: (context) => const LoginScreen()),
@@ -84,12 +92,10 @@ class _EtudiantsScreenState extends State<EtudiantsScreen> {
         ],
       ),
 
-      // Affiche un spinner si chargement en cours
       body: _isLoading
           ? const Center(
               child: CircularProgressIndicator(color: Color(0xFF6C63FF)),
             )
-          // Affiche un message si aucun étudiant
           : etudiants.isEmpty
               ? Center(
                   child: Column(
@@ -106,14 +112,11 @@ class _EtudiantsScreenState extends State<EtudiantsScreen> {
                     ],
                   ),
                 )
-              // Affiche la liste des étudiants
               : ListView.builder(
                   padding: const EdgeInsets.all(16),
                   itemCount: etudiants.length,
                   itemBuilder: (context, index) {
                     final etudiant = etudiants[index];
-                    // Vert si note >= 10, rouge sinon
-                    final bool bonneNote = etudiant.note >= 10;
 
                     return Container(
                       margin: const EdgeInsets.only(bottom: 12),
@@ -132,21 +135,16 @@ class _EtudiantsScreenState extends State<EtudiantsScreen> {
                         padding: const EdgeInsets.all(16),
                         child: Row(
                           children: [
-                            // Avatar avec les initiales de l'étudiant
+                            // Avatar avec les initiales
                             Container(
                               width: 55,
                               height: 55,
                               decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: bonneNote
-                                      ? [
-                                          const Color(0xFF43E97B),
-                                          const Color(0xFF38F9D7),
-                                        ]
-                                      : [
-                                          const Color(0xFFFF6B6B),
-                                          const Color(0xFFFFE66D),
-                                        ],
+                                gradient: const LinearGradient(
+                                  colors: [
+                                    Color(0xFF6C63FF),
+                                    Color(0xFF3B82F6),
+                                  ],
                                 ),
                                 borderRadius: BorderRadius.circular(14),
                               ),
@@ -168,7 +166,6 @@ class _EtudiantsScreenState extends State<EtudiantsScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  // Nom complet
                                   Text(
                                     '${etudiant.prenom} ${etudiant.nom}',
                                     style: const TextStyle(
@@ -177,7 +174,6 @@ class _EtudiantsScreenState extends State<EtudiantsScreen> {
                                     ),
                                   ),
                                   const SizedBox(height: 4),
-                                  // Email
                                   Text(
                                     etudiant.email,
                                     style: TextStyle(
@@ -186,26 +182,34 @@ class _EtudiantsScreenState extends State<EtudiantsScreen> {
                                     ),
                                   ),
                                   const SizedBox(height: 8),
-                                  // Badge de note coloré
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 10, vertical: 3),
-                                    decoration: BoxDecoration(
-                                      color: bonneNote
-                                          ? const Color(0xFF43E97B)
-                                              .withOpacity(0.15)
-                                          : const Color(0xFFFF6B6B)
-                                              .withOpacity(0.15),
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                    child: Text(
-                                      '${etudiant.note}/20',
-                                      style: TextStyle(
-                                        color: bonneNote
-                                            ? const Color(0xFF2ECC71)
-                                            : const Color(0xFFE74C3C),
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 13,
+                                  // Bouton voir les notes
+                                  GestureDetector(
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => NotesScreen(
+                                            etudiant: etudiant,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 10, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF6C63FF)
+                                            .withOpacity(0.15),
+                                        borderRadius:
+                                            BorderRadius.circular(20),
+                                      ),
+                                      child: const Text(
+                                        'Voir les notes',
+                                        style: TextStyle(
+                                          color: Color(0xFF6C63FF),
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13,
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -216,7 +220,7 @@ class _EtudiantsScreenState extends State<EtudiantsScreen> {
                             // Boutons modifier et supprimer
                             Column(
                               children: [
-                                // Bouton modifier (crayon orange)
+                                // Bouton modifier
                                 GestureDetector(
                                   onTap: () async {
                                     final etudiantModifie =
@@ -228,7 +232,6 @@ class _EtudiantsScreenState extends State<EtudiantsScreen> {
                                                 etudiant: etudiant),
                                       ),
                                     );
-                                    // Si modifications sauvegardées, on recharge la liste
                                     if (etudiantModifie != null) {
                                       await _apiService
                                           .updateEtudiant(etudiantModifie);
@@ -246,10 +249,9 @@ class _EtudiantsScreenState extends State<EtudiantsScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 8),
-                                // Bouton supprimer (poubelle rouge)
+                                // Bouton supprimer
                                 GestureDetector(
                                   onTap: () async {
-                                    // Supprime l'étudiant via l'API puis recharge la liste
                                     await _apiService
                                         .deleteEtudiant(etudiant.id!);
                                     _chargerEtudiants();
@@ -273,7 +275,7 @@ class _EtudiantsScreenState extends State<EtudiantsScreen> {
                   },
                 ),
 
-      // Bouton + en bas à droite pour ajouter un étudiant
+      // Bouton + pour ajouter un étudiant
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
           final nouvelEtudiant = await Navigator.push(
@@ -281,7 +283,6 @@ class _EtudiantsScreenState extends State<EtudiantsScreen> {
             MaterialPageRoute(
                 builder: (context) => const AjouterEtudiantScreen()),
           );
-          // Si étudiant ajouté, on l'envoie à l'API et on recharge la liste
           if (nouvelEtudiant != null) {
             await _apiService.addEtudiant(nouvelEtudiant);
             _chargerEtudiants();

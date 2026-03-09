@@ -1,6 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/etudiant.dart';
+import '../models/matiere.dart';
+import '../models/note.dart';
+import '../models/professeur.dart';
+import 'session_service.dart';
 
 class ApiService {
   // Adresse de l'API Laravel (10.0.2.2 = localhost depuis l'émulateur Android)
@@ -11,7 +15,8 @@ class ApiService {
   // ─────────────────────────────────────────
 
   /// Connexion d'un professeur
-  /// Envoie email + password à l'API et retourne true si succès
+  /// Sauvegarde le professeur en session si succès
+  /// Retourne true si connexion réussie
   Future<bool> login(String email, String password) async {
     final response = await http.post(
       Uri.parse('$baseUrl/login'),
@@ -24,13 +29,17 @@ class ApiService {
 
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
-      return data['success'] == true; // true si connexion réussie
+      if (data['success'] == true) {
+        // Sauvegarde le professeur connecté en mémoire
+        final professeur = Professeur.fromJson(data['professeur']);
+        SessionService().connecter(professeur);
+        return true;
+      }
     }
-    return false; // false si email/password incorrect
+    return false;
   }
 
   /// Inscription d'un nouveau professeur
-  /// Envoie nom, prenom, email, password à l'API
   /// Retourne true si l'inscription a réussi
   Future<bool> register(
       String nom, String prenom, String email, String password) async {
@@ -47,9 +56,14 @@ class ApiService {
 
     if (response.statusCode == 201) {
       final data = json.decode(response.body);
-      return data['success'] == true; // true si inscription réussie
+      if (data['success'] == true) {
+        // Sauvegarde le professeur inscrit en mémoire
+        final professeur = Professeur.fromJson(data['professeur']);
+        SessionService().connecter(professeur);
+        return true;
+      }
     }
-    return false; // false si email déjà utilisé ou erreur
+    return false;
   }
 
   // ─────────────────────────────────────────
@@ -98,5 +112,67 @@ class ApiService {
     if (response.statusCode != 200) {
       throw Exception('Erreur suppression étudiant');
     }
+  }
+
+  // ─────────────────────────────────────────
+  // MATIÈRES
+  // ─────────────────────────────────────────
+
+  /// Récupère la liste de toutes les matières disponibles
+  Future<List<Matiere>> getMatieres() async {
+    final response = await http.get(Uri.parse('$baseUrl/matieres'));
+    if (response.statusCode == 200) {
+      final List<dynamic> data = json.decode(response.body);
+      return data.map((e) => Matiere.fromJson(e)).toList();
+    }
+    throw Exception('Erreur chargement matières');
+  }
+
+  /// Récupère les matières d'un professeur
+  Future<List<Matiere>> getMatieresProf(int professeurId) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/professeurs/$professeurId/matieres'),
+    );
+    if (response.statusCode == 200) {
+      final List<dynamic> data = json.decode(response.body);
+      return data.map((e) => Matiere.fromJson(e)).toList();
+    }
+    throw Exception('Erreur chargement matières du professeur');
+  }
+
+  /// Assigne des matières à un professeur (max 2)
+  Future<bool> assignerMatieres(int professeurId, List<int> matiereIds) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/professeurs/$professeurId/matieres'),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({'matieres': matiereIds}),
+    );
+    return response.statusCode == 200;
+  }
+
+  // ─────────────────────────────────────────
+  // NOTES
+  // ─────────────────────────────────────────
+
+  /// Récupère toutes les notes d'un étudiant
+  Future<List<Note>> getNotesEtudiant(int etudiantId) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/etudiants/$etudiantId/notes'),
+    );
+    if (response.statusCode == 200) {
+      final List<dynamic> data = json.decode(response.body);
+      return data.map((e) => Note.fromJson(e)).toList();
+    }
+    throw Exception('Erreur chargement notes');
+  }
+
+  /// Ajoute ou met à jour les notes d'un étudiant pour une matière
+  Future<bool> sauvegarderNotes(Note note) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/notes'),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode(note.toJson()),
+    );
+    return response.statusCode == 200;
   }
 }
