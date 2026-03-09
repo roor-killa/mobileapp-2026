@@ -1,11 +1,30 @@
 <?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class Etudiant extends Model {
-    
-    // Les champs que l'on autorise à remplir depuis l'API
-    // Sans ça, Laravel bloque l'insertion pour des raisons de sécurité
-    protected $fillable = ['nom', 'prenom', 'email', 'note'];
+// Modèle représentant un étudiant dans la base de données
+// Laravel fait automatiquement le lien avec la table "etudiants"
+class Etudiant extends Model
+{
+    // Colonnes autorisées à être remplies via l'API
+    protected $fillable = [
+        'nom',
+        'prenom',
+        'email',
+    ];
+
+    // Un étudiant a plusieurs notes (une par matière)
+    public function notes()
+    {
+        return $this->hasMany(Note::class);
+    }
+
+    // Un étudiant a des notes dans plusieurs matières
+    public function matieres()
+    {
+        return $this->belongsToMany(Matiere::class, 'notes')
+                    ->withPivot('note1', 'note2', 'note3');
+    }
 }
