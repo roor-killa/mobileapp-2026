@@ -7,6 +7,8 @@ class TransactionModel {
   final String statut; // 'succes' | 'echec'
   final String message;
   final String dateHeure; // ISO 8601
+  final String? type; // 'envoi' | 'reception'
+  final String? autrePartieNom; // nom du destinataire ou de l'expéditeur
 
   TransactionModel({
     this.id,
@@ -17,6 +19,8 @@ class TransactionModel {
     required this.statut,
     required this.message,
     required this.dateHeure,
+    this.type,
+    this.autrePartieNom,
   });
 
   factory TransactionModel.fromMap(Map<String, dynamic> map) {
@@ -29,6 +33,8 @@ class TransactionModel {
       statut: map['statut'] as String,
       message: map['message'] as String,
       dateHeure: map['date_heure'] as String,
+      type: map['type'] as String?,
+      autrePartieNom: map['autre_partie_nom'] as String?,
     );
   }
 
@@ -42,6 +48,8 @@ class TransactionModel {
       'statut': statut,
       'message': message,
       'date_heure': dateHeure,
+      'type': type,
+      'autre_partie_nom': autrePartieNom,
     };
   }
 }

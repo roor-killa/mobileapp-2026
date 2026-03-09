@@ -3,16 +3,35 @@ import '../models/transaction_model.dart';
 import '../services/auth_service.dart';
 import '../services/database_service.dart';
 
-class ReleveCompteScreen extends StatefulWidget {
+/// Version autonome (navigation directe) — conservée pour compatibilité.
+class ReleveCompteScreen extends StatelessWidget {
   const ReleveCompteScreen({super.key});
 
   @override
-  State<ReleveCompteScreen> createState() => _ReleveCompteScreenState();
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Relevé de compte'),
+        backgroundColor: Colors.blue,
+        foregroundColor: Colors.white,
+      ),
+      body: const HistoryTab(),
+    );
+  }
 }
 
-class _ReleveCompteScreenState extends State<ReleveCompteScreen> {
+/// Contenu de l'historique — utilisé dans DashboardScreen comme onglet.
+class HistoryTab extends StatefulWidget {
+  const HistoryTab({super.key});
+
+  @override
+  State<HistoryTab> createState() => _HistoryTabState();
+}
+
+class _HistoryTabState extends State<HistoryTab> {
   List<TransactionModel> _transactions = [];
   bool _isLoading = true;
+  String _filtre = 'tout'; // 'tout' | 'envoi' | 'reception' | 'echec'
 
   @override
   void initState() {
@@ -30,6 +49,24 @@ class _ReleveCompteScreenState extends State<ReleveCompteScreen> {
     });
   }
 
+  List<TransactionModel> get _transactionsFiltrees {
+    if (_filtre == 'tout') return _transactions;
+    if (_filtre == 'echec') {
+      return _transactions.where((t) => t.statut == 'echec').toList();
+    }
+    return _transactions
+        .where((t) => t.statut == 'succes' && t.type == _filtre)
+        .toList();
+  }
+
+  double get _totalEnvoye => _transactions
+      .where((t) => t.statut == 'succes' && t.type == 'envoi')
+      .fold(0.0, (sum, t) => sum + t.montant);
+
+  double get _totalRecu => _transactions
+      .where((t) => t.statut == 'succes' && t.type == 'reception')
+      .fold(0.0, (sum, t) => sum + t.montant);
+
   String _formaterDate(String iso) {
     final dt = DateTime.parse(iso).toLocal();
     const mois = [
@@ -45,75 +82,31 @@ class _ReleveCompteScreenState extends State<ReleveCompteScreen> {
   Widget build(BuildContext context) {
     final user = AuthService.utilisateurConnecte!;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Relevé de compte'),
-        backgroundColor: Colors.blue,
-        foregroundColor: Colors.white,
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
+    return _isLoading
+        ? const Center(child: CircularProgressIndicator())
+        : RefreshIndicator(
+            onRefresh: _chargerTransactions,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Carte identité utilisateur
                   _buildUserCard(user.nom, user.email),
-
                   const SizedBox(height: 16),
-
-                  // Carte soldes
                   _buildSoldesCard(user.soldeInitial, user.soldeActuel),
-
+                  const SizedBox(height: 16),
+                  _buildStatsCard(),
                   const SizedBox(height: 24),
-
-                  // Titre historique
-                  Row(
-                    children: [
-                      const Icon(Icons.history, color: Colors.blue),
-                      const SizedBox(width: 8),
-                      const Text(
-                        'Historique des transactions',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const Spacer(),
-                      Text(
-                        '${_transactions.length} opération${_transactions.length > 1 ? 's' : ''}',
-                        style: const TextStyle(color: Colors.black54),
-                      ),
-                    ],
-                  ),
-
+                  _buildHistoriqueHeader(),
+                  const SizedBox(height: 8),
+                  _buildFilterChips(),
                   const SizedBox(height: 12),
-
-                  // Liste des transactions
-                  if (_transactions.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 40),
-                      child: Center(
-                        child: Text(
-                          'Aucune transaction pour le moment',
-                          style: TextStyle(color: Colors.black54, fontSize: 16),
-                        ),
-                      ),
-                    )
-                  else
-                    ListView.separated(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: _transactions.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 8),
-                      itemBuilder: (_, index) =>
-                          _buildTransactionCard(_transactions[index]),
-                    ),
+                  _buildTransactionList(),
                 ],
               ),
             ),
-    );
+          );
   }
 
   Widget _buildUserCard(String nom, String email) {
@@ -212,8 +205,173 @@ class _ReleveCompteScreenState extends State<ReleveCompteScreen> {
     );
   }
 
+  Widget _buildStatsCard() {
+    return Card(
+      elevation: 3,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Expanded(
+              child: _buildStatItem(
+                icon: Icons.arrow_upward,
+                iconColor: Colors.orange.shade800,
+                label: 'Total envoyé',
+                value: '- ${_totalEnvoye.toStringAsFixed(2)} €',
+                valueColor: Colors.orange.shade800,
+              ),
+            ),
+            Container(width: 1, height: 50, color: Colors.grey.shade200),
+            Expanded(
+              child: _buildStatItem(
+                icon: Icons.arrow_downward,
+                iconColor: Colors.green,
+                label: 'Total reçu',
+                value: '+ ${_totalRecu.toStringAsFixed(2)} €',
+                valueColor: Colors.green.shade700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatItem({
+    required IconData icon,
+    required Color iconColor,
+    required String label,
+    required String value,
+    required Color valueColor,
+  }) {
+    return Column(
+      children: [
+        Icon(icon, color: iconColor, size: 20),
+        const SizedBox(height: 4),
+        Text(label, style: const TextStyle(color: Colors.black54, fontSize: 12)),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.bold,
+            color: valueColor,
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHistoriqueHeader() {
+    return Row(
+      children: [
+        const Icon(Icons.history, color: Colors.blue),
+        const SizedBox(width: 8),
+        const Text(
+          'Historique des transactions',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const Spacer(),
+        Text(
+          '${_transactionsFiltrees.length} opération${_transactionsFiltrees.length > 1 ? 's' : ''}',
+          style: const TextStyle(color: Colors.black54),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFilterChips() {
+    final filters = [
+      ('tout', 'Tout', Colors.blue),
+      ('envoi', 'Envois', Colors.orange),
+      ('reception', 'Reçus', Colors.green),
+      ('echec', 'Échecs', Colors.red),
+    ];
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: filters.map((f) {
+          final (value, label, color) = f;
+          final isSelected = _filtre == value;
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: FilterChip(
+              label: Text(label),
+              selected: isSelected,
+              onSelected: (_) => setState(() => _filtre = value),
+              selectedColor: color.withValues(alpha:0.2),
+              checkmarkColor: color,
+              labelStyle: TextStyle(
+                color: isSelected ? color : Colors.black54,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildTransactionList() {
+    final liste = _transactionsFiltrees;
+
+    if (liste.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 40),
+        child: Center(
+          child: Text(
+            'Aucune transaction pour ce filtre',
+            style: TextStyle(color: Colors.black54, fontSize: 16),
+          ),
+        ),
+      );
+    }
+
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: liste.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 8),
+      itemBuilder: (_, index) => _buildTransactionCard(liste[index]),
+    );
+  }
+
   Widget _buildTransactionCard(TransactionModel t) {
     final isSuccess = t.statut == 'succes';
+    final isReception = t.type == 'reception';
+    final isEnvoi = t.type == 'envoi';
+
+    final Color iconBg;
+    final Color iconColor;
+    final IconData iconData;
+    if (!isSuccess) {
+      iconBg = Colors.red.shade100;
+      iconColor = Colors.red;
+      iconData = Icons.close;
+    } else if (isReception) {
+      iconBg = Colors.green.shade100;
+      iconColor = Colors.green;
+      iconData = Icons.arrow_downward;
+    } else {
+      iconBg = Colors.orange.shade100;
+      iconColor = Colors.orange.shade800;
+      iconData = Icons.arrow_upward;
+    }
+
+    final String montantAffiche;
+    final Color montantColor;
+    if (isReception) {
+      montantAffiche = '+ ${t.montant.toStringAsFixed(2)} €';
+      montantColor = Colors.green.shade700;
+    } else if (isSuccess && isEnvoi) {
+      montantAffiche = '- ${t.montant.toStringAsFixed(2)} €';
+      montantColor = Colors.red.shade700;
+    } else {
+      montantAffiche = '- ${t.montant.toStringAsFixed(2)} €';
+      montantColor = isSuccess ? Colors.red.shade700 : Colors.red.shade300;
+    }
 
     return Card(
       elevation: 2,
@@ -222,23 +380,15 @@ class _ReleveCompteScreenState extends State<ReleveCompteScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(
           children: [
-            // Icône statut
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: isSuccess ? Colors.green.shade100 : Colors.red.shade100,
+                color: iconBg,
                 shape: BoxShape.circle,
               ),
-              child: Icon(
-                isSuccess ? Icons.arrow_upward : Icons.close,
-                color: isSuccess ? Colors.green : Colors.red,
-                size: 20,
-              ),
+              child: Icon(iconData, color: iconColor, size: 20),
             ),
-
             const SizedBox(width: 12),
-
-            // Détails
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -265,14 +415,12 @@ class _ReleveCompteScreenState extends State<ReleveCompteScreen> {
                 ],
               ),
             ),
-
-            // Montant
             Text(
-              '- ${t.montant.toStringAsFixed(2)} €',
+              montantAffiche,
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
-                color: isSuccess ? Colors.red.shade700 : Colors.red.shade300,
+                color: montantColor,
               ),
             ),
           ],

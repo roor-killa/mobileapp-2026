@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/auth_service.dart';
-import 'transfer_screen.dart';
+import 'dashboard_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -20,6 +20,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _isLoading = false;
   bool _mdpVisible = false;
 
+  static final _emailRegex = RegExp(r'^[\w\.\-]+@[\w\-]+\.[a-zA-Z]{2,}$');
+
   Future<void> _inscrire() async {
     final nom = _nomController.text.trim();
     final email = _emailController.text.trim();
@@ -29,6 +31,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     if (nom.isEmpty || email.isEmpty || mdp.isEmpty || soldeText.isEmpty) {
       _afficherErreur('Veuillez remplir tous les champs');
+      return;
+    }
+
+    if (!_emailRegex.hasMatch(email)) {
+      _afficherErreur('Adresse email invalide');
       return;
     }
 
@@ -62,13 +69,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(builder: (_) => const TransferScreen()),
+        MaterialPageRoute(builder: (_) => const DashboardScreen()),
         (_) => false,
       );
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoading = false);
-      _afficherErreur("Cet email est déjà utilisé");
+      if (e.toString().contains('EMAIL_EXISTE')) {
+        _afficherErreur('Cet email est déjà utilisé');
+      } else {
+        _afficherErreur('Une erreur est survenue, veuillez réessayer');
+      }
     }
   }
 
@@ -94,7 +105,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
           children: [
             const SizedBox(height: 20),
 
-            // Nom complet
             TextField(
               controller: _nomController,
               textCapitalization: TextCapitalization.words,
@@ -109,7 +119,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
             const SizedBox(height: 16),
 
-            // Email
             TextField(
               controller: _emailController,
               keyboardType: TextInputType.emailAddress,
@@ -124,7 +133,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
             const SizedBox(height: 16),
 
-            // Mot de passe
             TextField(
               controller: _mdpController,
               obscureText: !_mdpVisible,
@@ -144,7 +152,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
             const SizedBox(height: 16),
 
-            // Confirmer mot de passe
             TextField(
               controller: _confirmerMdpController,
               obscureText: !_mdpVisible,
@@ -159,7 +166,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
             const SizedBox(height: 16),
 
-            // Solde initial
             TextField(
               controller: _soldeController,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -179,7 +185,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
             const SizedBox(height: 28),
 
-            // Bouton inscription
             ElevatedButton(
               onPressed: _isLoading ? null : _inscrire,
               style: ElevatedButton.styleFrom(

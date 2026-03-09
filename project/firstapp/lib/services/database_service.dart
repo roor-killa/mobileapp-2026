@@ -30,6 +30,11 @@ class DatabaseService {
     await prefs.setString(_keyUsers, jsonEncode(users));
   }
 
+  Future<bool> emailExiste(String email) async {
+    final users = await _getUsers();
+    return users.any((u) => u['email'] == email);
+  }
+
   Future<int> creerUtilisateur(Utilisateur u) async {
     final prefs = await _prefs;
     final users = await _getUsers();
@@ -49,6 +54,13 @@ class DatabaseService {
     return Utilisateur.fromMap(match.first);
   }
 
+  Future<Utilisateur?> getUtilisateurById(int id) async {
+    final users = await _getUsers();
+    final matches = users.where((u) => u['id'] == id).toList();
+    if (matches.isEmpty) return null;
+    return Utilisateur.fromMap(matches.first);
+  }
+
   Future<void> mettreAJourSolde(int userId, double nouveauSolde) async {
     final users = await _getUsers();
     for (final u in users) {
@@ -58,6 +70,26 @@ class DatabaseService {
       }
     }
     await _saveUsers(users);
+  }
+
+  Future<void> mettreAJourUtilisateur(int id, {String? nom, String? motDePasse}) async {
+    final users = await _getUsers();
+    for (final u in users) {
+      if (u['id'] == id) {
+        if (nom != null) u['nom'] = nom;
+        if (motDePasse != null) u['mot_de_passe'] = motDePasse;
+        break;
+      }
+    }
+    await _saveUsers(users);
+  }
+
+  Future<List<Utilisateur>> getTousLesUtilisateurs(int excludeId) async {
+    final users = await _getUsers();
+    return users
+        .where((u) => u['id'] != excludeId)
+        .map(Utilisateur.fromMap)
+        .toList();
   }
 
   // --- Transactions ---
@@ -94,5 +126,10 @@ class DatabaseService {
         .toList();
     liste.sort((a, b) => b.dateHeure.compareTo(a.dateHeure));
     return liste;
+  }
+
+  Future<List<TransactionModel>> getTransactionsRecentes(int userId, {int limit = 5}) async {
+    final all = await getTransactions(userId);
+    return all.take(limit).toList();
   }
 }

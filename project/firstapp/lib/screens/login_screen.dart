@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
-import 'transfer_screen.dart';
+import 'dashboard_screen.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -40,7 +40,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (_) => const TransferScreen()),
+      MaterialPageRoute(builder: (_) => const DashboardScreen()),
     );
   }
 
@@ -62,7 +62,6 @@ class _LoginScreenState extends State<LoginScreen> {
             children: [
               const SizedBox(height: 60),
 
-              // Logo / titre
               const Icon(Icons.account_balance_wallet, size: 72, color: Colors.blue),
               const SizedBox(height: 16),
               const Text(
@@ -83,7 +82,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
               const SizedBox(height: 40),
 
-              // Champ email
               TextField(
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
@@ -98,7 +96,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
               const SizedBox(height: 16),
 
-              // Champ mot de passe
               TextField(
                 controller: _mdpController,
                 obscureText: !_mdpVisible,
@@ -118,7 +115,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
               const SizedBox(height: 24),
 
-              // Bouton connexion
               ElevatedButton(
                 onPressed: _isLoading ? null : _connecter,
                 style: ElevatedButton.styleFrom(
@@ -140,7 +136,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
               const SizedBox(height: 20),
 
-              // Lien vers inscription
               TextButton(
                 onPressed: () => Navigator.push(
                   context,

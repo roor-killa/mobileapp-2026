@@ -17,12 +17,12 @@ class Utilisateur {
     required this.creeLe,
   });
 
-  Utilisateur copyWith({int? id}) {
+  Utilisateur copyWith({int? id, String? nom, String? motDePasse}) {
     return Utilisateur(
       id: id ?? this.id,
-      nom: nom,
+      nom: nom ?? this.nom,
       email: email,
-      motDePasse: motDePasse,
+      motDePasse: motDePasse ?? this.motDePasse,
       soldeInitial: soldeInitial,
       soldeActuel: soldeActuel,
       creeLe: creeLe,
