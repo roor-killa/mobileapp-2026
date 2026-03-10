@@ -1,23 +1,23 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
-import 'etudiants_screen.dart';
-import 'login_admin_screen.dart';
-import 'login_etudiant_screen.dart';
+import 'dashboard_etudiant_screen.dart';
 
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+// Écran de connexion pour les étudiants
+class LoginEtudiantScreen extends StatefulWidget {
+  const LoginEtudiantScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  State<LoginEtudiantScreen> createState() => _LoginEtudiantScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginEtudiantScreenState extends State<LoginEtudiantScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final ApiService _apiService = ApiService();
   bool _isLoading = false;
   bool _passwordVisible = false;
 
+  // Appelée quand on appuie sur "Se connecter"
   Future<void> _seConnecter() async {
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -32,15 +32,19 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final success = await _apiService.login(
+      // Appel à loginEtudiant() dans api_service.dart
+      final success = await _apiService.loginEtudiant(
         _emailController.text,
         _passwordController.text,
       );
 
       if (success) {
+        // Connexion réussie → on va vers le dashboard étudiant
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const EtudiantsScreen()),
+          MaterialPageRoute(
+            builder: (context) => const DashboardEtudiantScreen(),
+          ),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -65,45 +69,56 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F6FA),
+      backgroundColor: const Color(0xFFF0F4FF),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(30),
         child: Column(
           children: [
             const SizedBox(height: 80),
 
+            // Logo étudiant en vert
             Container(
               width: 100,
               height: 100,
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
-                  colors: [Color(0xFF6C63FF), Color(0xFF3B82F6)],
+                  colors: [Color(0xFF11998E), Color(0xFF38EF7D)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-                borderRadius: BorderRadius.circular(25),
+                borderRadius: BorderRadius.circular(28),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF11998E).withOpacity(0.3),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
               ),
               child: const Icon(Icons.school, color: Colors.white, size: 55),
             ),
 
-            const SizedBox(height: 30),
+            const SizedBox(height: 28),
 
             const Text(
-              'Espace Professeur',
+              'Espace Étudiant',
               style: TextStyle(
                 fontSize: 26,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF2D3748),
+                color: Color(0xFF1A2E3B),
               ),
             ),
 
             const SizedBox(height: 8),
 
             Text(
-              'Connectez-vous pour gérer vos étudiants',
+              'Consultez vos notes et résultats',
               style: TextStyle(fontSize: 14, color: Colors.grey.shade500),
             ),
 
             const SizedBox(height: 50),
 
+            // Champ email
             Container(
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -121,7 +136,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 keyboardType: TextInputType.emailAddress,
                 decoration: InputDecoration(
                   labelText: 'Email',
-                  prefixIcon: const Icon(Icons.email_outlined, color: Color(0xFF6C63FF)),
+                  prefixIcon: const Icon(Icons.email_outlined, color: Color(0xFF11998E)),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
                     borderSide: BorderSide.none,
@@ -131,7 +146,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   labelStyle: const TextStyle(color: Colors.grey),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: Color(0xFF6C63FF), width: 2),
+                    borderSide: const BorderSide(color: Color(0xFF11998E), width: 2),
                   ),
                 ),
               ),
@@ -139,6 +154,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
             const SizedBox(height: 16),
 
+            // Champ mot de passe
             Container(
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -156,7 +172,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 obscureText: !_passwordVisible,
                 decoration: InputDecoration(
                   labelText: 'Mot de passe',
-                  prefixIcon: const Icon(Icons.lock_outline, color: Color(0xFF6C63FF)),
+                  prefixIcon: const Icon(Icons.lock_outline, color: Color(0xFF11998E)),
                   suffixIcon: IconButton(
                     icon: Icon(
                       _passwordVisible ? Icons.visibility_off : Icons.visibility,
@@ -173,7 +189,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   labelStyle: const TextStyle(color: Colors.grey),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: Color(0xFF6C63FF), width: 2),
+                    borderSide: const BorderSide(color: Color(0xFF11998E), width: 2),
                   ),
                 ),
               ),
@@ -181,13 +197,14 @@ class _LoginScreenState extends State<LoginScreen> {
 
             const SizedBox(height: 30),
 
+            // Bouton connexion
             SizedBox(
               width: double.infinity,
               height: 55,
               child: ElevatedButton(
                 onPressed: _isLoading ? null : _seConnecter,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF6C63FF),
+                  backgroundColor: const Color(0xFF11998E),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),
@@ -206,52 +223,15 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
 
-            SizedBox(
-              width: double.infinity,
-              height: 55,
-              child: OutlinedButton.icon(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const LoginEtudiantScreen(),
-                    ),
-                  );
-                },
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: Color(0xFF11998E), width: 2),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
-                icon: const Icon(Icons.person, color: Color(0xFF11998E)),
-                label: const Text(
-                  'Espace étudiant',
-                  style: TextStyle(
-                    color: Color(0xFF11998E),
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 40),
-
-            GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const LoginAdminScreen(),
-                  ),
-                );
-              },
-              child: Text(
-                'Accès administrateur',
-                style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
+            // Retour vers login professeur
+            TextButton.icon(
+              onPressed: () => Navigator.pop(context),
+              icon: const Icon(Icons.arrow_back, color: Color(0xFF11998E), size: 18),
+              label: const Text(
+                'Retour à la connexion',
+                style: TextStyle(color: Color(0xFF11998E)),
               ),
             ),
           ],

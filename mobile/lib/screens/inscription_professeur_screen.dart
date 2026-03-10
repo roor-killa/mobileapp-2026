@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import 'etudiants_screen.dart';
 
-// Écran d'inscription pour créer un nouveau compte professeur
 class InscriptionProfesseurScreen extends StatefulWidget {
   const InscriptionProfesseurScreen({super.key});
 
@@ -13,24 +12,15 @@ class InscriptionProfesseurScreen extends StatefulWidget {
 
 class _InscriptionProfesseurScreenState
     extends State<InscriptionProfesseurScreen> {
-  // Contrôleurs pour chaque champ du formulaire
   final _nomController = TextEditingController();
   final _prenomController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-
-  // Service pour appeler l'API Laravel
   final ApiService _apiService = ApiService();
-
-  // true = spinner affiché pendant l'appel API
   bool _isLoading = false;
-
-  // Masquer/afficher le mot de passe
   bool _passwordVisible = false;
 
-  // Fonction appelée quand on appuie sur "Créer mon compte"
   Future<void> _sinscrire() async {
-    // Vérification que tous les champs sont remplis
     if (_nomController.text.isEmpty ||
         _prenomController.text.isEmpty ||
         _emailController.text.isEmpty ||
@@ -44,11 +34,10 @@ class _InscriptionProfesseurScreenState
       return;
     }
 
-    // Active le spinner
     setState(() => _isLoading = true);
 
     try {
-      // Appel à l'API d'inscription
+      // Appel correct vers api_service.dart
       final success = await _apiService.register(
         _nomController.text,
         _prenomController.text,
@@ -57,13 +46,11 @@ class _InscriptionProfesseurScreenState
       );
 
       if (success) {
-        // Inscription réussie : on va directement vers la liste des étudiants
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const EtudiantsScreen()),
         );
       } else {
-        // Échec : email déjà utilisé ou autre erreur
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Email déjà utilisé ou erreur serveur'),
@@ -80,11 +67,9 @@ class _InscriptionProfesseurScreenState
       );
     }
 
-    // Désactive le spinner
     setState(() => _isLoading = false);
   }
 
-  // Widget réutilisable pour créer un champ stylisé
   Widget _buildChamp({
     required TextEditingController controller,
     required String label,
@@ -108,21 +93,18 @@ class _InscriptionProfesseurScreenState
       child: TextField(
         controller: controller,
         keyboardType: type,
-        // Cache le texte si c'est un champ mot de passe
         obscureText: isPassword && !_passwordVisible,
         decoration: InputDecoration(
           labelText: label,
           prefixIcon: Icon(icon, color: const Color(0xFF6C63FF)),
-          // Bouton œil uniquement pour le champ mot de passe
           suffixIcon: isPassword
               ? IconButton(
                   icon: Icon(
                     _passwordVisible ? Icons.visibility_off : Icons.visibility,
                     color: Colors.grey,
                   ),
-                  onPressed: () {
-                    setState(() => _passwordVisible = !_passwordVisible);
-                  },
+                  onPressed: () =>
+                      setState(() => _passwordVisible = !_passwordVisible),
                 )
               : null,
           border: OutlineInputBorder(
@@ -151,7 +133,6 @@ class _InscriptionProfesseurScreenState
           'Créer un compte',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
-        // Flèche retour vers le login
         iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: SingleChildScrollView(
@@ -160,7 +141,6 @@ class _InscriptionProfesseurScreenState
           children: [
             const SizedBox(height: 20),
 
-            // Icône décorative
             Container(
               width: 90,
               height: 90,
@@ -194,7 +174,6 @@ class _InscriptionProfesseurScreenState
 
             const SizedBox(height: 36),
 
-            // Champs du formulaire
             _buildChamp(
               controller: _prenomController,
               label: 'Prénom',
@@ -220,7 +199,6 @@ class _InscriptionProfesseurScreenState
 
             const SizedBox(height: 10),
 
-            // Bouton créer le compte
             SizedBox(
               width: double.infinity,
               height: 55,

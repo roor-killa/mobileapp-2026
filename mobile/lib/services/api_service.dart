@@ -8,22 +8,22 @@ import '../models/admin.dart';
 import 'session_service.dart';
 
 class ApiService {
-  // Adresse de l'API Laravel (10.0.2.2 = localhost depuis l'émulateur Android)
+
+  // URL de base de l'API Laravel
+  // 10.0.2.2 = localhost depuis l'émulateur Android Studio
   static const String baseUrl = 'http://10.0.2.2/backend-api/public/api';
 
-  // ─────────────────────────────────────────
+  // ==========================================================
   // AUTHENTIFICATION PROFESSEUR
-  // ─────────────────────────────────────────
+  // ==========================================================
 
-  /// Connexion d'un professeur
-  /// Sauvegarde le professeur en session si succès
+  // Connecte un professeur avec email + password
   Future<bool> login(String email, String password) async {
     final response = await http.post(
       Uri.parse('$baseUrl/login'),
       headers: {'Content-Type': 'application/json'},
       body: json.encode({'email': email, 'password': password}),
     );
-
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
       if (data['success'] == true) {
@@ -35,19 +35,63 @@ class ApiService {
     return false;
   }
 
-  // ─────────────────────────────────────────
-  // AUTHENTIFICATION ADMIN
-  // ─────────────────────────────────────────
+  // Inscrit un nouveau professeur
+  Future<bool> register(
+      String nom, String prenom, String email, String password) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/register'),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({
+        'nom': nom,
+        'prenom': prenom,
+        'email': email,
+        'password': password,
+      }),
+    );
+    if (response.statusCode == 201) {
+      final data = json.decode(response.body);
+      if (data['success'] == true) {
+        final professeur = Professeur.fromJson(data['professeur']);
+        SessionService().connecter(professeur);
+        return true;
+      }
+    }
+    return false;
+  }
 
-  /// Connexion de l'admin
-  /// Sauvegarde l'admin en session si succès
+  // ==========================================================
+  // AUTHENTIFICATION ÉTUDIANT
+  // ==========================================================
+
+  // Connecte un étudiant avec email + password
+  Future<bool> loginEtudiant(String email, String password) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/etudiant/login'),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({'email': email, 'password': password}),
+    );
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      if (data['success'] == true) {
+        final etudiant = Etudiant.fromJson(data['etudiant']);
+        SessionService().connecterEtudiant(etudiant);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // ==========================================================
+  // AUTHENTIFICATION ADMIN
+  // ==========================================================
+
+  // Connecte un administrateur avec email + password
   Future<bool> loginAdmin(String email, String password) async {
     final response = await http.post(
       Uri.parse('$baseUrl/admin/login'),
       headers: {'Content-Type': 'application/json'},
       body: json.encode({'email': email, 'password': password}),
     );
-
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
       if (data['success'] == true) {
@@ -59,11 +103,11 @@ class ApiService {
     return false;
   }
 
-  // ─────────────────────────────────────────
+  // ==========================================================
   // GESTION PROFESSEURS (admin seulement)
-  // ─────────────────────────────────────────
+  // ==========================================================
 
-  /// Récupère la liste de tous les professeurs avec leurs matières
+  // Récupère la liste de tous les professeurs avec leurs matières
   Future<List<Professeur>> getProfesseurs() async {
     final response = await http.get(
       Uri.parse('$baseUrl/admin/professeurs'),
@@ -75,14 +119,9 @@ class ApiService {
     throw Exception('Erreur chargement professeurs');
   }
 
-  /// Crée un nouveau professeur (avec ses matières)
-  Future<bool> creerProfesseur(
-    String nom,
-    String prenom,
-    String email,
-    String password,
-    List<int> matiereIds,
-  ) async {
+  // Crée un nouveau professeur avec ses matières assignées
+  Future<bool> creerProfesseur(String nom, String prenom, String email,
+      String password, List<int> matiereIds) async {
     final response = await http.post(
       Uri.parse('$baseUrl/admin/professeurs'),
       headers: {'Content-Type': 'application/json'},
@@ -97,7 +136,7 @@ class ApiService {
     return response.statusCode == 201;
   }
 
-  /// Modifie les matières d'un professeur (par l'admin)
+  // Modifie les matières assignées à un professeur
   Future<bool> modifierMatieresProfesseur(
       int professeurId, List<int> matiereIds) async {
     final response = await http.put(
@@ -108,7 +147,7 @@ class ApiService {
     return response.statusCode == 200;
   }
 
-  /// Supprime un professeur
+  // Supprime un professeur par son id
   Future<bool> supprimerProfesseur(int professeurId) async {
     final response = await http.delete(
       Uri.parse('$baseUrl/admin/professeurs/$professeurId'),
@@ -116,11 +155,11 @@ class ApiService {
     return response.statusCode == 200;
   }
 
-  // ─────────────────────────────────────────
+  // ==========================================================
   // ÉTUDIANTS
-  // ─────────────────────────────────────────
+  // ==========================================================
 
-  /// Récupère la liste de tous les étudiants
+  // Récupère la liste de tous les étudiants
   Future<List<Etudiant>> getEtudiants() async {
     final response = await http.get(Uri.parse('$baseUrl/etudiants'));
     if (response.statusCode == 200) {
@@ -130,7 +169,7 @@ class ApiService {
     throw Exception('Erreur chargement étudiants');
   }
 
-  /// Ajoute un nouvel étudiant
+  // Ajoute un nouvel étudiant
   Future<Etudiant> addEtudiant(Etudiant etudiant) async {
     final response = await http.post(
       Uri.parse('$baseUrl/etudiants'),
@@ -143,7 +182,7 @@ class ApiService {
     throw Exception('Erreur ajout étudiant');
   }
 
-  /// Modifie un étudiant existant
+  // Modifie un étudiant existant
   Future<Etudiant> updateEtudiant(Etudiant etudiant) async {
     final response = await http.put(
       Uri.parse('$baseUrl/etudiants/${etudiant.id}'),
@@ -156,7 +195,7 @@ class ApiService {
     throw Exception('Erreur modification étudiant');
   }
 
-  /// Supprime un étudiant par son id
+  // Supprime un étudiant par son id
   Future<void> deleteEtudiant(int id) async {
     final response = await http.delete(Uri.parse('$baseUrl/etudiants/$id'));
     if (response.statusCode != 200) {
@@ -164,11 +203,11 @@ class ApiService {
     }
   }
 
-  // ─────────────────────────────────────────
+  // ==========================================================
   // MATIÈRES
-  // ─────────────────────────────────────────
+  // ==========================================================
 
-  /// Récupère la liste de toutes les matières disponibles
+  // Récupère la liste de toutes les matières disponibles
   Future<List<Matiere>> getMatieres() async {
     final response = await http.get(Uri.parse('$baseUrl/matieres'));
     if (response.statusCode == 200) {
@@ -178,7 +217,7 @@ class ApiService {
     throw Exception('Erreur chargement matières');
   }
 
-  /// Récupère les matières d'un professeur
+  // Récupère les matières assignées à un professeur
   Future<List<Matiere>> getMatieresProf(int professeurId) async {
     final response = await http.get(
       Uri.parse('$baseUrl/professeurs/$professeurId/matieres'),
@@ -190,8 +229,9 @@ class ApiService {
     throw Exception('Erreur chargement matières du professeur');
   }
 
-  /// Assigne des matières à un professeur (max 2) - utilisé par le prof lui-même
-  Future<bool> assignerMatieres(int professeurId, List<int> matiereIds) async {
+  // Assigne des matières à un professeur (max 2)
+  Future<bool> assignerMatieres(
+      int professeurId, List<int> matiereIds) async {
     final response = await http.post(
       Uri.parse('$baseUrl/professeurs/$professeurId/matieres'),
       headers: {'Content-Type': 'application/json'},
@@ -200,11 +240,11 @@ class ApiService {
     return response.statusCode == 200;
   }
 
-  // ─────────────────────────────────────────
+  // ==========================================================
   // NOTES
-  // ─────────────────────────────────────────
+  // ==========================================================
 
-  /// Récupère toutes les notes d'un étudiant
+  // Récupère toutes les notes d'un étudiant (toutes matières)
   Future<List<Note>> getNotesEtudiant(int etudiantId) async {
     final response = await http.get(
       Uri.parse('$baseUrl/etudiants/$etudiantId/notes'),
@@ -216,7 +256,7 @@ class ApiService {
     throw Exception('Erreur chargement notes');
   }
 
-  /// Ajoute ou met à jour les notes d'un étudiant pour une matière
+  // Ajoute ou met à jour les notes d'un étudiant pour une matière
   Future<bool> sauvegarderNotes(Note note) async {
     final response = await http.post(
       Uri.parse('$baseUrl/notes'),

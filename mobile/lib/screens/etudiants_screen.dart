@@ -5,7 +5,7 @@ import 'ajouter_etudiant_screen.dart';
 import 'modifier_etudiant_screen.dart';
 import 'login_screen.dart';
 import 'notes_screen.dart';
-import 'mes_matieres_screen.dart'; // Écran pour gérer les matières du prof
+import 'mes_matieres_screen.dart';
 
 class EtudiantsScreen extends StatefulWidget {
   const EtudiantsScreen({super.key});
@@ -25,7 +25,7 @@ class _EtudiantsScreenState extends State<EtudiantsScreen> {
     _chargerEtudiants();
   }
 
-  /// Récupère tous les étudiants depuis l'API Laravel
+  // Récupère tous les étudiants depuis l'API Laravel
   Future<void> _chargerEtudiants() async {
     setState(() => _isLoading = true);
     try {
@@ -53,7 +53,6 @@ class _EtudiantsScreenState extends State<EtudiantsScreen> {
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         actions: [
-          // Nombre d'étudiants
           Padding(
             padding: const EdgeInsets.only(right: 4),
             child: Center(
@@ -63,12 +62,10 @@ class _EtudiantsScreenState extends State<EtudiantsScreen> {
               ),
             ),
           ),
-          // Bouton pour gérer ses matières
           IconButton(
             icon: const Icon(Icons.book, color: Colors.white),
             tooltip: 'Mes matières',
             onPressed: () {
-              // Navigue vers l'écran de gestion des matières
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -77,7 +74,6 @@ class _EtudiantsScreenState extends State<EtudiantsScreen> {
               );
             },
           ),
-          // Bouton de déconnexion
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.white),
             tooltip: 'Se déconnecter',
@@ -161,7 +157,6 @@ class _EtudiantsScreenState extends State<EtudiantsScreen> {
                             ),
                             const SizedBox(width: 14),
 
-                            // Informations de l'étudiant
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -182,7 +177,6 @@ class _EtudiantsScreenState extends State<EtudiantsScreen> {
                                     ),
                                   ),
                                   const SizedBox(height: 8),
-                                  // Bouton voir les notes
                                   GestureDetector(
                                     onTap: () {
                                       Navigator.push(
@@ -217,10 +211,8 @@ class _EtudiantsScreenState extends State<EtudiantsScreen> {
                               ),
                             ),
 
-                            // Boutons modifier et supprimer
                             Column(
                               children: [
-                                // Bouton modifier
                                 GestureDetector(
                                   onTap: () async {
                                     final etudiantModifie =
@@ -233,9 +225,19 @@ class _EtudiantsScreenState extends State<EtudiantsScreen> {
                                       ),
                                     );
                                     if (etudiantModifie != null) {
-                                      await _apiService
-                                          .updateEtudiant(etudiantModifie);
-                                      _chargerEtudiants();
+                                      try {
+                                        await _apiService
+                                            .updateEtudiant(etudiantModifie);
+                                        _chargerEtudiants();
+                                      } catch (e) {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                            content: Text('Erreur : $e'),
+                                            backgroundColor: Colors.red,
+                                          ),
+                                        );
+                                      }
                                     }
                                   },
                                   child: Container(
@@ -249,12 +251,21 @@ class _EtudiantsScreenState extends State<EtudiantsScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 8),
-                                // Bouton supprimer
                                 GestureDetector(
                                   onTap: () async {
-                                    await _apiService
-                                        .deleteEtudiant(etudiant.id!);
-                                    _chargerEtudiants();
+                                    try {
+                                      await _apiService
+                                          .deleteEtudiant(etudiant.id!);
+                                      _chargerEtudiants();
+                                    } catch (e) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                          content: Text('Erreur : $e'),
+                                          backgroundColor: Colors.red,
+                                        ),
+                                      );
+                                    }
                                   },
                                   child: Container(
                                     padding: const EdgeInsets.all(8),
@@ -284,8 +295,17 @@ class _EtudiantsScreenState extends State<EtudiantsScreen> {
                 builder: (context) => const AjouterEtudiantScreen()),
           );
           if (nouvelEtudiant != null) {
-            await _apiService.addEtudiant(nouvelEtudiant);
-            _chargerEtudiants();
+            try {
+              await _apiService.addEtudiant(nouvelEtudiant);
+              _chargerEtudiants();
+            } catch (e) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Erreur : $e'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
           }
         },
         backgroundColor: const Color(0xFF6C63FF),
