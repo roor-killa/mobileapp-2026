@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'screens/login_screen.dart'; // <-- Importe le Login au lieu du Register
-
-void main() {
+import 'package:intl/date_symbol_data_local.dart';
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized(); // Important
+  await initializeDateFormatting('fr_FR', null); // Pour les dates en français
   runApp(const MyApp());
 }
 

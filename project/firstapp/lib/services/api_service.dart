@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart'; // <-- Oubli réparé pour le coffre-fort !
 import '../models/transfer_response.dart';
+import '../models/transaction.dart'; // <-- Import manquant pour la classe Transaction
 
 class ApiService {
   // L'URL de ton serveur Laravel
@@ -61,6 +62,34 @@ class ApiService {
       return {'status': 'error', 'message': 'Erreur de connexion'};
     }
   }
+// Dans la classe ApiService de lib/services/api_service.dart
+
+Future<List<Transaction>> getHistory() async {
+  final prefs = await SharedPreferences.getInstance();
+  final token = prefs.getString('token');
+
+  if (token == null) {
+    throw Exception('Token non trouvé. Veuillez vous reconnecter.');
+  }
+
+  final response = await http.get(
+    Uri.parse('$baseUrl/history'), // Assurez-vous que $baseUrl est correct
+    headers: {
+      'Authorization': 'Bearer $token',
+      'Accept': 'application/json',
+    },
+  );
+
+  if (response.statusCode == 200) {
+    List<dynamic> body = jsonDecode(response.body);
+    List<Transaction> transactions = body
+        .map((dynamic item) => Transaction.fromJson(item))
+        .toList();
+    return transactions;
+  } else {
+    throw Exception('Échec du chargement de l\'historique.');
+  }
+}
 
   // =====================================================================
   // LE VRAI TRANSFERT (Connecté à PostgreSQL)

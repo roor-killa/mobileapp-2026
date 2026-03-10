@@ -55,50 +55,42 @@ class _TransferScreenState extends State<TransferScreen> {
       
   /// ÉTAPE 1 : Action déclenchée par le bouton "Transférer"
   Future<void> _effectuerTransfert() async {
-    // Validation de la saisie
-    final emailDestinataire = _emailController.text.trim();
     final montantText = _montantController.text.trim();
+    final emailText = _emailController.text.trim(); // <-- On lit l'email tapé
 
-    if (emailDestinataire.isEmpty) {
-      _afficherErreur('Veuillez entrer l\'email du destinataire');
+    if (emailText.isEmpty) {
+      _afficherErreur("Veuillez entrer l'email du destinataire");
       return;
     }
-
     if (montantText.isEmpty) {
       _afficherErreur('Veuillez entrer un montant');
       return;
     }
-    
+
     final montant = double.tryParse(montantText);
     if (montant == null || montant <= 0) {
       _afficherErreur('Montant invalide');
       return;
     }
 
-    // Active le loader
     setState(() {
       _isLoading = true;
       _lastResponse = null;
     });
-    
+
     try {
-      // ÉTAPES 2-5 : Appel API et récupération du JSON
-      final response = await _apiService.transfererMontant(emailDestinataire, montant);
-      
-      // ÉTAPE 6 : Mise à jour de l'interface avec les données
-      print('✅ ÉTAPE 6 : Affichage des données');
+      // <-- ON ENVOIE L'EMAIL ET LE MONTANT À L'API
+      final response = await _apiService.transfererMontant(emailText, montant); 
+
       setState(() {
         _lastResponse = response;
-        _soldeActuel = response.nouveauSolde;
+        if (response.success) {
+          _soldeActuel = response.nouveauSolde;
+          _montantController.clear();
+          _emailController.clear(); // On vide le champ email si c'est un succès
+        }
         _isLoading = false;
       });
-      
-      // Vider le champ après succès
-      if (response.success) {
-        _emailController.clear();
-        _montantController.clear();
-      }
-      
     } catch (e) {
       print('❌ Erreur : $e');
       setState(() {
@@ -205,8 +197,8 @@ class _TransferScreenState extends State<TransferScreen> {
   }
   /// Affiche une Pop-up pour simuler un dépôt par carte
   void _afficherDialogRechargement() {
-    final TextEditingController _topupController = TextEditingController();
-    bool _isToppingUp = false;
+    final TextEditingController topupController = TextEditingController();
+    bool isToppingUp = false;
 
     showDialog(
       context: context,
@@ -222,7 +214,7 @@ class _TransferScreenState extends State<TransferScreen> {
                   const Text('Simulez un dépôt par carte bancaire. Minimum 5 €.', style: TextStyle(color: Colors.grey, fontSize: 12)),
                   const SizedBox(height: 15),
                   TextField(
-                    controller: _topupController,
+                    controller: topupController,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     decoration: const InputDecoration(
                       labelText: 'Montant à déposer',
@@ -235,18 +227,18 @@ class _TransferScreenState extends State<TransferScreen> {
               ),
               actions: [
                 TextButton(
-                  onPressed: _isToppingUp ? null : () => Navigator.pop(context),
+                  onPressed: isToppingUp ? null : () => Navigator.pop(context),
                   child: const Text('Annuler', style: TextStyle(color: Colors.red)),
                 ),
                 ElevatedButton(
-                  onPressed: _isToppingUp ? null : () async {
-                    final montant = double.tryParse(_topupController.text.trim());
+                  onPressed: isToppingUp ? null : () async {
+                    final montant = double.tryParse(topupController.text.trim());
                     if (montant == null || montant < 5.0) {
                       _afficherErreur("Veuillez entrer au moins 5 €");
                       return;
                     }
 
-                    setStateDialog(() => _isToppingUp = true);
+                    setStateDialog(() => isToppingUp = true);
 
                     // On appelle la fonction de l'API !
                     final result = await _apiService.topUp(montant);
@@ -263,12 +255,12 @@ class _TransferScreenState extends State<TransferScreen> {
                         SnackBar(content: Text(result['message']), backgroundColor: Colors.green),
                       );
                     } else {
-                      setStateDialog(() => _isToppingUp = false);
+                      setStateDialog(() => isToppingUp = false);
                       _afficherErreur(result['message'] ?? 'Erreur lors du rechargement');
                     }
                   },
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                  child: _isToppingUp 
+                  child: isToppingUp 
                       ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                       : const Text('Valider', style: TextStyle(color: Colors.white)),
                 ),
@@ -287,7 +279,7 @@ class _TransferScreenState extends State<TransferScreen> {
       keyboardType: TextInputType.emailAddress,
       decoration: InputDecoration(
         labelText: 'Email du destinataire',
-        hintText: 'ami@example.com',
+        hintText: 'ami@mail.com',
         prefixIcon: const Icon(Icons.email),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
@@ -297,7 +289,6 @@ class _TransferScreenState extends State<TransferScreen> {
       ),
     );
   }
-
   /// ÉTAPE 0 : Champ de saisie du montant
   Widget _buildMontantInput() {
     return TextField(

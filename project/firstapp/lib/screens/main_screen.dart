@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'login_screen.dart';
 import 'transfer_screen.dart'; // Ton écran actuel (Tab 1)
+import 'history_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -16,7 +17,7 @@ class _MainScreenState extends State<MainScreen> {
   // Liste des 4 écrans de ton application
   final List<Widget> _screens = [
     const TransferScreen(), // 1. L'onglet Wallet (Ton écran actuel avec le solde)
-    const Center(child: Text("Historique des transactions (À venir)", style: TextStyle(fontSize: 20))), // 2. Historique
+    const HistoryScreen(),    // 2. Historique
     const Center(child: Text("Bourse & Achat BKN (À venir)", style: TextStyle(fontSize: 20))), // 3. Graphe BKN
     const Center(child: Text("Vendre mes BKN (À venir)", style: TextStyle(fontSize: 20))), // 4. Vente BKN
   ];
