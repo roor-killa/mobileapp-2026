@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import '../theme/app_colors.dart';
 import 'home_tab.dart';
 import 'transfer_screen.dart';
 import 'releve_compte_screen.dart';
@@ -50,7 +51,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(_titles[_currentIndex]),
-        backgroundColor: Colors.blue,
+        backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         actions: [
           GestureDetector(
@@ -63,7 +64,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 child: Text(
                   initiales,
                   style: const TextStyle(
-                    color: Colors.blue,
+                    color: AppColors.primary,
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
                   ),
@@ -80,7 +81,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (i) => setState(() => _currentIndex = i),
-        selectedItemColor: Colors.blue,
+        selectedItemColor: AppColors.primary,
         unselectedItemColor: Colors.grey,
         type: BottomNavigationBarType.fixed,
         items: const [

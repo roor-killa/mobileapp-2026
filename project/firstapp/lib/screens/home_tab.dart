@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/transaction_model.dart';
 import '../services/auth_service.dart';
 import '../services/database_service.dart';
+import '../theme/app_colors.dart';
 
 class HomeTab extends StatefulWidget {
   final VoidCallback? onGoToTransfer;
@@ -78,7 +79,7 @@ class _HomeTabState extends State<HomeTab> {
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          colors: [Color(0xFF1565C0), Color(0xFF42A5F5)],
+          colors: [AppColors.gradientStart, AppColors.gradientEnd],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -138,7 +139,7 @@ class _HomeTabState extends State<HomeTab> {
               child: _buildActionButton(
                 icon: Icons.send,
                 label: 'Virement',
-                color: Colors.blue,
+                color: AppColors.primary,
                 onTap: widget.onGoToTransfer,
               ),
             ),

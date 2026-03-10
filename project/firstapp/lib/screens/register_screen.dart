@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/auth_service.dart';
+import '../theme/app_colors.dart';
 import 'dashboard_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -94,10 +95,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Créer un compte'),
-        backgroundColor: Colors.blue,
+        backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
       ),
-      backgroundColor: Colors.blue.shade50,
+      backgroundColor: AppColors.primaryLight,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Column(
@@ -188,7 +189,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ElevatedButton(
               onPressed: _isLoading ? null : _inscrire,
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
+                backgroundColor: AppColors.primary,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
@@ -210,7 +211,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               onPressed: () => Navigator.pop(context),
               child: const Text(
                 'Déjà un compte ? Se connecter',
-                style: TextStyle(color: Colors.blue),
+                style: TextStyle(color: AppColors.primary),
               ),
             ),
           ],

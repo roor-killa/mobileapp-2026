@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/transaction_model.dart';
 import '../services/auth_service.dart';
 import '../services/database_service.dart';
+import '../theme/app_colors.dart';
 
 /// Version autonome (navigation directe) — conservée pour compatibilité.
 class ReleveCompteScreen extends StatelessWidget {
@@ -12,7 +13,7 @@ class ReleveCompteScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Relevé de compte'),
-        backgroundColor: Colors.blue,
+        backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
       ),
       body: const HistoryTab(),
@@ -117,7 +118,7 @@ class _HistoryTabState extends State<HistoryTab> {
         child: Row(
           children: [
             CircleAvatar(
-              backgroundColor: Colors.blue,
+              backgroundColor: AppColors.primary,
               radius: 28,
               child: Text(
                 nom.isNotEmpty ? nom[0].toUpperCase() : '?',
@@ -151,7 +152,7 @@ class _HistoryTabState extends State<HistoryTab> {
   Widget _buildSoldesCard(double soldeInitial, double soldeActuel) {
     return Card(
       elevation: 3,
-      color: Colors.blue.shade50,
+      color: AppColors.primaryLight,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Row(
@@ -177,7 +178,7 @@ class _HistoryTabState extends State<HistoryTab> {
                 ],
               ),
             ),
-            Container(width: 1, height: 50, color: Colors.blue.shade200),
+            Container(width: 1, height: 50, color: AppColors.primaryMedium),
             Expanded(
               child: Column(
                 children: [
@@ -192,7 +193,7 @@ class _HistoryTabState extends State<HistoryTab> {
                     style: const TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
-                      color: Colors.blue,
+                      color: AppColors.primary,
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -266,7 +267,7 @@ class _HistoryTabState extends State<HistoryTab> {
   Widget _buildHistoriqueHeader() {
     return Row(
       children: [
-        const Icon(Icons.history, color: Colors.blue),
+        const Icon(Icons.history, color: AppColors.primary),
         const SizedBox(width: 8),
         const Text(
           'Historique des transactions',
@@ -283,7 +284,7 @@ class _HistoryTabState extends State<HistoryTab> {
 
   Widget _buildFilterChips() {
     final filters = [
-      ('tout', 'Tout', Colors.blue),
+      ('tout', 'Tout', AppColors.primary),
       ('envoi', 'Envois', Colors.orange),
       ('reception', 'Reçus', Colors.green),
       ('echec', 'Échecs', Colors.red),

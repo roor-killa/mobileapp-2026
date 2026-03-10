@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../models/transfer_response.dart';
 import '../models/utilisateur.dart';
 import '../services/api_service.dart';
+import '../theme/app_colors.dart';
 import '../services/auth_service.dart';
 import '../services/database_service.dart';
 
@@ -15,7 +16,7 @@ class TransferScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Transfert'),
-        backgroundColor: Colors.blue,
+        backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
       ),
       body: const TransferTab(),
@@ -74,7 +75,7 @@ class _TransferTabState extends State<TransferTab> {
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
             child: const Text('Confirmer', style: TextStyle(color: Colors.white)),
           ),
         ],
@@ -162,7 +163,7 @@ class _TransferTabState extends State<TransferTab> {
   Widget _buildSoldeCard() {
     return Card(
       elevation: 4,
-      color: Colors.blue.shade50,
+      color: AppColors.primaryLight,
       child: Padding(
         padding: const EdgeInsets.all(20.0),
         child: Column(
@@ -175,7 +176,7 @@ class _TransferTabState extends State<TransferTab> {
               style: const TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
-                  color: Colors.blue),
+                  color: AppColors.primary),
             ),
           ],
         ),
@@ -255,7 +256,7 @@ class _TransferTabState extends State<TransferTab> {
     return ElevatedButton(
       onPressed: _isLoading ? null : _effectuerTransfert,
       style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.blue,
+        backgroundColor: AppColors.primary,
         padding: const EdgeInsets.symmetric(vertical: 16),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
@@ -333,7 +334,7 @@ class _TransferTabState extends State<TransferTab> {
           Text(value,
               style: TextStyle(
                   fontSize: 16,
-                  color: isBold ? Colors.blue : Colors.black,
+                  color: isBold ? AppColors.primary : Colors.black,
                   fontWeight: isBold ? FontWeight.bold : FontWeight.normal)),
         ],
       ),

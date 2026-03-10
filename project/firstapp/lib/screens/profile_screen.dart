@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import '../theme/app_colors.dart';
 import 'login_screen.dart';
 
 class ProfileTab extends StatefulWidget {
@@ -37,7 +38,7 @@ class _ProfileTabState extends State<ProfileTab> {
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, controller.text.trim()),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
             child: const Text('Sauvegarder',
                 style: TextStyle(color: Colors.white)),
           ),
@@ -122,7 +123,7 @@ class _ProfileTabState extends State<ProfileTab> {
             ElevatedButton(
               onPressed: () => Navigator.pop(ctx, true),
               style:
-                  ElevatedButton.styleFrom(backgroundColor: Colors.blue),
+                  ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
               child: const Text('Confirmer',
                   style: TextStyle(color: Colors.white)),
             ),
@@ -246,7 +247,7 @@ class _ProfileTabState extends State<ProfileTab> {
                   child: Column(
                     children: [
                       CircleAvatar(
-                        backgroundColor: Colors.blue,
+                        backgroundColor: AppColors.primary,
                         radius: 44,
                         child: Text(
                           initiales,
@@ -286,7 +287,7 @@ class _ProfileTabState extends State<ProfileTab> {
 
                 // Solde card
                 Card(
-                  color: Colors.blue.shade50,
+                  color: AppColors.primaryLight,
                   elevation: 2,
                   child: Padding(
                     padding: const EdgeInsets.all(16),
@@ -294,14 +295,14 @@ class _ProfileTabState extends State<ProfileTab> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         const Icon(Icons.account_balance_wallet,
-                            color: Colors.blue),
+                            color: AppColors.primary),
                         const SizedBox(width: 10),
                         Text(
                           'Solde : ${user.soldeActuel.toStringAsFixed(2)} €',
                           style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
-                            color: Colors.blue,
+                            color: AppColors.primary,
                           ),
                         ),
                       ],
@@ -328,7 +329,7 @@ class _ProfileTabState extends State<ProfileTab> {
                     children: [
                       ListTile(
                         leading: const Icon(Icons.person_outline,
-                            color: Colors.blue),
+                            color: AppColors.primary),
                         title: const Text('Modifier le nom'),
                         trailing: const Icon(Icons.chevron_right),
                         onTap: _modifierNom,
@@ -336,7 +337,7 @@ class _ProfileTabState extends State<ProfileTab> {
                       const Divider(height: 1, indent: 56),
                       ListTile(
                         leading: const Icon(Icons.lock_outline,
-                            color: Colors.blue),
+                            color: AppColors.primary),
                         title: const Text('Changer le mot de passe'),
                         trailing: const Icon(Icons.chevron_right),
                         onTap: _changerMotDePasse,

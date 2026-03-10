@@ -64,6 +64,9 @@ class AuthService {
     return _utilisateurConnecte?.motDePasse == _hasher(mdp);
   }
 
+  /// Exposé pour la réinitialisation de mot de passe sans session active.
+  static String hasherMotDePasse(String mdp) => _hasher(mdp);
+
   Future<void> _sauvegarderSession(int userId) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_keySessionUserId, userId);
