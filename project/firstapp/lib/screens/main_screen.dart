@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'login_screen.dart';
 import 'transfer_screen.dart'; // Ton écran actuel (Onglet 1)
 import 'history_screen.dart'; 
+import 'crypto_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -19,8 +20,8 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _screens = [
     const TransferScreen(), 
     const HistoryScreen(), 
-    const Center(child: Text("Bourse & Achat BKN", style: TextStyle(fontSize: 18, color: Colors.grey))), 
-    const Center(child: Text("Vendre mes BKN", style: TextStyle(fontSize: 18, color: Colors.grey))), 
+    const CryptoScreen(),
+    const Center(child: Text("Paramètres", style: TextStyle(fontSize: 18, color: Colors.grey))),
   ];
 
   // Fonction pour se déconnecter

@@ -134,4 +134,53 @@ class ApiService {
     }
     return []; // Si erreur, on renvoie une liste vide
   }
+  // =====================================================================
+  // MARCHÉ CRYPTO BKN
+  // =====================================================================
+  
+  Future<Map<String, dynamic>> getMarketData() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+    if (token == null) return {'success': false};
+
+    final url = Uri.parse('$baseUrl/bkn/market');
+    try {
+      final response = await http.get(url, headers: {'Authorization': 'Bearer $token'});
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {'success': false, 'message': 'Erreur réseau'};
+    }
+  }
+
+  Future<Map<String, dynamic>> buyBkn(double quantite) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+    final url = Uri.parse('$baseUrl/bkn/buy');
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
+        body: jsonEncode({'quantite': quantite}),
+      );
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {'success': false, 'message': 'Erreur réseau'};
+    }
+  }
+
+  Future<Map<String, dynamic>> sellBkn(double quantite) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+    final url = Uri.parse('$baseUrl/bkn/sell');
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
+        body: jsonEncode({'quantite': quantite}),
+      );
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {'success': false, 'message': 'Erreur réseau'};
+    }
+  }
 }
