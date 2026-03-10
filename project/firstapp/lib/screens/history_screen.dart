@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import '../models/transaction.dart';
 import '../services/api_service.dart';
-import 'package:intl/intl.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -12,92 +10,95 @@ class HistoryScreen extends StatefulWidget {
 
 class _HistoryScreenState extends State<HistoryScreen> {
   final ApiService _apiService = ApiService();
-  late Future<List<Transaction>> _transactionsFuture;
+  List<dynamic> _transactions = [];
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadTransactions();
+    _chargerHistorique();
   }
 
-  Future<void> _loadTransactions() async {
+  Future<void> _chargerHistorique() async {
+    final transactions = await _apiService.getTransactions();
     setState(() {
-      _transactionsFuture = _apiService.getHistory();
+      _transactions = transactions;
+      _isLoading = false;
     });
+  }
+
+  // Petite fonction pour formater la date proprement
+  String _formaterDate(String dateString) {
+    try {
+      final date = DateTime.parse(dateString);
+      return "${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year} à ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}";
+    } catch (e) {
+      return dateString;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Historique'),
-        backgroundColor: Colors.blue,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.white),
-            onPressed: _loadTransactions,
-            tooltip: 'Actualiser',
-          ),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: _loadTransactions,
-        child: FutureBuilder<List<Transaction>>(
-          future: _transactionsFuture,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            } else if (snapshot.hasError) {
-              return Center(child: Text('Erreur: ${snapshot.error}'));
-            } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-              return const Center(child: Text('Aucune transaction pour le moment.'));
-            }
-
-            final transactions = snapshot.data!;
-            return ListView.builder(
-              itemCount: transactions.length,
-              itemBuilder: (context, index) {
-                final tx = transactions[index];
-                return _buildTransactionTile(tx);
-              },
-            );
-          },
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTransactionTile(Transaction tx) {
-    IconData icon;
-    Color color;
-    String amountString = tx.amount.toStringAsFixed(2);
-
-    switch (tx.type) {
-      case 'sent':
-        icon = Icons.arrow_upward;
-        color = Colors.redAccent;
-        amountString = '$amountString €'; // Le montant est déjà négatif
-        break;
-      case 'received':
-        icon = Icons.arrow_downward;
-        color = Colors.green;
-        amountString = '+$amountString €';
-        break;
-      case 'topup':
-        icon = Icons.add_circle;
-        color = Colors.blue;
-        amountString = '+$amountString €';
-        break;
-      default:
-        icon = Icons.help_outline;
-        color = Colors.grey;
+    // Si ça charge, on montre un petit cercle
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
     }
 
-    return ListTile(
-      leading: Icon(icon, color: color, size: 30),
-      title: Text(tx.details, style: const TextStyle(fontWeight: FontWeight.w500)),
-      subtitle: Text(DateFormat('dd MMMM yyyy à HH:mm', 'fr_FR').format(tx.date.toLocal())),
-      trailing: Text(amountString, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 16)),
+    // Si la liste est vide (aucun reçu)
+    if (_transactions.isEmpty) {
+      return const Center(
+        child: Text(
+          "Aucune transaction pour le moment.",
+          style: TextStyle(fontSize: 16, color: Colors.grey),
+        ),
+      );
+    }
+
+    // Si on a des reçus, on affiche une belle liste
+    return ListView.builder(
+      itemCount: _transactions.length,
+      itemBuilder: (context, index) {
+        final transaction = _transactions[index];
+        
+        // On détermine si c'est une entrée ou une sortie d'argent
+        final isSortie = transaction['type'] == 'envoi';
+        final montant = double.parse(transaction['montant'].toString());
+        
+        // Couleurs et symboles dynamiques
+        final couleurMontant = isSortie ? Colors.red : Colors.green;
+        final signe = isSortie ? "-" : "+";
+        final icone = transaction['type'] == 'rechargement' 
+            ? Icons.account_balance_wallet
+            : (isSortie ? Icons.arrow_upward : Icons.arrow_downward);
+
+        return Card(
+          margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+          elevation: 2,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          child: ListTile(
+            leading: CircleAvatar(
+              backgroundColor: couleurMontant.withOpacity(0.1),
+              child: Icon(icone, color: couleurMontant),
+            ),
+            title: Text(
+              transaction['description'],
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            subtitle: Text(
+              _formaterDate(transaction['created_at']),
+              style: const TextStyle(fontSize: 12),
+            ),
+            trailing: Text(
+              "$signe ${montant.toStringAsFixed(2)} €",
+              style: TextStyle(
+                color: couleurMontant,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

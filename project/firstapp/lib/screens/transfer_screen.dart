@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import '../models/transfer_response.dart';
-import '../services/api_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../services/api_service.dart';
+import '../models/transfer_response.dart';
 
 class TransferScreen extends StatefulWidget {
   const TransferScreen({super.key});
@@ -12,197 +11,60 @@ class TransferScreen extends StatefulWidget {
 }
 
 class _TransferScreenState extends State<TransferScreen> {
-  // Contrôleur pour le champ de saisie
+  final ApiService _apiService = ApiService();
   final TextEditingController _montantController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
+  
+  double? _soldeActuel;
+  bool _isLoading = false;
+  TransferResponse? _lastResponse;
 
-  // Service API
-  final ApiService _apiService = ApiService();
-  
-  // État de l'application
-  bool _isLoading = false; // Chargement en cours ?
-  TransferResponse? _lastResponse; // Dernière réponse reçue
-  double? _soldeActuel; // Solde actuel
-  
   @override
   void initState() {
     super.initState();
     _chargerSoldeInitial();
   }
-  
-  /// Charge le VRAI solde au démarrage depuis PostgreSQL
+
   Future<void> _chargerSoldeInitial() async {
-    // 1. On récupère le badge secret dans le coffre
+    // 1. AFFICHAGE INSTANTANÉ (Mémoire du téléphone)
     final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
-
-    if (token != null) {
-      // 2. On utilise la fonction getUser que Gemini t'a préparée !
-      // Elle envoie le Token à Laravel pour récupérer les infos du client
-      final userData = await _apiService.getUser(token);
-
-      // 3. Si Laravel nous répond bien, on met à jour l'écran
-      if (userData['solde'] != null) {
-        setState(() {
-          // On transforme le solde de la base de données en nombre à virgule pour Flutter
-          _soldeActuel = double.parse(userData['solde'].toString());
-        });
-      }
-    } else {
-      print("Erreur : Aucun token trouvé, l'utilisateur n'est pas connecté.");
-    }
-  }
-      
-  /// ÉTAPE 1 : Action déclenchée par le bouton "Transférer"
-  Future<void> _effectuerTransfert() async {
-    final montantText = _montantController.text.trim();
-    final emailText = _emailController.text.trim(); // <-- On lit l'email tapé
-
-    if (emailText.isEmpty) {
-      _afficherErreur("Veuillez entrer l'email du destinataire");
-      return;
-    }
-    if (montantText.isEmpty) {
-      _afficherErreur('Veuillez entrer un montant');
-      return;
-    }
-
-    final montant = double.tryParse(montantText);
-    if (montant == null || montant <= 0) {
-      _afficherErreur('Montant invalide');
-      return;
-    }
-
     setState(() {
-      _isLoading = true;
-      _lastResponse = null;
+      _soldeActuel = prefs.getDouble('solde') ?? 0.00;
     });
 
-    try {
-      // <-- ON ENVOIE L'EMAIL ET LE MONTANT À L'API
-      final response = await _apiService.transfererMontant(emailText, montant); 
-
+    // 2. VÉRIFICATION SILENCIEUSE EN ARRIÈRE-PLAN (La magie Revolut !)
+    final vraiSolde = await _apiService.getLiveBalance();
+    
+    // Si Laravel a répondu et que le solde est différent
+    if (vraiSolde != null && vraiSolde != _soldeActuel) {
       setState(() {
-        _lastResponse = response;
-        if (response.success) {
-          _soldeActuel = response.nouveauSolde;
-          _montantController.clear();
-          _emailController.clear(); // On vide le champ email si c'est un succès
-        }
-        _isLoading = false;
+        _soldeActuel = vraiSolde; // On met à jour le chiffre à l'écran
       });
-    } catch (e) {
-      print('❌ Erreur : $e');
-      setState(() {
-        _isLoading = false;
-      });
-      _afficherErreur('Erreur lors du transfert');
+      // On sauvegarde ce nouveau solde tout frais dans le coffre-fort
+      await prefs.setDouble('solde', vraiSolde); 
     }
   }
-  
+
+  @override
+  void dispose() {
+    _montantController.dispose();
+    _emailController.dispose();
+    super.dispose();
+  }
+
   void _afficherErreur(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-      ),
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
     );
   }
-  
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Transfert d\'argent'),
-        backgroundColor: Colors.blue,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Affichage du solde actuel
-            _buildSoldeCard(),
-            
-            const SizedBox(height: 30),
-            
-            // Champ de saisie de l'email du destinataire
-            _buildEmailInput(),
 
-            const SizedBox(height: 15),
-
-            // ÉTAPE 0 : Champ de saisie du montant
-            _buildMontantInput(),
-            
-            const SizedBox(height: 30),
-            
-            // ÉTAPE 1 : Bouton de transfert
-            _buildTransferButton(),
-            
-            const SizedBox(height: 30),
-            
-            // ÉTAPE 6 : Affichage du résultat
-            if (_lastResponse != null) _buildResultCard(),
-            
-            // Indicateur de chargement
-            if (_isLoading) _buildLoadingIndicator(),
-          ],
-        ),
-      ),
-    );
-  }
-  
-
- /// Card affichant le solde actuel et le bouton de rechargement
-  Widget _buildSoldeCard() {
-    return Card(
-      elevation: 4,
-      color: Colors.blue.shade50,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          children: [
-            const Text(
-              'Solde disponible',
-              style: TextStyle(fontSize: 16, color: Colors.black54),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              _soldeActuel != null 
-                  ? '${_soldeActuel!.toStringAsFixed(2)} €'
-                  : 'Chargement...',
-              style: const TextStyle(
-                fontSize: 36,
-                fontWeight: FontWeight.bold,
-                color: Colors.blue,
-              ),
-            ),
-            const SizedBox(height: 15),
-            
-            // NOUVEAU : Le bouton pour recharger
-            ElevatedButton.icon(
-              onPressed: _afficherDialogRechargement,
-              icon: const Icon(Icons.add_circle_outline, color: Colors.white),
-              label: const Text('Recharger par carte', style: TextStyle(color: Colors.white)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green, // Vert pour l'ajout d'argent
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-  /// Affiche une Pop-up pour simuler un dépôt par carte
   void _afficherDialogRechargement() {
-    final TextEditingController topupController = TextEditingController();
-    bool isToppingUp = false;
+    final TextEditingController _topupController = TextEditingController();
+    bool _isToppingUp = false;
 
     showDialog(
       context: context,
-      barrierDismissible: false, // Empêche de fermer en cliquant à côté
+      barrierDismissible: false,
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setStateDialog) {
@@ -214,55 +76,42 @@ class _TransferScreenState extends State<TransferScreen> {
                   const Text('Simulez un dépôt par carte bancaire. Minimum 5 €.', style: TextStyle(color: Colors.grey, fontSize: 12)),
                   const SizedBox(height: 15),
                   TextField(
-                    controller: topupController,
+                    controller: _topupController,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    decoration: const InputDecoration(
-                      labelText: 'Montant à déposer',
-                      prefixIcon: Icon(Icons.credit_card),
-                      suffixText: '€',
-                      border: OutlineInputBorder(),
-                    ),
+                    decoration: const InputDecoration(labelText: 'Montant à déposer', prefixIcon: Icon(Icons.credit_card), suffixText: '€', border: OutlineInputBorder()),
                   ),
                 ],
               ),
               actions: [
                 TextButton(
-                  onPressed: isToppingUp ? null : () => Navigator.pop(context),
+                  onPressed: _isToppingUp ? null : () => Navigator.pop(context),
                   child: const Text('Annuler', style: TextStyle(color: Colors.red)),
                 ),
                 ElevatedButton(
-                  onPressed: isToppingUp ? null : () async {
-                    final montant = double.tryParse(topupController.text.trim());
+                  onPressed: _isToppingUp ? null : () async {
+                    final montant = double.tryParse(_topupController.text.trim());
                     if (montant == null || montant < 5.0) {
                       _afficherErreur("Veuillez entrer au moins 5 €");
                       return;
                     }
-
-                    setStateDialog(() => isToppingUp = true);
-
-                    // On appelle la fonction de l'API !
+                    setStateDialog(() => _isToppingUp = true);
                     final result = await _apiService.topUp(montant);
 
                     if (result['success'] == true) {
-                      Navigator.pop(context); // On ferme la fenêtre
+                      Navigator.pop(context);
+                      setState(() => _soldeActuel = double.parse(result['nouveau_solde'].toString()));
                       
-                      // On met à jour le gros chiffre bleu sur l'écran
-                      setState(() {
-                        _soldeActuel = double.parse(result['nouveau_solde'].toString());
-                      });
-                      
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(result['message']), backgroundColor: Colors.green),
-                      );
+                      final prefs = await SharedPreferences.getInstance();
+                      await prefs.setDouble('solde', _soldeActuel!); // Mise à jour locale
+
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result['message']), backgroundColor: Colors.green));
                     } else {
-                      setStateDialog(() => isToppingUp = false);
+                      setStateDialog(() => _isToppingUp = false);
                       _afficherErreur(result['message'] ?? 'Erreur lors du rechargement');
                     }
                   },
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                  child: isToppingUp 
-                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                      : const Text('Valider', style: TextStyle(color: Colors.white)),
+                  child: _isToppingUp ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Text('Valider', style: TextStyle(color: Colors.white)),
                 ),
               ],
             );
@@ -272,158 +121,139 @@ class _TransferScreenState extends State<TransferScreen> {
     );
   }
 
-  /// Champ de saisie de l'email
-  Widget _buildEmailInput() {
-    return TextField(
-      controller: _emailController,
-      keyboardType: TextInputType.emailAddress,
-      decoration: InputDecoration(
-        labelText: 'Email du destinataire',
-        hintText: 'ami@mail.com',
-        prefixIcon: const Icon(Icons.email),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-        filled: true,
-        fillColor: Colors.grey.shade100,
-      ),
-    );
-  }
-  /// ÉTAPE 0 : Champ de saisie du montant
-  Widget _buildMontantInput() {
-    return TextField(
-      controller: _montantController,
-      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      inputFormatters: [
-        FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
-      ],
-      decoration: InputDecoration(
-        labelText: 'Montant à transférer',
-        hintText: 'Ex: 50.00',
-        prefixIcon: const Icon(Icons.euro),
-        suffixText: '€',
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-        filled: true,
-        fillColor: Colors.grey.shade100,
-      ),
-      style: const TextStyle(fontSize: 20),
-    );
-  }
-  
-  /// ÉTAPE 1 : Bouton de transfert
-  Widget _buildTransferButton() {
-    return ElevatedButton(
-      onPressed: _isLoading ? null : _effectuerTransfert,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.blue,
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-      ),
-      child: const Text(
-        'Transférer',
-        style: TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-          color: Colors.white,
-        ),
-      ),
-    );
-  }
-  
-  /// Indicateur de chargement (étapes 2-5)
-  Widget _buildLoadingIndicator() {
-    return const Column(
-      children: [
-        CircularProgressIndicator(),
-        SizedBox(height: 10),
-        Text(
-          'Traitement en cours...',
-          style: TextStyle(color: Colors.grey),
-        ),
-      ],
-    );
-  }
-  
-  /// ÉTAPE 6 : Affichage du résultat
-  Widget _buildResultCard() {
-    final response = _lastResponse!;
-    final isSuccess = response.success;
+  Future<void> _effectuerTransfert() async {
+    final montantText = _montantController.text.trim();
+    final emailText = _emailController.text.trim();
+
+    if (emailText.isEmpty) {
+      _afficherErreur("Veuillez entrer l'email du destinataire");
+      return;
+    }
+    if (montantText.isEmpty) {
+      _afficherErreur('Veuillez entrer un montant');
+      return;
+    }
     
-    return Card(
-      elevation: 4,
-      color: isSuccess ? Colors.green.shade50 : Colors.red.shade50,
-      child: Padding(
+    final montant = double.tryParse(montantText);
+    if (montant == null || montant <= 0) {
+      _afficherErreur('Montant invalide');
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _lastResponse = null;
+    });
+    
+    try {
+      final response = await _apiService.transfererMontant(emailText, montant); 
+      
+      setState(() {
+        _lastResponse = response;
+        if (response.success) {
+          _soldeActuel = response.nouveauSolde;
+          _montantController.clear();
+          _emailController.clear();
+          SharedPreferences.getInstance().then((prefs) => prefs.setDouble('solde', _soldeActuel!));
+        }
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
+      _afficherErreur('Une erreur est survenue.');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      // L'AppBar et la fonction _logout ont été supprimés !
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              children: [
-                Icon(
-                  isSuccess ? Icons.check_circle : Icons.error,
-                  color: isSuccess ? Colors.green : Colors.red,
-                  size: 30,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    response.message,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: isSuccess ? Colors.green : Colors.red,
-                    ),
-                  ),
-                ),
-              ],
+            _buildSoldeCard(),
+            const SizedBox(height: 30),
+            TextField(
+              controller: _emailController,
+              keyboardType: TextInputType.emailAddress,
+              decoration: InputDecoration(labelText: 'Email du destinataire', prefixIcon: const Icon(Icons.alternate_email), border: OutlineInputBorder(borderRadius: BorderRadius.circular(10))),
             ),
-            if (isSuccess) ...[
-              const Divider(height: 30),
-              _buildDetailRow('Solde initial', '${response.montantTotal.toStringAsFixed(2)} €'),
-              _buildDetailRow('Montant transféré', '- ${response.montantTransfere.toStringAsFixed(2)} €'),
-              _buildDetailRow('Nouveau solde', '${response.nouveauSolde.toStringAsFixed(2)} €', isBold: true),
-            ],
+            const SizedBox(height: 15),
+            TextField(
+              controller: _montantController,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(labelText: 'Montant à transférer', prefixIcon: const Icon(Icons.euro), border: OutlineInputBorder(borderRadius: BorderRadius.circular(10))),
+            ),
+            const SizedBox(height: 20),
+            _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : ElevatedButton(
+                    onPressed: _effectuerTransfert,
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, padding: const EdgeInsets.symmetric(vertical: 16)),
+                    child: const Text('Transférer', style: TextStyle(fontSize: 18, color: Colors.white)),
+                  ),
+            if (_lastResponse != null) ...[
+              const SizedBox(height: 30),
+              _buildResultCard(_lastResponse!),
+            ]
           ],
         ),
       ),
     );
   }
-  
-  Widget _buildDetailRow(String label, String value, {bool isBold = false}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.black87,
-              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+
+  Widget _buildSoldeCard() {
+    return Card(
+      elevation: 4,
+      color: Colors.blue.shade50,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          children: [
+            const Text('Solde disponible', style: TextStyle(fontSize: 16, color: Colors.black54)),
+            const SizedBox(height: 10),
+            Text(_soldeActuel != null ? '${_soldeActuel!.toStringAsFixed(2)} €' : 'Chargement...', style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Colors.blue)),
+            const SizedBox(height: 15),
+            ElevatedButton.icon(
+              onPressed: _afficherDialogRechargement,
+              icon: const Icon(Icons.add_circle_outline, color: Colors.white),
+              label: const Text('Recharger par carte', style: TextStyle(color: Colors.white)),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.green, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20))),
             ),
-          ),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 16,
-              color: isBold ? Colors.blue : Colors.black,
-              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
-  
-  @override
-void dispose() {
-  _montantController.dispose();
-  _emailController.dispose(); // <-- Ajouté
-  super.dispose();
-}
+
+  Widget _buildResultCard(TransferResponse response) {
+    final bool success = response.success;
+    return Card(
+      color: success ? Colors.green.shade50 : Colors.red.shade50,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10), side: BorderSide(color: success ? Colors.green.shade200 : Colors.red.shade200)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Icon(success ? Icons.check_circle : Icons.error, color: success ? Colors.green : Colors.red),
+                const SizedBox(width: 10),
+                Expanded(child: Text(response.message, style: TextStyle(color: success ? Colors.green.shade700 : Colors.red.shade700, fontWeight: FontWeight.bold))),
+              ],
+            ),
+            if (success) ...[
+              const Divider(height: 20),
+              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text('Montant transféré'), Text('- ${response.montantTransfere.toStringAsFixed(2)} €')]),
+              const SizedBox(height: 5),
+              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text('Nouveau solde', style: TextStyle(fontWeight: FontWeight.bold)), Text('${response.nouveauSolde.toStringAsFixed(2)} €', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue))]),
+            ]
+          ],
+        ),
+      ),
+    );
+  }
 }

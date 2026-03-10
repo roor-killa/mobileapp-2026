@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import 'register_screen.dart';
-import 'transfer_screen.dart'; 
 import 'package:shared_preferences/shared_preferences.dart';
 import 'main_screen.dart';
 
@@ -36,11 +35,14 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = false);
 
     if (result['status'] == 'success') {
-      // 1. On ouvre le coffre-fort du téléphone
       final prefs = await SharedPreferences.getInstance();
-
-      // 2. On y range précieusement le Token envoyé par Laravel
       await prefs.setString('token', result['token']);
+
+      // ---> LES 2 LIGNES MAGIQUES À AJOUTER <---
+      // On lit le solde envoyé par Laravel et on le range dans le coffre
+      final soldeInitial = double.parse(result['user']['solde'].toString());
+      await prefs.setDouble('solde', soldeInitial);
+      // ----------------------------------------
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Bienvenue !"), backgroundColor: Colors.green),

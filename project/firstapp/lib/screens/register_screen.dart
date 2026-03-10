@@ -47,18 +47,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
       // 1. On ouvre le coffre-fort
       final prefs = await SharedPreferences.getInstance();
       
-      // 2. On sauvegarde le token (Vérifie bien si Laravel renvoie 'token' ou 'access_token')
+      // 2. On sauvegarde le token
       final token = result['token'] ?? result['access_token']; 
       if (token != null) {
         await prefs.setString('token', token);
       }
+
+      // ---> LES 2 LIGNES MAGIQUES À AJOUTER ICI AUSSI <---
+      // On sauvegarde le solde initial (qui est de 0.00 pour un nouveau compte)
+      final soldeInitial = double.parse(result['user']['solde'].toString());
+      await prefs.setDouble('solde', soldeInitial);
+      // ----------------------------------------------------
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Inscription réussie !"), backgroundColor: Colors.green),
       );
 
       // 3. On redirige vers le nouveau squelette avec les onglets
-      // On utilise pushAndRemoveUntil pour effacer l'historique (impossible de faire "Retour" vers l'inscription)
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (context) => const MainScreen()),
         (route) => false, 

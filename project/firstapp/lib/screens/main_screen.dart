@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'login_screen.dart';
-import 'transfer_screen.dart'; // Ton écran actuel (Tab 1)
-import 'history_screen.dart';
+import 'transfer_screen.dart'; // Ton écran actuel (Onglet 1)
+import 'history_screen.dart'; 
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -15,11 +15,12 @@ class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0; // L'onglet actif par défaut (0 = Wallet)
 
   // Liste des 4 écrans de ton application
+  // Pour l'instant, les 3 derniers sont des textes temporaires
   final List<Widget> _screens = [
-    const TransferScreen(), // 1. L'onglet Wallet (Ton écran actuel avec le solde)
-    const HistoryScreen(),    // 2. Historique
-    const Center(child: Text("Bourse & Achat BKN (À venir)", style: TextStyle(fontSize: 20))), // 3. Graphe BKN
-    const Center(child: Text("Vendre mes BKN (À venir)", style: TextStyle(fontSize: 20))), // 4. Vente BKN
+    const TransferScreen(), 
+    const HistoryScreen(), 
+    const Center(child: Text("Bourse & Achat BKN", style: TextStyle(fontSize: 18, color: Colors.grey))), 
+    const Center(child: Text("Vendre mes BKN", style: TextStyle(fontSize: 18, color: Colors.grey))), 
   ];
 
   // Fonction pour se déconnecter
@@ -38,8 +39,9 @@ class _MainScreenState extends State<MainScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('BKN Wallet', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text('BKN Wallet', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
         backgroundColor: Colors.blue,
+        elevation: 0,
         actions: [
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.white),
@@ -51,7 +53,7 @@ class _MainScreenState extends State<MainScreen> {
       // Le corps de la page change en fonction de l'onglet sélectionné
       body: _screens[_currentIndex],
       
-      // La fameuse barre de navigation façon Revolut
+      // La barre de navigation façon Revolut
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) {
