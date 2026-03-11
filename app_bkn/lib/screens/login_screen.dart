@@ -179,7 +179,22 @@ class _LoginScreenState extends State<LoginScreen> {
                   // Login button
                   _buildLoginButton().animate().fadeIn(duration: 500.ms, delay: 600.ms),
                   
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 12),
+
+// Lien mot de passe oublié
+Center(
+  child: TextButton(
+    onPressed: () => Navigator.pushNamed(context, '/forgot-password'),
+    child: const Text(
+      'Mot de passe oublié ?',
+      style: TextStyle(
+        color: AppTheme.primaryBlue,
+        fontWeight: FontWeight.w600,
+        fontSize: 15,
+      ),
+    ),
+  ),
+).animate().fadeIn(duration: 500.ms, delay: 650.ms),
                   
                   // Lien vers inscription
                   Center(

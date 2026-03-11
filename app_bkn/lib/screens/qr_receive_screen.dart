@@ -48,15 +48,13 @@ class QrReceiveScreen extends StatelessWidget {
                     size: 240,
                     backgroundColor: Colors.white,
                     
-                    // ✅ STYLE PERSONNALISÉ DES YEUX (les 3 grands carrés)
                     eyeStyle: const QrEyeStyle(
-                      eyeShape: QrEyeShape.square, // Peut être square ou circle
+                      eyeShape: QrEyeShape.square, 
                       color: AppTheme.primaryBlue,
                     ),
                     
-                    // ✅ STYLE PERSONNALISÉ DES MODULES (les points)
                     dataModuleStyle: const QrDataModuleStyle(
-                      dataModuleShape: QrDataModuleShape.square, // Peut être square ou circle
+                      dataModuleShape: QrDataModuleShape.square, 
                       color: AppTheme.primaryBlue,
                     ),
                   ),

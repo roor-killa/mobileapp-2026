@@ -1,5 +1,6 @@
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import os
@@ -13,11 +14,12 @@ import time
 import socket
 from zeroconf import ServiceInfo, Zeroconf
 from enum import Enum
-
+import shutil
+from datetime import timedelta
 
 # Débug
-print("SERVER.PY EST EXÉCUTÉ !")
-print(f"__name__ = {__name__}")
+print("🔥 SERVER.PY EST EXÉCUTÉ !")
+print(f"📝 __name__ = {__name__}")
 
 # UTILITAIRES SÉCURITÉ 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -89,19 +91,23 @@ class CryptoSellRequest(BaseModel):
     crypto: str
     amount_crypto: float
     wallet_address: Optional[str] = None
+    
+# Modèles pour la gestion des mots de passe oubliés
+class ForgotPasswordRequest(BaseModel):
+    email: str
 
-class CryptoBalanceRequest(BaseModel):
-    user_id: str
-    crypto: str
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
 
-# Configuration de la base de données
-DB_HOST = os.getenv('DB_HOST', 'postgres')
-DB_PORT = os.getenv('DB_PORT', '5432')
-DB_NAME = os.getenv('DB_NAME', 'bkn_db')
-DB_USER = os.getenv('DB_USER', 'bkn_admin')
-DB_PASSWORD = os.getenv('DB_PASSWORD', 'BknSecurePass2026!')
+# Configuration Render
+DB_HOST = "dpg-d6nhn0nafjfc73flf4t0-a.oregon-postgres.render.com"
+DB_PORT = "5432"
+DB_NAME = "bkn_db"
+DB_USER = "bkn_user"
+DB_PASSWORD = "Tlq4zDyX9CFQcWqGYxAEFSFMJYL6hUk1"
 
-print(f"Configuration DB: {DB_HOST}:{DB_PORT}/{DB_NAME}")
+print(f" Configuration DB: {DB_HOST}:{DB_PORT}/{DB_NAME}")
 
 app = FastAPI(title="BKN API", version="1.0.0")
 
@@ -123,21 +129,22 @@ CRYPTO_PRICES = {
     'avalanche': 35.0,
 }
 
-# Base de données
+# Connexion à Render
 def get_db():
-    print(f"🔌 Tentative de connexion à {DB_HOST}:{DB_PORT}")
+    print(f"🔌 Tentative de connexion à Render...")
     return psycopg2.connect(
         host=DB_HOST,
         port=DB_PORT,
         dbname=DB_NAME,
         user=DB_USER,
         password=DB_PASSWORD,
+        sslmode='require',
         cursor_factory=RealDictCursor
     )
 
 def init_database():
     """Initialise la base de données avec les tables et données par défaut"""
-    print("Début de l'initialisation de la base de données...")
+    print(" Début de l'initialisation de la base de données...")
     max_attempts = 30
     for attempt in range(max_attempts):
         try:
@@ -243,15 +250,17 @@ def init_database():
     cur.execute("CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date DESC)")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_transactions_user ON transactions(expediteur_id, destinataire_id)")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_users_pseudo ON users(pseudo)")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_crypto_user ON crypto_transactions(user_id, created_at DESC)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_sessions_user ON user_sessions(user_id, last_active DESC)")
     
     # Insérer utilisateurs par défaut
     cur.execute("SELECT COUNT(*) FROM users")
     count = cur.fetchone()['count']
-    print(f"👥 Nombre d'utilisateurs existants: {count}")
+    print(f"Nombre d'utilisateurs existants: {count}")
     
     if count == 0:
-        print("➕ Création des utilisateurs par défaut...")
+        print("Création des utilisateurs par défaut...")
         default_password = hash_password("password123")
         users = [
             ('1', 'john.doe@email.com', 'Doe', 'John', '@john', '0612345678', default_password, 5000.00, 'Niveau 2'),
@@ -291,6 +300,16 @@ def init_database():
             ('CRYPTO3', '2', 'buy', 'solana', 300, 3.0612, 98, '5YNmS1R9nNSCDzb5a7mMJ1dwK9uHeAAF4CmPEwKgVWr5')
         """)
         
+        # Ajout des sessions par défaut
+        cur.execute("""
+            INSERT INTO user_sessions (id, user_id, device_name, device_type, ip_address)
+            VALUES 
+            ('SESS1', '1', 'iPhone 14 Pro', 'mobile', '192.168.1.42'),
+            ('SESS2', '1', 'MacBook Pro', 'desktop', '192.168.1.42'),
+            ('SESS3', '2', 'Chrome - Windows', 'web', '89.123.45.67')
+            ON CONFLICT DO NOTHING
+        """)
+        
         print("Utilisateurs par défaut créés avec mot de passe: password123")
     
     conn.commit()
@@ -324,7 +343,7 @@ def register_mdns_service(port: int = 8000, name: str = "BKN API"):
     )
     zeroconf = Zeroconf()
     zeroconf.register_service(info)
-    print(f"📡 Service mDNS '{name}' annoncé sur {local_ip}:{port}")
+    print(f"Service mDNS '{name}' annoncé sur {local_ip}:{port}")
     return zeroconf, info
 
 # Routes API
@@ -472,7 +491,6 @@ async def transfer(request: TransferRequest):
         conn = get_db()
         cur = conn.cursor()
         
-        # Vérifier le solde de l'expéditeur
         cur.execute("SELECT solde FROM users WHERE id = %s", (request.expediteur_id,))
         expediteur = cur.fetchone()
         if not expediteur:
@@ -481,7 +499,6 @@ async def transfer(request: TransferRequest):
         if float(expediteur['solde']) < request.montant:
             raise HTTPException(status_code=400, detail="Solde insuffisant")
         
-        # Trouver le destinataire (par ID, pseudo ou email)
         cur.execute("""
             SELECT id FROM users 
             WHERE id = %s OR pseudo = %s OR email = %s
@@ -490,13 +507,11 @@ async def transfer(request: TransferRequest):
         if not destinataire:
             raise HTTPException(status_code=404, detail="Destinataire non trouvé")
         
-        # Effectuer le transfert
         cur.execute("UPDATE users SET solde = solde - %s WHERE id = %s", 
                    (request.montant, request.expediteur_id))
         cur.execute("UPDATE users SET solde = solde + %s WHERE id = %s", 
                    (request.montant, destinataire['id']))
         
-        # Enregistrer la transaction
         transaction_id = f"TR{uuid.uuid4().hex[:8]}"
         cur.execute("""
             INSERT INTO transactions (id, type, montant, description, expediteur_id, destinataire_id)
@@ -591,11 +606,18 @@ async def get_history(user_id: str, limit: int = 20):
         conn = get_db()
         cur = conn.cursor()
         cur.execute("""
-            SELECT * FROM transactions 
-            WHERE expediteur_id = %s OR destinataire_id = %s
-            ORDER BY date DESC
+            SELECT 
+                t.*,
+                expediteur.pseudo as expediteur_pseudo,
+                destinataire.pseudo as destinataire_pseudo
+            FROM transactions t
+            LEFT JOIN users expediteur ON t.expediteur_id = expediteur.id
+            LEFT JOIN users destinataire ON t.destinataire_id = destinataire.id
+            WHERE t.expediteur_id = %s OR t.destinataire_id = %s
+            ORDER BY t.date DESC
             LIMIT %s
         """, (user_id, user_id, limit))
+        
         transactions = cur.fetchall()
         cur.close()
         conn.close()
@@ -607,7 +629,7 @@ async def get_history(user_id: str, limit: int = 20):
         return {"transactions": transactions}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
+    
 @app.get("/stats")
 async def get_stats():
     try:
@@ -635,16 +657,13 @@ async def get_stats():
         raise HTTPException(status_code=500, detail=str(e))
 
 # Routes pour la gestion du profil et de la sécurité
-
 @app.put("/user/{user_id}")
 async def update_profile(user_id: str, request: UpdateProfileRequest):
-    """Mettre à jour le profil d'un utilisateur"""
     conn = None
     try:
         conn = get_db()
         cur = conn.cursor()
         
-        # Vérifier si l'email ou pseudo existe déjà (sauf pour l'utilisateur actuel)
         cur.execute("""
             SELECT id FROM users 
             WHERE (email = %s OR pseudo = %s) AND id != %s
@@ -653,7 +672,6 @@ async def update_profile(user_id: str, request: UpdateProfileRequest):
         if cur.fetchone():
             raise HTTPException(status_code=400, detail="Email ou pseudo déjà utilisé")
         
-        # Mettre à jour le profil
         cur.execute("""
             UPDATE users 
             SET nom = %s, prenom = %s, email = %s, phone = %s, pseudo = %s
@@ -670,7 +688,6 @@ async def update_profile(user_id: str, request: UpdateProfileRequest):
         
         conn.commit()
         
-        # Convertir les types pour JSON
         updated_user['solde'] = float(updated_user['solde'])
         
         return {"success": True, "user": updated_user}
@@ -690,24 +707,20 @@ async def update_profile(user_id: str, request: UpdateProfileRequest):
 
 @app.post("/user/change-password")
 async def change_password(request: ChangePasswordRequest):
-    """Changer le mot de passe d'un utilisateur"""
     conn = None
     try:
         conn = get_db()
         cur = conn.cursor()
         
-        # Récupérer le mot de passe actuel
         cur.execute("SELECT password_hash FROM users WHERE id = %s", (request.user_id,))
         user = cur.fetchone()
         
         if not user:
             raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
         
-        # Vérifier l'ancien mot de passe
         if not verify_password(request.old_password, user['password_hash']):
             raise HTTPException(status_code=401, detail="Ancien mot de passe incorrect")
         
-        # Mettre à jour le mot de passe
         cur.execute("""
             UPDATE users 
             SET password_hash = %s
@@ -731,15 +744,12 @@ async def change_password(request: ChangePasswordRequest):
             conn.close()
 
 # Routes pour la gestion des paramètres de sécurité
-
 @app.get("/user/{user_id}/settings")
 async def get_user_settings(user_id: str):
-    """Récupérer les paramètres de sécurité d'un utilisateur"""
     try:
         conn = get_db()
         cur = conn.cursor()
         
-        # Récupérer ou créer les paramètres
         cur.execute("""
             INSERT INTO user_settings (user_id, biometric_enabled, notifications_enabled, two_factor_enabled)
             VALUES (%s, FALSE, TRUE, FALSE)
@@ -770,13 +780,11 @@ async def get_user_settings(user_id: str):
 
 @app.put("/user/{user_id}/settings")
 async def update_user_settings(user_id: str, request: UpdateSettingsRequest):
-    """Mettre à jour les paramètres de sécurité"""
     conn = None
     try:
         conn = get_db()
         cur = conn.cursor()
         
-        # Construire la requête dynamiquement
         updates = []
         values = []
         
@@ -822,15 +830,12 @@ async def update_user_settings(user_id: str, request: UpdateSettingsRequest):
             conn.close()
 
 # Routes pour les sessions utilisateur
-
 @app.get("/user/{user_id}/sessions")
 async def get_user_sessions(user_id: str):
-    """Récupérer les sessions actives d'un utilisateur"""
     try:
         conn = get_db()
         cur = conn.cursor()
         
-        # Ajouter des sessions de test si aucune n'existe
         cur.execute("SELECT COUNT(*) FROM user_sessions WHERE user_id = %s", (user_id,))
         count = cur.fetchone()['count']
         
@@ -867,7 +872,6 @@ async def get_user_sessions(user_id: str):
 
 @app.delete("/user/session/{session_id}")
 async def terminate_session(session_id: str):
-    """Terminer une session spécifique"""
     try:
         conn = get_db()
         cur = conn.cursor()
@@ -894,7 +898,6 @@ async def terminate_session(session_id: str):
 
 @app.delete("/user/{user_id}/sessions")
 async def terminate_all_sessions(user_id: str):
-    """Terminer toutes les sessions d'un utilisateur"""
     try:
         conn = get_db()
         cur = conn.cursor()
@@ -916,10 +919,8 @@ async def terminate_all_sessions(user_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 # Routes pour la gestion des cryptomonnaies
-
 @app.get("/crypto/prices")
 async def get_crypto_prices():
-    """Récupère les prix actuels des cryptomonnaies"""
     return {
         "prices": CRYPTO_PRICES,
         "base_fiat": "EUR",
@@ -928,7 +929,6 @@ async def get_crypto_prices():
 
 @app.post("/crypto/estimate")
 async def estimate_crypto(request: CryptoPriceRequest):
-    """Estime le montant de crypto pour un montant BKN donné"""
     if request.crypto not in CRYPTO_PRICES:
         raise HTTPException(status_code=400, detail="Cryptomonnaie non supportée")
     
@@ -942,13 +942,11 @@ async def estimate_crypto(request: CryptoPriceRequest):
 
 @app.post("/crypto/buy")
 async def buy_crypto(request: CryptoBuyRequest):
-    """Acheter de la crypto avec des BKN"""
     conn = None
     try:
         conn = get_db()
         cur = conn.cursor()
         
-        # Vérifier le solde BKN de l'utilisateur
         cur.execute("SELECT solde FROM users WHERE id = %s", (request.user_id,))
         user = cur.fetchone()
         
@@ -958,18 +956,15 @@ async def buy_crypto(request: CryptoBuyRequest):
         if float(user['solde']) < request.amount_bkn:
             raise HTTPException(status_code=400, detail="Solde BKN insuffisant")
         
-        # Calculer le montant de crypto
         if request.crypto not in CRYPTO_PRICES:
             raise HTTPException(status_code=400, detail="Cryptomonnaie non supportée")
         
         crypto_price = CRYPTO_PRICES[request.crypto]
         amount_crypto = request.amount_bkn / crypto_price
         
-        # Débiter les BKN
         cur.execute("UPDATE users SET solde = solde - %s WHERE id = %s", 
                    (request.amount_bkn, request.user_id))
         
-        # Enregistrer la transaction crypto
         transaction_id = f"CRYPTO{uuid.uuid4().hex[:8]}"
         
         cur.execute("""
@@ -982,7 +977,6 @@ async def buy_crypto(request: CryptoBuyRequest):
             request.wallet_address
         ))
         
-        # Ajouter une transaction standard
         cur.execute("""
             INSERT INTO transactions (id, type, montant, description, expediteur_id, metadata)
             VALUES (%s, 'crypto_buy', %s, %s, %s, %s)
@@ -1020,7 +1014,6 @@ async def buy_crypto(request: CryptoBuyRequest):
 
 @app.post("/crypto/sell")
 async def sell_crypto(request: CryptoSellRequest):
-    """Vendre de la crypto pour des BKN"""
     conn = None
     try:
         conn = get_db()
@@ -1029,7 +1022,6 @@ async def sell_crypto(request: CryptoSellRequest):
         if request.crypto not in CRYPTO_PRICES:
             raise HTTPException(status_code=400, detail="Cryptomonnaie non supportée")
         
-        # Vérifier que l'utilisateur a assez de crypto
         cur.execute("""
             SELECT SUM(amount_crypto) as total_crypto
             FROM crypto_transactions
@@ -1051,15 +1043,12 @@ async def sell_crypto(request: CryptoSellRequest):
         if balance_crypto < request.amount_crypto:
             raise HTTPException(status_code=400, detail="Solde crypto insuffisant")
         
-        # Calculer le montant BKN
         crypto_price = CRYPTO_PRICES[request.crypto]
         amount_bkn = request.amount_crypto * crypto_price
         
-        # Créditer les BKN
         cur.execute("UPDATE users SET solde = solde + %s WHERE id = %s", 
                    (amount_bkn, request.user_id))
         
-        # Enregistrer la vente
         transaction_id = f"CRYPTO{uuid.uuid4().hex[:8]}"
         
         cur.execute("""
@@ -1072,7 +1061,6 @@ async def sell_crypto(request: CryptoSellRequest):
             request.wallet_address
         ))
         
-        # Ajouter une transaction standard
         cur.execute("""
             INSERT INTO transactions (id, type, montant, description, destinataire_id, metadata)
             VALUES (%s, 'crypto_sell', %s, %s, %s, %s)
@@ -1110,7 +1098,6 @@ async def sell_crypto(request: CryptoSellRequest):
 
 @app.get("/crypto/balance/{user_id}")
 async def get_crypto_balance(user_id: str):
-    """Récupère le solde crypto d'un utilisateur"""
     try:
         conn = get_db()
         cur = conn.cursor()
@@ -1142,7 +1129,6 @@ async def get_crypto_balance(user_id: str):
 
 @app.get("/crypto/history/{user_id}")
 async def get_crypto_history(user_id: str):
-    """Récupère l'historique des transactions crypto"""
     try:
         conn = get_db()
         cur = conn.cursor()
@@ -1168,38 +1154,256 @@ async def get_crypto_history(user_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/forgot-password")
+async def forgot_password(request: ForgotPasswordRequest):
+    """
+    Demande de réinitialisation de mot de passe
+    """
+    conn = None
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        
+        # Vérifier si l'utilisateur existe
+        cur.execute("SELECT id, email FROM users WHERE email = %s", (request.email,))
+        user = cur.fetchone()
+        
+        if not user:
+            # Message générique pour des raisons de sécurité
+            return {
+                "success": True, 
+                "message": "Si cet email existe, un lien de réinitialisation a été envoyé"
+            }
+        
+        # Générer un token unique
+        token = str(uuid.uuid4())
+        expiry = datetime.now() + timedelta(hours=24)
+        
+        # Créer la table si elle n'existe pas
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS password_resets (
+                id SERIAL PRIMARY KEY,
+                user_id VARCHAR(50) NOT NULL,
+                token VARCHAR(255) NOT NULL UNIQUE,
+                expires_at TIMESTAMP NOT NULL,
+                used BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id)
+            )
+        """)
+        
+        # Supprimer les anciens tokens pour cet utilisateur
+        cur.execute("DELETE FROM password_resets WHERE user_id = %s", (user['id'],))
+        
+        # Insérer le nouveau token
+        cur.execute("""
+            INSERT INTO password_resets (user_id, token, expires_at)
+            VALUES (%s, %s, %s)
+        """, (user['id'], token, expiry))
+        
+        conn.commit()
+        
+        # Log du token pour le développement (à retirer en production)
+        print(f"Token pour {user['email']}: {token}")
+        print(f"Lien de réinitialisation: appbkn://reset-password?token={token}")
+        
+        return {
+            "success": True,
+            "message": "Si cet email existe, un lien de réinitialisation a été envoyé"
+        }
+        
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if conn:
+            cur.close()
+            conn.close()
+
+
+@app.post("/reset-password")
+async def reset_password(request: ResetPasswordRequest):
+    """
+    Réinitialiser le mot de passe avec un token
+    """
+    conn = None
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        
+        # Vérifier si la table existe
+        cur.execute("""
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_name = 'password_resets'
+            )
+        """)
+        table_exists = cur.fetchone()['exists']
+        
+        if not table_exists:
+            raise HTTPException(status_code=400, detail="Token invalide ou expiré")
+        
+        # Chercher le token valide
+        cur.execute("""
+            SELECT pr.*, u.id as user_id
+            FROM password_resets pr
+            JOIN users u ON pr.user_id = u.id
+            WHERE pr.token = %s 
+            AND pr.used = FALSE 
+            AND pr.expires_at > NOW()
+        """, (request.token,))
+        
+        reset = cur.fetchone()
+        
+        if not reset:
+            raise HTTPException(status_code=400, detail="Token invalide ou expiré")
+        
+        # Mettre à jour le mot de passe
+        cur.execute("""
+            UPDATE users 
+            SET password_hash = %s
+            WHERE id = %s
+        """, (hash_password(request.new_password), reset['user_id']))
+        
+        # Marquer le token comme utilisé
+        cur.execute("""
+            UPDATE password_resets 
+            SET used = TRUE 
+            WHERE token = %s
+        """, (request.token,))
+        
+        conn.commit()
+        
+        return {
+            "success": True,
+            "message": "Mot de passe réinitialisé avec succès"
+        }
+        
+    except HTTPException:
+        if conn:
+            conn.rollback()
+        raise
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if conn:
+            cur.close()
+            conn.close()
+
+
+@app.get("/validate-reset-token/{token}")
+async def validate_reset_token(token: str):
+    """
+    Vérifier si un token de réinitialisation est valide
+    """
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        
+        cur.execute("""
+            SELECT EXISTS (
+                SELECT 1 FROM password_resets 
+                WHERE token = %s 
+                AND used = FALSE 
+                AND expires_at > NOW()
+            )
+        """, (token,))
+        
+        is_valid = cur.fetchone()['exists']
+        cur.close()
+        conn.close()
+        
+        return {"valid": is_valid}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Routes pour la gestion des avatars
+# Créer un dossier pour les avatars s'il n'existe pas
+AVATAR_DIR = "avatars"
+os.makedirs(AVATAR_DIR, exist_ok=True)
+
+@app.post("/user/{user_id}/avatar")
+async def upload_avatar(user_id: str, file: UploadFile = File(...)):
+    try:
+        print(f"Réception d'un fichier: {file.filename}")
+        print(f"Content type: {file.content_type}")
+        
+        # Vérifier que c'est une image
+        if not file.content_type.startswith('image/'):
+            print(f"Pas une image: {file.content_type}")
+            raise HTTPException(status_code=400, detail="Le fichier doit être une image")
+        
+        # Créer un nom de fichier unique
+        file_extension = file.filename.split('.')[-1]
+        filename = f"avatar_{user_id}_{uuid.uuid4().hex[:8]}.{file_extension}"
+        file_path = os.path.join(AVATAR_DIR, filename)
+        
+        print(f"Sauvegarde dans: {file_path}")
+        
+        # Sauvegarder le fichier
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        
+        print(f"Fichier sauvegardé: {filename}")
+        
+        # URL de l'avatar
+        avatar_url = f"/avatars/{filename}"
+        
+        # Mettre à jour la base de données
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("UPDATE users SET avatar_url = %s WHERE id = %s", (avatar_url, user_id))
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        print(f"Base de données mise à jour pour user {user_id}")
+        
+        return {"success": True, "avatar_url": avatar_url}
+        
+    except Exception as e:
+        print(f" ERREUR: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Monter le dossier des avatars pour servir les fichiers statiques
+app.mount("/avatars", StaticFiles(directory="avatars"), name="avatars")
+
 # DÉMARRAGE
 if __name__ == "__main__":
     print("Dans if __name__ == '__main__'")
     print("Initialisation de la base de données...")
     init_database()
     
-    print("📡 Configuration mDNS...")
     local_ip = get_local_ip()
-    zeroconf, mdns_info = register_mdns_service(port=8000, name="BKN API")
     
     try:
-        print("\n" + "="*60)
-        print("BKN API DÉMARRÉE".center(60))
-        print("="*60)
-        print(f"API réseau local: http://{local_ip}:8000")
-        print(f"Swagger docs: http://{local_ip}:8000/docs")
-        print("="*60)
-        print("Utilisateurs par défaut: john.doe@email.com / password123")
-        print("="*60)
-        print("Routes Crypto disponibles:")
+        print("\n" + "="*10)
+        print("🚀 BKN API DÉMARRÉE".center(60))
+        print("="*10)
+        print(f"📡 API réseau local: http://{local_ip}:8000")
+        print(f"📊 Swagger docs: http://{local_ip}:8000/docs")
+        print("="*10)
+        print("👤 Utilisateurs par défaut: john.doe@email.com / password123")
+        print("="*10)
+        print("💰 Routes Crypto disponibles:")
         print("   • GET /crypto/prices - Prix des cryptos")
         print("   • POST /crypto/buy - Acheter crypto")
         print("   • POST /crypto/sell - Vendre crypto")
         print("   • GET /crypto/balance/{user_id} - Solde crypto")
         print("   • GET /crypto/history/{user_id} - Historique crypto")
-        print("="*60)
-        
-        print("Lancement de uvicorn...")
+        print("="*10)
+        print(" Route Avatar disponible:")
+        print("   • POST /user/{user_id}/avatar - Upload photo de profil")
+        print("   • GET /avatars/{filename} - Accès aux photos")
+        print("="*10)
+        print("🚀 Lancement de uvicorn...")
         uvicorn.run(app, host="0.0.0.0", port=8000)
     finally:
-        if zeroconf:
-            zeroconf.unregister_service(mdns_info)
-            zeroconf.close()
+        pass
+    
 else:
     print(f"Le script est importé comme module (__name__ = {__name__})")

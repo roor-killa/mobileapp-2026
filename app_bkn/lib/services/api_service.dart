@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_helper.dart';
 
@@ -12,7 +14,7 @@ class ApiService {
 
   static void _log(String message) => ApiHelper.log(message);
 
-  // Authentification
+  // ==================== AUTHENTIFICATION ====================
   static Future<Map<String, dynamic>> login(String email, String password) async {
     try {
       _log('Tentative de connexion: $email');
@@ -125,7 +127,7 @@ class ApiService {
     _log('Session effacée');
   }
 
-  // Utilisateurs et contacts
+  // ==================== UTILISATEURS ET CONTACTS ====================
   static Future<List<dynamic>> getContacts() async {
     try {
       final response = await http.get(Uri.parse('${ApiHelper.baseUrl}/users'));
@@ -165,7 +167,7 @@ class ApiService {
     }
   }
 
-  // Transactions
+  // ==================== TRANSACTIONS ====================
   static Future<Map<String, dynamic>> transferer({
     required String expediteurId,
     required String destinataire,
@@ -237,7 +239,7 @@ class ApiService {
     }
   }
 
-  // Stats et analytics
+  // ==================== STATS ET ANALYTICS ====================
   static Future<Map<String, dynamic>> getStats() async {
     try {
       final response = await http.get(Uri.parse('${ApiHelper.baseUrl}/stats'));
@@ -249,7 +251,7 @@ class ApiService {
     }
   }
 
-  // Profil et paramètres
+  // ==================== PROFIL ET PARAMÈTRES ====================
   static Future<bool> updateProfile({
     required String userId,
     required String nom,
@@ -321,7 +323,7 @@ class ApiService {
     }
   }
 
-  // Paramètres utilisateur
+  // ==================== PARAMÈTRES UTILISATEUR ====================
   static Future<Map<String, dynamic>> getUserSettings(String userId) async {
     try {
       final response = await http.get(
@@ -366,7 +368,7 @@ class ApiService {
     }
   }
 
-  // Sessions
+  // ==================== SESSIONS ====================
   static Future<List<dynamic>> getUserSessions(String userId) async {
     try {
       final response = await http.get(
@@ -418,7 +420,7 @@ class ApiService {
     }
   }
 
-  // Crypto
+  // ==================== CRYPTO ====================
   static Future<Map<String, dynamic>> getCryptoPrices() async {
     try {
       final response = await http.get(
@@ -551,12 +553,122 @@ class ApiService {
     }
   }
 
-// utilitaires
+  static Future<Map<String, dynamic>> uploadAvatar({
+    required String userId,
+    required File imageFile,
+  }) async {
+    try {
+      _log('Upload avatar pour $userId');
+      
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse('${ApiHelper.baseUrl}/user/$userId/avatar'),
+      );
+      
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          'file',
+          imageFile.path,
+          contentType: MediaType('image', 'jpeg'),
+        ),
+      ); 
+      var response = await request.send();
+      var responseData = await response.stream.bytesToString();
+      var data = json.decode(responseData);
+      
+      return {
+        'success': response.statusCode == 200,
+        ...data,
+      };
+    } catch (e) {
+      _log('Erreur upload avatar: $e');
+      return {'success': false, 'error': e.toString()};
+    }
+  }
+
   static Future<bool> testConnection() async {
     try {
       final response = await http.get(Uri.parse('${ApiHelper.baseUrl}/health')).timeout(const Duration(seconds: 5));
       return response.statusCode == 200;
     } catch (e) {
+      return false;
+    }
+  }
+
+  // ==================== MOT DE PASSE OUBLIÉ ====================
+
+  /// Demande de réinitialisation de mot de passe
+  static Future<Map<String, dynamic>> forgotPassword(String email) async {
+    try {
+      _log('Demande de réinitialisation pour: $email');
+      final response = await http.post(
+        Uri.parse('${ApiHelper.baseUrl}/forgot-password'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'email': email}),
+      ).timeout(const Duration(seconds: 15));
+
+      final data = json.decode(response.body);
+      _log('Réponse forgot-password: ${response.statusCode}');
+      
+      return {
+        'success': response.statusCode == 200,
+        ...data,
+      };
+    } catch (e) {
+      _log('Erreur forgotPassword: $e');
+      return {
+        'success': false,
+        'error': 'Erreur de connexion au serveur'
+      };
+    }
+  }
+
+  /// Réinitialiser le mot de passe avec un token
+  static Future<Map<String, dynamic>> resetPassword({
+    required String token,
+    required String newPassword,
+  }) async {
+    try {
+      _log('Tentative de réinitialisation avec token');
+      final response = await http.post(
+        Uri.parse('${ApiHelper.baseUrl}/reset-password'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'token': token,
+          'new_password': newPassword,
+        }),
+      ).timeout(const Duration(seconds: 15));
+
+      final data = json.decode(response.body);
+      _log('Réponse reset-password: ${response.statusCode}');
+      
+      return {
+        'success': response.statusCode == 200,
+        ...data,
+      };
+    } catch (e) {
+      _log('Erreur resetPassword: $e');
+      return {
+        'success': false,
+        'error': 'Erreur de connexion au serveur'
+      };
+    }
+  }
+
+  /// Valider un token de réinitialisation
+  static Future<bool> validateResetToken(String token) async {
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiHelper.baseUrl}/validate-reset-token/$token'),
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['valid'] == true;
+      }
+      return false;
+    } catch (e) {
+      _log('Erreur validateResetToken: $e');
       return false;
     }
   }

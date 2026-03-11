@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'theme/app_theme.dart';
 import 'providers/user_provider.dart';
 import 'providers/transaction_provider.dart';
-import 'providers/crypto_provider.dart'; // AJOUT
+import 'providers/crypto_provider.dart';
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
@@ -19,7 +19,9 @@ import 'screens/chatbot_screen.dart';
 import 'screens/analytics_screen.dart';
 import 'screens/edit_profile_screen.dart';
 import 'screens/security_screen.dart';
-import 'screens/crypto_screen.dart'; // AJOUT
+import 'screens/crypto_screen.dart';
+import 'screens/forgot_password_screen.dart'; 
+import 'screens/reset_password_screen.dart';  
 
 void main() {
   runApp(const BKNApp());
@@ -34,7 +36,7 @@ class BKNApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => UserProvider()),
         ChangeNotifierProvider(create: (_) => TransactionProvider()),
-        ChangeNotifierProvider(create: (_) => CryptoProvider()), // AJOUT
+        ChangeNotifierProvider(create: (_) => CryptoProvider()),
       ],
       child: MaterialApp(
         title: 'BKN · Paiement étudiant',
@@ -57,7 +59,18 @@ class BKNApp extends StatelessWidget {
           '/analytics': (context) => const AnalyticsScreen(),
           '/edit_profile': (context) => const EditProfileScreen(),
           '/security': (context) => const SecurityScreen(),
-          '/crypto': (context) => const CryptoScreen(), // AJOUT
+          '/crypto': (context) => const CryptoScreen(),
+          '/forgot-password': (context) => const ForgotPasswordScreen(),
+          '/reset-password': (context) {
+            final args = ModalRoute.of(context)?.settings.arguments;
+            String? token;
+            if (args is String) {
+              token = args;
+            } else if (args is Map && args.containsKey('token')) {
+              token = args['token'];
+            }
+            return ResetPasswordScreen(token: token);
+          },
         },
       ),
     );

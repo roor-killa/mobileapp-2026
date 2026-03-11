@@ -8,13 +8,13 @@ echo    ARRÊT COMPLET DU BACKEND BKN
 echo ========================================
 echo.
 
-:: 1. ARRÊTER LE SERVEUR PYTHON
+:: 1. ARRÊTER LE SERVEUR PYTHON (recherche sur le port 8001)
 echo 🐍 Arrêt du serveur Python...
 echo --------------------------------
 
-:: Méthode 1: Par le port 8000
-for /f "tokens=5" %%a in ('netstat -ano ^| findstr :8000') do (
-    echo    🔍 Processus trouvé sur le port 8000 (PID: %%a)
+:: Recherche sur le port 8001 (celui utilisé par Docker)
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr :8001') do (
+    echo    🔍 Processus trouvé sur le port 8001 (PID: %%a)
     taskkill /F /PID %%a >nul 2>&1
     if !errorlevel! equ 0 (
         echo    ✅ Serveur Python arrêté
