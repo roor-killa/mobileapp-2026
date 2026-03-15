@@ -5,7 +5,7 @@ Création application mobile L3 2026
 
 **Auteur** : Patrice Beausoleil  
 **Version** : 2.0.0  
-**Dépôt** : https://github.com/repl-fr/cbs-tp7-PatocheBSL
+**Dépôt** : https://github.com/roor-killa/mobileapp-2026/tree/beausoleil
 
 ○ **Contenu du projet** :
 
@@ -499,4 +499,4 @@ CREATE TABLE users (
 
 ○ **Lien vers le dépôt GitHub** :
 
-    https://github.com/repl-fr/cbs-tp7-PatocheBSL
+    https://github.com/roor-killa/mobileapp-2026/tree/beausoleil
