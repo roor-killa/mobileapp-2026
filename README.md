@@ -25,14 +25,193 @@ Création application mobile L3 2026
 
 ○ **Outils nécessaires** :
 
+    ■ Android Studio (dernière version)
+        - SDK Android
+        - Émulateur Android (optionnel)
+    
+    ■ Un smartphone Android physique
+        - Modèle de test : Samsung Galaxy S10
+        - Mode développeur activé
+        - Débogage USB activé
+    
     ■ Flutter SDK (version 3.0 ou supérieure)
+    
     ■ Python (version 3.11 ou supérieure)
-    ■ Docker et Docker Compose
+    
+    ■ Docker Desktop (pour les tests en local)
+        - Windows : Docker Desktop for Windows
+        - WSL2 activé recommandé
+    
     ■ Git
+    
     ■ PostgreSQL (optionnel, pour développement local)
+    
+    ■ Comptes en ligne requis :
+        - Supabase (base de données alternative)
+        - Render.com (hébergement backend)
+        - GitHub (gestion de version)
 
 
-## 2. Installation du backend
+## 2. Structure du Backend
+
+○ **Arborescence complète** :
+
+```
+Backend/
+│
+├── server.py                           
+├── requirements.txt                    
+├── .env                                
+├── .gitignore                          
+│
+├── avatars/                            
+│   ├── avatar_1_8c489415.jpg
+│   ├── avatar_1_461855a0.jpg
+│   └── avatar_2_501faaf6.jpg
+│
+├── docker-compose.yml                   
+├── Dockerfile                           
+├── docker-start.bat                     
+├── docker-stop-all.bat                  
+│
+├── test_connexion.py                    
+├── fix_avatar.py                         
+├── check_avatar_db.py                    
+├── copy_avatar_to_jane.py                
+│
+└── __pycache__/                          
+```
+
+○ **Fichiers de configuration** :
+
+    ■ server.py :
+        - 1200+ lignes de code
+        - 30+ endpoints REST
+        - Authentification JWT
+        - Gestion des uploads
+        - Connexion PostgreSQL
+    
+    ■ requirements.txt :
+```
+fastapi==0.110.0
+uvicorn[standard]==0.27.1
+psycopg2-binary==2.9.9
+python-dotenv==1.0.1
+pydantic==2.6.3
+passlib==1.7.4
+bcrypt==4.0.1
+ifaddr==0.2.0
+zeroconf==0.148.0
+python-multipart==0.0.22
+python-jose[cryptography]==3.5.0
+tenacity==8.2.2
+```
+
+○ **Docker** :
+
+    ■ docker-compose.yml :
+```yaml
+services:
+  api:
+    build: .
+    container_name: bkn_api
+    restart: unless-stopped
+    ports:
+      - "8001:8000"
+    environment:
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+    volumes:
+      - ./:/app
+```
+
+    ■ Dockerfile :
+```dockerfile
+FROM python:3.11-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8000"]
+```
+
+○ **Scripts utilitaires** :
+
+    ■ test_connexion.py : Vérifie la connexion à la base de données
+    ■ fix_avatar.py : Corrige les URLs d'avatar en base
+    ■ check_avatar_db.py : Affiche les URLs d'avatar stockées
+    ■ copy_avatar_to_jane.py : Copie un avatar d'un utilisateur à un autre
+
+
+## 3. Structure de l'application mobile
+
+○ **Arborescence Flutter** :
+
+```
+app_bkn/
+│
+├── pubspec.yaml                          
+├── pubspec.lock                           
+│
+├── lib/
+│   ├── main.dart                          
+│   │
+│   ├── models/                            
+│   │   ├── crypto.dart                     
+│   │   ├── transaction.dart                 
+│   │   ├── user.dart                       
+│   │   └── wallet.dart                      
+│   │
+│   ├── providers/                          
+│   │   ├── crypto_provider.dart             
+│   │   ├── transaction_provider.dart         
+│   │   └── user_provider.dart                
+│   │
+│   ├── screens/                             
+│   │   ├── login_screen.dart                 
+│   │   ├── register_screen.dart               
+│   │   ├── splash_screen.dart                 
+│   │   ├── home_screen.dart                   
+│   │   ├── profile_screen.dart                 
+│   │   ├── edit_profile_screen.dart            
+│   │   ├── security_screen.dart                
+│   │   ├── buy_screen.dart                     
+│   │   ├── sell_screen.dart                    
+│   │   ├── transfer_screen.dart                
+│   │   ├── crypto_screen.dart                  
+│   │   ├── history_screen.dart                 
+│   │   ├── analytics_screen.dart                
+│   │   ├── scan_screen.dart                    
+│   │   ├── qr_receive_screen.dart              
+│   │   └── chatbot_screen.dart                  
+│   │
+│   ├── services/                            
+│   │   ├── api_service.dart                   
+│   │   └── api_helper.dart                     
+│   │
+│   ├── theme/                                
+│   │   └── app_theme.dart                      
+│   │
+│   └── widgets/                              
+│       ├── balance_card.dart                   
+│       ├── action_grid.dart                     
+│       └── recent_transactions.dart             
+│
+├── android/                                 
+├── ios/                                     
+├── build/                                   
+└── .dart_tool/                              
+```
+
+
+## 4. Installation du backend
 
 ○ **Clonage du dépôt** :
 
@@ -56,6 +235,7 @@ pip install -r requirements.txt
     DB_NAME=bkn_db
     DB_USER=bkn_user
     DB_PASSWORD=votre_mot_de_passe
+    JWT_SECRET_KEY=une_clé_très_longue_et_aléatoire_32_caractères_minimum
     ```
 
 ○ **Lancement du serveur** :
@@ -70,7 +250,7 @@ python server.py
     ■ Documentation Swagger : http://10.142.232.211:8000/docs
 
 
-## 3. Installation de l'application mobile
+## 5. Installation de l'application mobile
 
 ○ **Se placer dans le dossier Flutter** :
 
@@ -92,6 +272,21 @@ flutter pub get
     static const String _manualFallbackIp = '10.142.232.211';
     ```
 
+○ **Préparer le smartphone Android** :
+
+    ■ Activer le mode développeur sur le Samsung Galaxy S10
+        - Paramètres > À propos du téléphone > Numéro de build (taper 7 fois)
+    
+    ■ Activer le débogage USB
+        - Paramètres > Options développeurs > Débogage USB
+    
+    ■ Connecter le téléphone en USB
+    ■ Vérifier la connexion :
+    ```
+    flutter devices
+    ```
+    Le Samsung Galaxy S10 doit apparaître dans la liste
+
 ○ **Lancer l'application** :
 
 ```
@@ -99,29 +294,94 @@ flutter run
 ```
 
 
-## 4. Base de données
+## 6. Tests en local avec Docker Desktop
 
-○ **Schéma principal** :
+○ **Démarrer Docker Desktop** :
 
-    ■ Table users : stocke les informations utilisateur
-    ■ Table transactions : historique des opérations BKN
-    ■ Table crypto_transactions : achats/ventes de crypto
-    ■ Table user_settings : préférences de sécurité
-    ■ Table user_sessions : gestion des connexions
+    ■ Lancer Docker Desktop depuis le menu Démarrer
+    ■ Vérifier que Docker fonctionne :
+    ```
+    docker --version
+    docker-compose --version
+    ```
+
+○ **Lancer le backend avec Docker** :
+
+```
+cd C:\Licence\Backend
+docker-compose up -d
+```
+
+○ **Vérifier les conteneurs** :
+
+```
+docker-compose ps
+```
+
+○ **Arrêter les conteneurs** :
+
+```
+docker-compose down
+```
+
+
+## 7. Base de données
+
+○ **Options d'hébergement** :
+
+    ■ Render.com (utilisé en production)
+        - Base PostgreSQL gratuite
+        - SSL requis
+        - Backup automatiques
+        - Host : dpg-d6nhn0nafjfc73flf4t0-a.oregon-postgres.render.com
+    
+    ■ Supabase (alternative)
+        - Interface graphique
+        - Authentification intégrée
+        - Stockage fichiers
+        - Idéal pour le développement
+
+○ **Schéma principal** (table users) :
+
+```sql
+CREATE TABLE users (
+    id VARCHAR(50) PRIMARY KEY,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    nom VARCHAR(100) NOT NULL,
+    prenom VARCHAR(100) NOT NULL,
+    pseudo VARCHAR(50) UNIQUE NOT NULL,
+    phone VARCHAR(20),
+    password_hash VARCHAR(255) NOT NULL,
+    solde DECIMAL(15,2) DEFAULT 1500.00,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    verification_level VARCHAR(50) DEFAULT 'Niveau 1',
+    is_active BOOLEAN DEFAULT TRUE,
+    last_login TIMESTAMP,
+    avatar_url TEXT
+);
+```
+
+○ **Tables supplémentaires** :
+
+    ■ transactions : Historique des opérations BKN
+    ■ crypto_transactions : Achats/ventes de crypto
+    ■ user_settings : Préférences de sécurité
+    ■ user_sessions : Gestion des connexions
 
 ○ **Utilisateurs par défaut** :
 
-    ■ john.doe@email.com / password123 (5000 BKN)
-    ■ jane.smith@email.com / password123 (3000 BKN)
-    ■ bob.martin@email.com / password123 (2000 BKN)
+    ■ ID 1 : john.doe@email.com / password123 (5000 BKN)
+    ■ ID 2 : jane.smith@email.com / password123 (3000 BKN)
+    ■ ID 3 : bob.martin@email.com / password123 (2000 BKN)
+    ■ ID 4 : alice.wonder@email.com / password123 (4500 BKN)
 
 
-## 5. API Endpoints
+## 8. API Endpoints
 
 ○ **Authentification** :
 
     ■ POST /login - Connexion utilisateur
-    ■ POST /register - Inscription
+    ■ POST /register - Inscription (bonus 100 BKN)
 
 ○ **Utilisateurs** :
 
@@ -154,7 +414,7 @@ flutter run
     ■ DELETE /user/session/{id} - Déconnecter une session
 
 
-## 6. Fonctionnalités de l'application
+## 9. Fonctionnalités de l'application
 
 ○ **Authentification** :
 
@@ -178,12 +438,12 @@ flutter run
 
 ○ **Cryptomonnaies supportées** :
 
-    ■ Bitcoin (BTC)
-    ■ Ethereum (ETH)
-    ■ Solana (SOL)
-    ■ Cardano (ADA)
-    ■ Polkadot (DOT)
-    ■ Avalanche (AVAX)
+    ■ Bitcoin (BTC) : 45000 €
+    ■ Ethereum (ETH) : 2800 €
+    ■ Solana (SOL) : 98 €
+    ■ Cardano (ADA) : 0.45 €
+    ■ Polkadot (DOT) : 6.50 €
+    ■ Avalanche (AVAX) : 35 €
 
 ○ **Paiement mobile** :
 
@@ -198,81 +458,7 @@ flutter run
     ■ Aide contextuelle
 
 
-## 7. Structure du projet
-
-○ **Backend (FastAPI)** :
-
-    server.py          : Point d'entrée de l'API
-    requirements.txt   : Dépendances Python
-    avatars/          : Photos de profil uploadées
-
-○ **Application mobile (Flutter)** :
-
-    lib/
-    ├── main.dart                    : Point d'entrée
-    ├── models/                      : Classes de données
-    │   ├── crypto.dart
-    │   ├── transaction.dart
-    │   └── user.dart
-    ├── providers/                    : State management
-    │   ├── crypto_provider.dart
-    │   ├── transaction_provider.dart
-    │   └── user_provider.dart
-    ├── screens/                       : Écrans de l'application
-    │   ├── login_screen.dart
-    │   ├── register_screen.dart
-    │   ├── home_screen.dart
-    │   ├── profile_screen.dart
-    │   ├── buy_screen.dart
-    │   ├── sell_screen.dart
-    │   ├── transfer_screen.dart
-    │   ├── crypto_screen.dart
-    │   └── ...
-    ├── services/                       : Communication API
-    │   ├── api_service.dart
-    │   └── api_helper.dart
-    ├── theme/                          : Thème de l'application
-    │   └── app_theme.dart
-    └── widgets/                        : Composants réutilisables
-        ├── balance_card.dart
-        ├── action_grid.dart
-        └── recent_transactions.dart
-
-
-## 8. Déploiement avec Docker
-
-○ **Fichier docker-compose.yml** :
-
-```yaml
-services:
-  api:
-    build: .
-    container_name: bkn_api
-    ports:
-      - "8001:8000"
-    environment:
-      - DB_HOST=${DB_HOST}
-      - DB_NAME=${DB_NAME}
-      - DB_USER=${DB_USER}
-      - DB_PASSWORD=${DB_PASSWORD}
-    volumes:
-      - ./:/app
-```
-
-○ **Lancement des conteneurs** :
-
-```
-docker-compose up -d
-```
-
-○ **Arrêt des conteneurs** :
-
-```
-docker-compose down
-```
-
-
-## 9. Captures d'écran
+## 10. Captures d'écran
 
 ○ **Écran de connexion** : Authentification utilisateur
 ○ **Accueil** : Solde et actions rapides
@@ -282,7 +468,7 @@ docker-compose down
 ○ **QR Code** : Réception de paiement
 
 
-## 10. Conclusion
+## 11. Conclusion
 
 ○ **Fonctionnalités implémentées** :
 
@@ -295,6 +481,13 @@ docker-compose down
     ✓ Paramètres de sécurité
     ✓ Historique des transactions
 
+○ **Environnements de test** :
+
+    ■ Développement local : Docker Desktop
+    ■ Base de données : Render.com / Supabase
+    ■ Mobile : Samsung Galaxy S10 (physique)
+    ■ Émulateur : Android Studio (optionnel)
+
 ○ **Technologies utilisées** :
 
     ■ Flutter pour l'application mobile
@@ -302,7 +495,8 @@ docker-compose down
     ■ PostgreSQL pour la base de données
     ■ Render.com pour l'hébergement
     ■ Docker pour la conteneurisation
+    ■ Supabase (optionnel)
 
 ○ **Lien vers le dépôt GitHub** :
 
-    
+    https://github.com/repl-fr/cbs-tp7-PatocheBSL
