@@ -28,4 +28,8 @@ class ApiConstants {
 
   // Chatbot
   static const String chatbot = '$baseUrl/chatbot/message';
+
+  // Mot de passe oublié
+  static const String forgotPassword = '$baseUrl/auth/forgot-password';
+  static const String resetPassword  = '$baseUrl/auth/reset-password';
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../core/theme/app_theme.dart';
+import 'forgot_password_screen.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -120,6 +121,21 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   validator: (v) =>
                       v == null || v.isEmpty ? 'Mot de passe requis' : null,
+                ),
+                // ─── Mot de passe oublié ──────────────────────────────────
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: GestureDetector(
+                    onTap: () => Navigator.push(context,
+                        MaterialPageRoute(
+                            builder: (_) => const ForgotPasswordScreen())),
+                    child: const Text(
+                      'Mot de passe oublié ?',
+                      style: TextStyle(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w500),
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 32),
 

@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ChatbotController;
 use App\Http\Controllers\Api\HistoryController;
+use App\Http\Controllers\Api\PasswordResetController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\QrCodeController;
 use App\Http\Controllers\Api\RechargeController;
@@ -26,6 +27,10 @@ Route::prefix('v1')->group(function () {
     Route::prefix('auth')->group(function () {
         Route::post('/register', [AuthController::class, 'register']);
         Route::post('/login',    [AuthController::class, 'login']);
+
+        // Mot de passe oublié
+        Route::post('/forgot-password', [PasswordResetController::class, 'forgotPassword']);
+        Route::post('/reset-password',  [PasswordResetController::class, 'resetPassword']);
     });
 
     // Webhook Stripe (vérification par signature, pas par token)

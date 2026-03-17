@@ -209,6 +209,35 @@ class ApiService {
     return _handleResponse(response);
   }
 
+  // ─── Mot de passe oublié ──────────────────────────────────────────────────
+
+  Future<void> forgotPassword(String email) async {
+    final response = await http.post(
+      Uri.parse(ApiConstants.forgotPassword),
+      headers: _jsonHeaders,
+      body: jsonEncode({'email': email}),
+    );
+    _handleResponse(response);
+  }
+
+  Future<void> resetPassword({
+    required String email,
+    required String token,
+    required String password,
+  }) async {
+    final response = await http.post(
+      Uri.parse(ApiConstants.resetPassword),
+      headers: _jsonHeaders,
+      body: jsonEncode({
+        'email':                 email,
+        'token':                 token,
+        'password':              password,
+        'password_confirmation': password,
+      }),
+    );
+    _handleResponse(response);
+  }
+
   // ─── Chatbot ──────────────────────────────────────────────────────────────
 
   Future<Map<String, dynamic>> sendChatMessage(String message) async {
