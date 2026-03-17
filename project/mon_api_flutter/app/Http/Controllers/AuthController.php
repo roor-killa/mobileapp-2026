@@ -11,6 +11,9 @@ use Illuminate\Support\Facades\DB;
 
 class AuthController extends Controller
 {
+    /**
+     * Connexion de l'utilisateur et génération du Token
+     */
     public function login(Request $request)
     {
         $request->validate([
@@ -20,26 +23,37 @@ class AuthController extends Controller
 
         $user = User::where('email', $request->email)->first();
 
-        if (! $user || ! Hash::check($request->password, $user->password)) {
+        if (!$user || !Hash::check($request->password, $user->password)) {
             return response()->json(['message' => 'Identifiants incorrects'], 401);
         }
+
+        // Suppression des anciens tokens pour n'avoir qu'une session active (optionnel)
+        $user->tokens()->delete();
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
             'access_token' => $token,
             'token_type' => 'Bearer',
-            'user' => $user,
-            'balance' => $user->balance // On renvoie le solde actuel
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'balance' => $user->balance,
+            ]
         ]);
     }
-    
+
+    /**
+     * Inscription d'un nouvel utilisateur
+     */
     public function register(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8|confirmed',
+            'pin' => 'required|string|max:4', // Obligatoire pour la sécurité
         ]);
 
         if ($validator->fails()) {
@@ -50,7 +64,8 @@ class AuthController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
-            'balance' => 100.00, // On offre 100€ à l'inscription pour tester !
+            'transaction_pin' => Hash::make($request->pin), // Hachage du PIN
+            'balance' => 100.00, // Bonus de bienvenue
         ]);
 
         $token = $user->createToken('auth_token')->plainTextToken;
@@ -62,66 +77,86 @@ class AuthController extends Controller
         ], 201);
     }
 
-    public function sendMoney(Request $request) 
+    /**
+     * Exécution d'un transfert d'argent sécurisé par PIN
+     */
+    public function sendMoney(Request $request)
     {
         $request->validate([
             'receiver_email' => 'required|email|exists:users,email',
-            'amount' => 'required|numeric|min:0.01',
+            'amount' => 'required|numeric|min:1',
+            'pin' => 'required|string', 
         ]);
 
-        $sender = $request->user(); 
-        $receiver = User::where('email', $request->receiver_email)->first();
+        $sender = $request->user();
 
-        if ($sender->id === $receiver->id) {
-            return response()->json(['message' => 'Envoi à soi-même impossible'], 400);
+        // 1. Vérification du PIN
+        if (!$sender->transaction_pin || !Hash::check($request->pin, $sender->transaction_pin)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Code PIN incorrect.'
+            ], 403);
         }
 
-        // Vérification du solde avant de commencer
+        // 2. Vérification du solde
         if ($sender->balance < $request->amount) {
-            return response()->json(['message' => 'Solde insuffisant'], 400);
+            return response()->json([
+                'success' => false,
+                'message' => 'Solde insuffisant.'
+            ], 400);
         }
 
-        return DB::transaction(function () use ($sender, $receiver, $request) {
-            $amount = $request->amount;
-            $oldBalance = $sender->balance;
+        // 3. Transaction atomique (Tout ou rien)
+        return DB::transaction(function () use ($sender, $request) {
+            $receiver = User::where('email', $request->receiver_email)->first();
 
-            // 1. Débiter l'expéditeur
-            $sender->decrement('balance', $amount);
+            // Empêcher l'envoi à soi-même
+            if ($sender->id === $receiver->id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Vous ne pouvez pas vous envoyer d\'argent à vous-même.'
+                ], 400);
+            }
 
-            // 2. Créditer le destinataire
-            $receiver->increment('balance', $amount);
+            // Mise à jour des soldes
+            $sender->decrement('balance', $request->amount);
+            $receiver->increment('balance', $request->amount);
 
-            // 3. Créer l'historique
-            Transfer::create([
+            // Création de l'enregistrement
+            $transfer = Transfer::create([
                 'sender_id' => $sender->id,
                 'receiver_id' => $receiver->id,
-                'amount' => $amount,
+                'amount' => $request->amount,
             ]);
 
-            // 4. Réponse structurée pour Flutter
             return response()->json([
                 'success' => true,
-                'message' => 'Transfert effectué avec succès',
-                'montantTotal' => (double)$oldBalance,
-                'montantTransfere' => (double)$amount,
-                'nouveauSolde' => (double)$sender->balance
-            ], 200);
+                'message' => 'Transfert vers ' . $receiver->name . ' réussi !',
+                'nouveauSolde' => $sender->balance,
+                'montantTotal' => $sender->balance + $request->amount,
+                'montantTransfere' => $request->amount
+            ]);
         });
     }
 
-    // Optionnel : Ajouter une méthode pour récupérer le solde seul
-    public function getBalance(Request $request) {
-        return response()->json($request->user()->balance);
+    /**
+     * Récupérer les informations de l'utilisateur connecté
+     */
+    public function getUserInfo(Request $request)
+    {
+        return response()->json($request->user());
     }
 
+    /**
+     * Historique des transactions (Envoyées et Reçues)
+     */
     public function getTransactions(Request $request)
     {
         $user = $request->user();
 
-        // Récupère les transferts où l'utilisateur est soit l'envoyeur, soit le receveur
         $transactions = Transfer::where('sender_id', $user->id)
             ->orWhere('receiver_id', $user->id)
-            ->with(['sender', 'receiver']) // Charge les infos des utilisateurs liés
+            ->with(['sender:id,name', 'receiver:id,name']) // On ne prend que l'ID et le Nom
             ->orderBy('created_at', 'desc')
             ->get();
 

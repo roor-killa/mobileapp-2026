@@ -13,21 +13,29 @@ class TransferResponse {
     required this.nouveauSolde,
   });
 
-  /// Transforme le JSON reçu de Laravel en objet Dart
+  /// Transforme le JSON reçu de Laravel en objet Dart sécurisé
   factory TransferResponse.fromJson(Map<String, dynamic> json) {
     return TransferResponse(
-      // On utilise les clés exactes définies dans ton AuthController.php
+      // On récupère success et message
       success: json['success'] ?? false,
-      message: json['message'] ?? '',
+      message: json['message'] ?? 'Une erreur est survenue',
       
-      // .toDouble() est important car le JSON peut envoyer un int ou un double
-      montantTotal: (json['montantTotal'] ?? 0.0).toDouble(),
-      montantTransfere: (json['montantTransfere'] ?? 0.0).toDouble(),
-      nouveauSolde: (json['nouveauSolde'] ?? 0.0).toDouble(),
+      // On utilise une conversion sécurisée au cas où les champs sont absents (cas d'erreur 403/400)
+      montantTotal: _toDouble(json['montantTotal']),
+      montantTransfere: _toDouble(json['montantTransfere']),
+      nouveauSolde: _toDouble(json['nouveauSolde']),
     );
   }
 
-  /// Optionnel : Convertir l'objet en Map (utile pour le debug)
+  /// Fonction utilitaire privée pour transformer n'importe quelle valeur en double
+  static double _toDouble(dynamic value) {
+    if (value == null) return 0.0;
+    if (value is int) return value.toDouble();
+    if (value is double) return value;
+    if (value is String) return double.tryParse(value) ?? 0.0;
+    return 0.0;
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'success': success,
