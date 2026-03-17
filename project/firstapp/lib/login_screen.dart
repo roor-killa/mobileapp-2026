@@ -27,7 +27,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     setState(() => _isLoading = true);
 
-    final String url = "http://10.0.2.2:8000/api/login"; 
+    final String url = "http://10.0.2.2/api/login"; 
 
     try {
       final response = await http.post(

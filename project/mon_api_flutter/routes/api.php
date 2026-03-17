@@ -22,8 +22,5 @@ Route::middleware('auth:sanctum')->group(function () {
     // Ajoute tes routes ici pour qu'elles puissent utiliser $request->user()
     Route::get('/transactions', [AuthController::class, 'getTransactions']);
     Route::post('/send-money', [AuthController::class, 'sendMoney']); // N'oublie pas celle-ci !
-    
-    Route::get('/user', function (Request $request) {
-        return $request->user();
-    });
+    Route::get('/user', [AuthController::class, 'getUserInfo']);
 });
