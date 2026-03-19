@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
 import '../services/api_service.dart';
+import '../theme.dart';
 
 class TopUpScreen extends StatefulWidget {
   const TopUpScreen({super.key});
@@ -14,13 +15,17 @@ class _TopUpScreenState extends State<TopUpScreen> {
   final _apiService       = ApiService();
   bool _isLoading         = false;
 
+  static const _quickAmounts = [10.0, 20.0, 50.0, 100.0];
+
   Future<void> _startTopUp() async {
     final amount = double.tryParse(_amountController.text);
     if (amount == null || amount < 1) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Montant minimum : 1 €'),
-          backgroundColor: Colors.red,
+        SnackBar(
+          content: const Text('Montant minimum : 1 €'),
+          backgroundColor: AppColors.danger,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
       return;
@@ -29,25 +34,19 @@ class _TopUpScreenState extends State<TopUpScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // Étape 1 : Obtenir le client_secret depuis le backend Laravel
       final clientSecret = await _apiService.createPaymentIntent(amount);
 
-      // Étape 2 : Initialiser le PaymentSheet Stripe
       await Stripe.instance.initPaymentSheet(
         paymentSheetParameters: SetupPaymentSheetParameters(
           paymentIntentClientSecret: clientSecret,
           merchantDisplayName: 'WalletApp',
-          style: ThemeMode.light,
+          style: ThemeMode.dark,
         ),
       );
 
-      // Étape 3 : Afficher la feuille de paiement Stripe (formulaire carte)
       await Stripe.instance.presentPaymentSheet();
 
-      // Étape 4 : Extraire le payment_intent_id depuis le client_secret
       final paymentIntentId = clientSecret.split('_secret_')[0];
-
-      // Étape 5 : Confirmer auprès du backend pour créditer le wallet
       final result = await _apiService.confirmTopUp(paymentIntentId, amount);
 
       if (!mounted) return;
@@ -58,16 +57,19 @@ class _TopUpScreenState extends State<TopUpScreen> {
             content: Text(
               'Rechargement réussi ! Nouveau solde : ${result['nouveau_solde']} €',
             ),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         );
         Navigator.pop(context);
       } else {
-        final message = result['message'] ?? 'Échec du rechargement.';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Erreur : $message'),
-            backgroundColor: Colors.red,
+            content: Text(result['message'] ?? 'Échec du rechargement.'),
+            backgroundColor: AppColors.danger,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         );
       }
@@ -77,6 +79,8 @@ class _TopUpScreenState extends State<TopUpScreen> {
         SnackBar(
           content: Text('Paiement annulé : ${e.error.message}'),
           backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
     } catch (e) {
@@ -84,7 +88,9 @@ class _TopUpScreenState extends State<TopUpScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Erreur : $e'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.danger,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
     } finally {
@@ -95,47 +101,128 @@ class _TopUpScreenState extends State<TopUpScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Recharger mon portefeuille'),
-        backgroundColor: Colors.green,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
+      backgroundColor: AppColors.background,
+      appBar: kDarkAppBar(title: 'Recharger', context: context),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 24),
+            const SizedBox(height: 8),
+
+            const Text(
+              'Montant à ajouter',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+            ),
+            const SizedBox(height: 12),
+
             TextField(
               controller: _amountController,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(
-                labelText: 'Montant à ajouter (€)',
-                hintText: 'Ex: 20.00',
-                prefixIcon: Icon(Icons.euro),
-                border: OutlineInputBorder(),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
               ),
-              style: const TextStyle(fontSize: 20),
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: _isLoading ? null : _startTopUp,
-                icon: const Icon(Icons.credit_card),
-                label: _isLoading
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text('Payer par carte', style: TextStyle(fontSize: 16)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.all(16),
-                ),
+              decoration: kDarkInput(
+                label: '',
+                hint: '0.00',
+                prefixIcon: const Icon(Icons.euro, color: AppColors.textSecondary),
+                suffixText: 'EUR',
               ),
             ),
-            const SizedBox(height: 16),
-            const Text(
-              'Paiement sécurisé par Stripe\nCarte de test : 4242 4242 4242 4242',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey),
+
+            const SizedBox(height: 20),
+
+            // Montants rapides
+            Row(
+              children: _quickAmounts.map((amount) {
+                final isLast = amount == _quickAmounts.last;
+                return Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.only(right: isLast ? 0 : 8),
+                    child: GestureDetector(
+                      onTap: () => setState(() {
+                        _amountController.text = amount.toStringAsFixed(0);
+                      }),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 13),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Center(
+                          child: Text(
+                            '${amount.toStringAsFixed(0)}€',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+
+            const SizedBox(height: 32),
+
+            kGradientButton(
+              text: 'Payer par carte',
+              onPressed: _isLoading ? null : _startTopUp,
+              isLoading: _isLoading,
+            ),
+
+            const SizedBox(height: 20),
+
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.success.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.lock_outline_rounded,
+                      color: AppColors.success,
+                      size: 18,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Paiement sécurisé par Stripe',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          'Carte test : 4242 4242 4242 4242',
+                          style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),

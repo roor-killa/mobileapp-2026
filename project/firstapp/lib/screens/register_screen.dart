@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import '../theme.dart';
 import 'wallet_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -15,6 +16,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _passwordController = TextEditingController();
   final _authService        = AuthService();
   bool _isLoading           = false;
+  bool _obscurePassword     = true;
 
   Future<void> _register() async {
     setState(() => _isLoading = true);
@@ -38,7 +40,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(result['message'] ?? 'Erreur inscription'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.danger,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
     }
@@ -47,66 +51,122 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Créer un compte'),
-        backgroundColor: Colors.blue,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            TextField(
-              controller: _nameController,
-              decoration: const InputDecoration(
-                labelText: 'Nom complet',
-                prefixIcon: Icon(Icons.person),
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _emailController,
-              keyboardType: TextInputType.emailAddress,
-              decoration: const InputDecoration(
-                labelText: 'Email',
-                prefixIcon: Icon(Icons.email),
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _passwordController,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Mot de passe (min. 8 caractères)',
-                prefixIcon: Icon(Icons.lock),
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _isLoading ? null : _register,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 40),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Bouton retour
+              GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
                 ),
-                child: _isLoading
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text(
-                        "S'inscrire",
-                        style: TextStyle(fontSize: 16, color: Colors.white),
-                      ),
               ),
-            ),
-            const SizedBox(height: 12),
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Déjà un compte ? Se connecter'),
-            ),
-          ],
+
+              const SizedBox(height: 36),
+
+              const Text(
+                'Créer un compte',
+                style: TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Rejoignez le portefeuille BKN',
+                style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
+              ),
+
+              const SizedBox(height: 40),
+
+              TextField(
+                controller: _nameController,
+                style: const TextStyle(color: Colors.white),
+                decoration: kDarkInput(
+                  label: 'Nom complet',
+                  prefixIcon: const Icon(Icons.person_outline_rounded, color: AppColors.textSecondary),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              TextField(
+                controller: _emailController,
+                keyboardType: TextInputType.emailAddress,
+                style: const TextStyle(color: Colors.white),
+                decoration: kDarkInput(
+                  label: 'Email',
+                  hint: 'votre@email.com',
+                  prefixIcon: const Icon(Icons.mail_outline_rounded, color: AppColors.textSecondary),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              TextField(
+                controller: _passwordController,
+                obscureText: _obscurePassword,
+                style: const TextStyle(color: Colors.white),
+                decoration: kDarkInput(
+                  label: 'Mot de passe (min. 8 caractères)',
+                  prefixIcon: const Icon(Icons.lock_outline_rounded, color: AppColors.textSecondary),
+                ).copyWith(
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscurePassword
+                          ? Icons.visibility_outlined
+                          : Icons.visibility_off_outlined,
+                      color: AppColors.textSecondary,
+                    ),
+                    onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 32),
+
+              kGradientButton(
+                text: "S'inscrire",
+                onPressed: _isLoading ? null : _register,
+                isLoading: _isLoading,
+              ),
+
+              const SizedBox(height: 28),
+
+              Center(
+                child: GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: RichText(
+                    text: const TextSpan(
+                      text: 'Déjà un compte ? ',
+                      style: TextStyle(color: AppColors.textSecondary, fontSize: 15),
+                      children: [
+                        TextSpan(
+                          text: 'Se connecter',
+                          style: TextStyle(
+                            color: AppColors.primaryLight,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

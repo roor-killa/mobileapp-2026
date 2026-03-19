@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../services/auth_service.dart';
 import '../services/api_service.dart';
+import '../theme.dart';
 
 class ReceiveScreen extends StatefulWidget {
   const ReceiveScreen({super.key});
@@ -28,10 +29,8 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
   }
 
   Future<void> _loadEmail() async {
-    // 1. Essayer le storage local
     String? email = await _authService.getEmail();
 
-    // 2. Fallback : récupérer depuis l'API et sauvegarder
     if (email == null) {
       email = await _apiService.getCurrentUserEmail();
       await _authService.saveEmail(email);
@@ -47,9 +46,11 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
     final montant = double.tryParse(_amountController.text.trim());
     if (montant == null || montant <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Veuillez entrer un montant valide'),
-          backgroundColor: Colors.red,
+        SnackBar(
+          content: const Text('Veuillez entrer un montant valide'),
+          backgroundColor: AppColors.danger,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
       return;
@@ -65,84 +66,84 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Recevoir un paiement'),
-        backgroundColor: Colors.purple,
-        foregroundColor: Colors.white,
-      ),
+      backgroundColor: AppColors.background,
+      appBar: kDarkAppBar(title: 'Recevoir', context: context),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Champ montant
+            const SizedBox(height: 8),
+
             TextField(
               controller: _amountController,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: InputDecoration(
-                labelText: 'Montant à recevoir (€)',
-                hintText: 'Ex: 25.00',
-                prefixIcon: const Icon(Icons.euro),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                filled: true,
-                fillColor: Colors.grey.shade100,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 22,
+                fontWeight: FontWeight.w600,
               ),
-              style: const TextStyle(fontSize: 20),
+              decoration: kDarkInput(
+                label: 'Montant à recevoir',
+                hint: '0.00',
+                prefixIcon: const Icon(Icons.euro, color: AppColors.textSecondary),
+                suffixText: 'EUR',
+              ),
             ),
-            const SizedBox(height: 16),
 
-            // Bouton générer
-            ElevatedButton.icon(
+            const SizedBox(height: 20),
+
+            kGradientButton(
+              text: 'Générer le QR Code',
               onPressed: (_loadingEmail || _userEmail == null) ? null : _genererQr,
-              icon: const Icon(Icons.qr_code),
-              label: _loadingEmail
-                  ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                  : const Text('Générer le QR Code', style: TextStyle(fontSize: 16)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.purple,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
+              isLoading: _loadingEmail,
             ),
 
-            // QR Code
             if (_qrData != null) ...[
               const SizedBox(height: 32),
-              Card(
-                elevation: 6,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    children: [
-                      Text(
-                        '${_montant!.toStringAsFixed(2)} €',
-                        style: const TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.purple,
-                        ),
+
+              // Carte QR blanche (les QR codes lisibles sur fond clair)
+              Container(
+                padding: const EdgeInsets.all(28),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.25),
+                      blurRadius: 32,
+                      offset: const Offset(0, 12),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      '${_montant!.toStringAsFixed(2)} €',
+                      style: const TextStyle(
+                        fontSize: 36,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF0D0F1C),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _userEmail!,
-                        style: const TextStyle(fontSize: 13, color: Colors.black45),
-                      ),
-                      const SizedBox(height: 20),
-                      QrImageView(
-                        data: _qrData!,
-                        version: QrVersions.auto,
-                        size: 220,
-                      ),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'Faites scanner ce QR code\npour recevoir le paiement',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.black45, fontSize: 13),
-                      ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _userEmail!,
+                      style: const TextStyle(fontSize: 12, color: Color(0xFF7B7F9E)),
+                    ),
+                    const SizedBox(height: 20),
+                    QrImageView(
+                      data: _qrData!,
+                      version: QrVersions.auto,
+                      size: 220,
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Faites scanner ce QR code\npour recevoir le paiement',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Color(0xFF7B7F9E), fontSize: 13),
+                    ),
+                  ],
                 ),
               ),
             ],

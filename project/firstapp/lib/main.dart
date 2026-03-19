@@ -4,6 +4,7 @@ import 'package:flutter_stripe/flutter_stripe.dart';
 import 'screens/login_screen.dart';
 import 'screens/wallet_screen.dart';
 import 'services/auth_service.dart';
+import 'theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,7 +27,12 @@ class MyApp extends StatelessWidget {
       title: 'Wallet App',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        primarySwatch: Colors.blue,
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: AppColors.background,
+        colorScheme: const ColorScheme.dark(
+          primary: AppColors.primary,
+          surface: AppColors.surface,
+        ),
         useMaterial3: true,
       ),
       home: const _AuthGate(),

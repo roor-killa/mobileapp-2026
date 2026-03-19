@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import '../theme.dart';
 import 'register_screen.dart';
 import 'wallet_screen.dart';
 
@@ -15,6 +16,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   final _authService        = AuthService();
   bool _isLoading           = false;
+  bool _obscurePassword     = true;
 
   Future<void> _login() async {
     setState(() => _isLoading = true);
@@ -37,7 +39,9 @@ class _LoginScreenState extends State<LoginScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(result['message'] ?? 'Erreur de connexion'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.danger,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
     }
@@ -46,62 +50,116 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Connexion'),
-        backgroundColor: Colors.blue,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.account_balance_wallet, size: 80, color: Colors.blue),
-            const SizedBox(height: 32),
-            TextField(
-              controller: _emailController,
-              keyboardType: TextInputType.emailAddress,
-              decoration: const InputDecoration(
-                labelText: 'Email',
-                prefixIcon: Icon(Icons.email),
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _passwordController,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Mot de passe',
-                prefixIcon: Icon(Icons.lock),
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _isLoading ? null : _login,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 40),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 20),
+
+              // Logo
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  gradient: kGradient,
+                  borderRadius: BorderRadius.circular(18),
                 ),
-                child: _isLoading
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text(
-                        'Se connecter',
-                        style: TextStyle(fontSize: 16, color: Colors.white),
-                      ),
+                child: const Icon(
+                  Icons.account_balance_wallet_rounded,
+                  color: Colors.white,
+                  size: 32,
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            TextButton(
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const RegisterScreen()),
+
+              const SizedBox(height: 36),
+
+              const Text(
+                'Bienvenue,',
+                style: TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
               ),
-              child: const Text("Pas encore de compte ? S'inscrire"),
-            ),
-          ],
+              const SizedBox(height: 8),
+              const Text(
+                'Connectez-vous à votre portefeuille',
+                style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
+              ),
+
+              const SizedBox(height: 48),
+
+              TextField(
+                controller: _emailController,
+                keyboardType: TextInputType.emailAddress,
+                style: const TextStyle(color: Colors.white),
+                decoration: kDarkInput(
+                  label: 'Email',
+                  hint: 'votre@email.com',
+                  prefixIcon: const Icon(Icons.mail_outline_rounded, color: AppColors.textSecondary),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              TextField(
+                controller: _passwordController,
+                obscureText: _obscurePassword,
+                style: const TextStyle(color: Colors.white),
+                decoration: kDarkInput(
+                  label: 'Mot de passe',
+                  prefixIcon: const Icon(Icons.lock_outline_rounded, color: AppColors.textSecondary),
+                ).copyWith(
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscurePassword
+                          ? Icons.visibility_outlined
+                          : Icons.visibility_off_outlined,
+                      color: AppColors.textSecondary,
+                    ),
+                    onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 32),
+
+              kGradientButton(
+                text: 'Se connecter',
+                onPressed: _isLoading ? null : _login,
+                isLoading: _isLoading,
+              ),
+
+              const SizedBox(height: 28),
+
+              Center(
+                child: GestureDetector(
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                  ),
+                  child: RichText(
+                    text: const TextSpan(
+                      text: "Pas encore de compte ? ",
+                      style: TextStyle(color: AppColors.textSecondary, fontSize: 15),
+                      children: [
+                        TextSpan(
+                          text: "S'inscrire",
+                          style: TextStyle(
+                            color: AppColors.primaryLight,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
