@@ -75,7 +75,7 @@ class UpdateSettingsRequest(BaseModel):
     notifications_enabled: Optional[bool] = None
     two_factor_enabled: Optional[bool] = None
 
-# MODÈLES CRYPTO
+# Modeles pour les transactions crypto
 class CryptoPriceRequest(BaseModel):
     crypto: str
     fiat: str = 'eur'
@@ -100,13 +100,12 @@ class ResetPasswordRequest(BaseModel):
     token: str
     new_password: str
 
-# Configuration Render
-DB_HOST = "dpg-d6nhn0nafjfc73flf4t0-a.oregon-postgres.render.com"
-DB_PORT = "5432"
-DB_NAME = "bkn_db"
-DB_USER = "bkn_user"
-DB_PASSWORD = "Tlq4zDyX9CFQcWqGYxAEFSFMJYL6hUk1"
-
+# Configuration de la base de données
+DB_HOST = "aws-0-us-west-2.pooler.supabase.com"
+DB_PORT = "6543"
+DB_NAME = "postgres"
+DB_USER = "postgres.ayodkvitmmhrgmofizbb"
+DB_PASSWORD = "Patoche.9.3"
 print(f" Configuration DB: {DB_HOST}:{DB_PORT}/{DB_NAME}")
 
 app = FastAPI(title="BKN API", version="1.0.0")
@@ -129,9 +128,9 @@ CRYPTO_PRICES = {
     'avalanche': 35.0,
 }
 
-# Connexion à Render
+# Connexion à Supabase
 def get_db():
-    print(f"🔌 Tentative de connexion à Render...")
+    print(f"🔌 Tentative de connexion à Supabase...")
     return psycopg2.connect(
         host=DB_HOST,
         port=DB_PORT,

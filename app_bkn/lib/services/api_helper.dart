@@ -6,7 +6,7 @@ class ApiHelper {
   static String? _discoveredIp;
   
   // L'IP de ton PC sur le réseau actuel
-  static const String _manualFallbackIp = '172.26.174.112'; // TON IP
+  static const String _manualFallbackIp = '10.102.137.211'; // TON IP
   static const String _defaultPort = '8000';  // ← CORRIGÉ À 8000
 
   /// Récupère l'URL de base dynamique
