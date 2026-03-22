@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import 'dashboard_admin_screen.dart';
+import 'reset_password_screen.dart';
 
-// Écran de connexion réservé à l'administrateur
 class LoginAdminScreen extends StatefulWidget {
   const LoginAdminScreen({super.key});
 
@@ -17,7 +17,6 @@ class _LoginAdminScreenState extends State<LoginAdminScreen> {
   bool _isLoading = false;
   bool _passwordVisible = false;
 
-  /// Tente de connecter l'admin
   Future<void> _login() async {
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -39,7 +38,6 @@ class _LoginAdminScreenState extends State<LoginAdminScreen> {
     setState(() => _isLoading = false);
 
     if (success) {
-      // Redirige vers le tableau de bord admin
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -59,7 +57,7 @@ class _LoginAdminScreenState extends State<LoginAdminScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF1A1A2E), // Fond sombre pour l'admin
+      backgroundColor: const Color(0xFF1A1A2E),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -68,7 +66,6 @@ class _LoginAdminScreenState extends State<LoginAdminScreen> {
             children: [
               const SizedBox(height: 60),
 
-              // Icône admin
               Center(
                 child: Container(
                   width: 90,
@@ -89,7 +86,6 @@ class _LoginAdminScreenState extends State<LoginAdminScreen> {
 
               const SizedBox(height: 30),
 
-              // Titre
               const Center(
                 child: Text(
                   'Espace Administrateur',
@@ -113,14 +109,14 @@ class _LoginAdminScreenState extends State<LoginAdminScreen> {
 
               const SizedBox(height: 50),
 
-              // Champ email
               TextField(
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
                 style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
                   labelText: 'Email',
-                  labelStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
+                  labelStyle:
+                      TextStyle(color: Colors.white.withOpacity(0.7)),
                   prefixIcon: const Icon(Icons.email_outlined,
                       color: Color(0xFFE94560)),
                   filled: true,
@@ -139,16 +135,16 @@ class _LoginAdminScreenState extends State<LoginAdminScreen> {
 
               const SizedBox(height: 16),
 
-              // Champ mot de passe
               TextField(
                 controller: _passwordController,
                 obscureText: !_passwordVisible,
                 style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
                   labelText: 'Mot de passe',
-                  labelStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
-                  prefixIcon:
-                      const Icon(Icons.lock_outline, color: Color(0xFFE94560)),
+                  labelStyle:
+                      TextStyle(color: Colors.white.withOpacity(0.7)),
+                  prefixIcon: const Icon(Icons.lock_outline,
+                      color: Color(0xFFE94560)),
                   suffixIcon: IconButton(
                     icon: Icon(
                       _passwordVisible
@@ -173,9 +169,36 @@ class _LoginAdminScreenState extends State<LoginAdminScreen> {
                 ),
               ),
 
-              const SizedBox(height: 30),
+              const SizedBox(height: 8),
 
-              // Bouton connexion
+              // Lien mot de passe oublié
+              Align(
+                alignment: Alignment.centerRight,
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ResetPasswordScreen(
+                          role: 'admin',
+                          couleur: Color(0xFFE94560),
+                        ),
+                      ),
+                    );
+                  },
+                  child: Text(
+                    'Mot de passe oublié ?',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.6),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 22),
+
               SizedBox(
                 width: double.infinity,
                 height: 55,
@@ -202,7 +225,6 @@ class _LoginAdminScreenState extends State<LoginAdminScreen> {
 
               const SizedBox(height: 20),
 
-              // Retour à la connexion professeur
               Center(
                 child: TextButton(
                   onPressed: () => Navigator.pop(context),

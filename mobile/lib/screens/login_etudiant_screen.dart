@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import 'dashboard_etudiant_screen.dart';
+import 'reset_password_screen.dart';
 
-// Écran de connexion pour les étudiants
 class LoginEtudiantScreen extends StatefulWidget {
   const LoginEtudiantScreen({super.key});
 
@@ -17,7 +17,6 @@ class _LoginEtudiantScreenState extends State<LoginEtudiantScreen> {
   bool _isLoading = false;
   bool _passwordVisible = false;
 
-  // Appelée quand on appuie sur "Se connecter"
   Future<void> _seConnecter() async {
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -32,14 +31,12 @@ class _LoginEtudiantScreenState extends State<LoginEtudiantScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // Appel à loginEtudiant() dans api_service.dart
       final success = await _apiService.loginEtudiant(
         _emailController.text,
         _passwordController.text,
       );
 
       if (success) {
-        // Connexion réussie → on va vers le dashboard étudiant
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -76,7 +73,6 @@ class _LoginEtudiantScreenState extends State<LoginEtudiantScreen> {
           children: [
             const SizedBox(height: 80),
 
-            // Logo étudiant en vert
             Container(
               width: 100,
               height: 100,
@@ -118,7 +114,6 @@ class _LoginEtudiantScreenState extends State<LoginEtudiantScreen> {
 
             const SizedBox(height: 50),
 
-            // Champ email
             Container(
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -136,7 +131,8 @@ class _LoginEtudiantScreenState extends State<LoginEtudiantScreen> {
                 keyboardType: TextInputType.emailAddress,
                 decoration: InputDecoration(
                   labelText: 'Email',
-                  prefixIcon: const Icon(Icons.email_outlined, color: Color(0xFF11998E)),
+                  prefixIcon: const Icon(Icons.email_outlined,
+                      color: Color(0xFF11998E)),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
                     borderSide: BorderSide.none,
@@ -146,7 +142,8 @@ class _LoginEtudiantScreenState extends State<LoginEtudiantScreen> {
                   labelStyle: const TextStyle(color: Colors.grey),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: Color(0xFF11998E), width: 2),
+                    borderSide:
+                        const BorderSide(color: Color(0xFF11998E), width: 2),
                   ),
                 ),
               ),
@@ -154,7 +151,6 @@ class _LoginEtudiantScreenState extends State<LoginEtudiantScreen> {
 
             const SizedBox(height: 16),
 
-            // Champ mot de passe
             Container(
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -172,13 +168,17 @@ class _LoginEtudiantScreenState extends State<LoginEtudiantScreen> {
                 obscureText: !_passwordVisible,
                 decoration: InputDecoration(
                   labelText: 'Mot de passe',
-                  prefixIcon: const Icon(Icons.lock_outline, color: Color(0xFF11998E)),
+                  prefixIcon: const Icon(Icons.lock_outline,
+                      color: Color(0xFF11998E)),
                   suffixIcon: IconButton(
                     icon: Icon(
-                      _passwordVisible ? Icons.visibility_off : Icons.visibility,
+                      _passwordVisible
+                          ? Icons.visibility_off
+                          : Icons.visibility,
                       color: Colors.grey,
                     ),
-                    onPressed: () => setState(() => _passwordVisible = !_passwordVisible),
+                    onPressed: () =>
+                        setState(() => _passwordVisible = !_passwordVisible),
                   ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
@@ -189,15 +189,43 @@ class _LoginEtudiantScreenState extends State<LoginEtudiantScreen> {
                   labelStyle: const TextStyle(color: Colors.grey),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: Color(0xFF11998E), width: 2),
+                    borderSide:
+                        const BorderSide(color: Color(0xFF11998E), width: 2),
                   ),
                 ),
               ),
             ),
 
-            const SizedBox(height: 30),
+            const SizedBox(height: 8),
 
-            // Bouton connexion
+            // Lien mot de passe oublié
+            Align(
+              alignment: Alignment.centerRight,
+              child: GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ResetPasswordScreen(
+                        role: 'etudiant',
+                        couleur: Color(0xFF11998E),
+                      ),
+                    ),
+                  );
+                },
+                child: const Text(
+                  'Mot de passe oublié ?',
+                  style: TextStyle(
+                    color: Color(0xFF11998E),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 22),
+
             SizedBox(
               width: double.infinity,
               height: 55,
@@ -225,10 +253,10 @@ class _LoginEtudiantScreenState extends State<LoginEtudiantScreen> {
 
             const SizedBox(height: 20),
 
-            // Retour vers login professeur
             TextButton.icon(
               onPressed: () => Navigator.pop(context),
-              icon: const Icon(Icons.arrow_back, color: Color(0xFF11998E), size: 18),
+              icon: const Icon(Icons.arrow_back,
+                  color: Color(0xFF11998E), size: 18),
               label: const Text(
                 'Retour à la connexion',
                 style: TextStyle(color: Color(0xFF11998E)),
