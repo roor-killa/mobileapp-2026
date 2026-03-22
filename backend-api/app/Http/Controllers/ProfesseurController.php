@@ -8,24 +8,16 @@ use Illuminate\Support\Facades\Hash;
 
 class ProfesseurController extends Controller
 {
-    /**
-     * Connexion d'un professeur
-     * Route : POST /api/login
-     * Reçoit : email + password
-     * Retourne : les infos du professeur ou une erreur
-     */
+    // Route : POST /api/login
     public function login(Request $request)
     {
-        // Validation des champs obligatoires
         $request->validate([
             'email'    => 'required|email',
             'password' => 'required|string',
         ]);
 
-        // On cherche le professeur par son email
         $professeur = Professeur::where('email', $request->email)->first();
 
-        // Si introuvable ou mot de passe incorrect
         if (!$professeur || !Hash::check($request->password, $professeur->password)) {
             return response()->json([
                 'success' => false,
@@ -33,7 +25,6 @@ class ProfesseurController extends Controller
             ], 401);
         }
 
-        // Connexion réussie
         return response()->json([
             'success'    => true,
             'message'    => 'Connexion réussie',
@@ -41,24 +32,16 @@ class ProfesseurController extends Controller
         ], 200);
     }
 
-    /**
-     * Inscription d'un nouveau professeur
-     * Route : POST /api/register
-     * Reçoit : nom, prenom, email, password
-     * Retourne : les infos du professeur créé
-     */
+    // Route : POST /api/register
     public function register(Request $request)
     {
-        // Validation des champs obligatoires
         $request->validate([
             'nom'      => 'required|string',
             'prenom'   => 'required|string',
-            'email'    => 'required|email|unique:professeurs', // Email unique
-            'password' => 'required|string|min:6',            // Minimum 6 caractères
+            'email'    => 'required|email|unique:professeurs',
+            'password' => 'required|string|min:6',
         ]);
 
-        // Création du professeur avec le mot de passe hashé
-        // Hash::make() transforme le mot de passe en version sécurisée
         $professeur = Professeur::create([
             'nom'      => $request->nom,
             'prenom'   => $request->prenom,
@@ -66,11 +49,50 @@ class ProfesseurController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
-        // Retourne le professeur créé avec le code 201 (créé)
         return response()->json([
             'success'    => true,
             'message'    => 'Compte créé avec succès',
             'professeur' => $professeur,
         ], 201);
+    }
+
+    // ==========================================================
+    // MOT DE PASSE OUBLIÉ
+    // Route : POST /api/professeur/reset-password
+    // Reçoit : email
+    // Retourne : nouveau mot de passe temporaire
+    // ==========================================================
+    public function resetPassword(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+        ]);
+
+        // Cherche le professeur par son email
+        $professeur = Professeur::where('email', $request->email)->first();
+
+        // Si l'email n'existe pas
+        if (!$professeur) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Aucun compte trouvé avec cet email',
+            ], 404);
+        }
+
+        // Génère un mot de passe temporaire : 3 lettres + 4 chiffres
+        // Exemple : abc1234
+        $nouveauMotDePasse = substr(str_shuffle('abcdefghijklmnopqrstuvwxyz'), 0, 3)
+                           . rand(1000, 9999);
+
+        // Met à jour le mot de passe en base
+        $professeur->update([
+            'password' => Hash::make($nouveauMotDePasse),
+        ]);
+
+        return response()->json([
+            'success'          => true,
+            'message'          => 'Mot de passe réinitialisé avec succès',
+            'nouveau_password' => $nouveauMotDePasse,
+        ], 200);
     }
 }

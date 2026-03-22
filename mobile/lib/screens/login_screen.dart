@@ -3,6 +3,7 @@ import '../services/api_service.dart';
 import 'etudiants_screen.dart';
 import 'login_admin_screen.dart';
 import 'login_etudiant_screen.dart';
+import 'reset_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -121,7 +122,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 keyboardType: TextInputType.emailAddress,
                 decoration: InputDecoration(
                   labelText: 'Email',
-                  prefixIcon: const Icon(Icons.email_outlined, color: Color(0xFF6C63FF)),
+                  prefixIcon: const Icon(Icons.email_outlined,
+                      color: Color(0xFF6C63FF)),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
                     borderSide: BorderSide.none,
@@ -131,7 +133,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   labelStyle: const TextStyle(color: Colors.grey),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: Color(0xFF6C63FF), width: 2),
+                    borderSide:
+                        const BorderSide(color: Color(0xFF6C63FF), width: 2),
                   ),
                 ),
               ),
@@ -156,13 +159,17 @@ class _LoginScreenState extends State<LoginScreen> {
                 obscureText: !_passwordVisible,
                 decoration: InputDecoration(
                   labelText: 'Mot de passe',
-                  prefixIcon: const Icon(Icons.lock_outline, color: Color(0xFF6C63FF)),
+                  prefixIcon: const Icon(Icons.lock_outline,
+                      color: Color(0xFF6C63FF)),
                   suffixIcon: IconButton(
                     icon: Icon(
-                      _passwordVisible ? Icons.visibility_off : Icons.visibility,
+                      _passwordVisible
+                          ? Icons.visibility_off
+                          : Icons.visibility,
                       color: Colors.grey,
                     ),
-                    onPressed: () => setState(() => _passwordVisible = !_passwordVisible),
+                    onPressed: () =>
+                        setState(() => _passwordVisible = !_passwordVisible),
                   ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
@@ -173,13 +180,42 @@ class _LoginScreenState extends State<LoginScreen> {
                   labelStyle: const TextStyle(color: Colors.grey),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: Color(0xFF6C63FF), width: 2),
+                    borderSide:
+                        const BorderSide(color: Color(0xFF6C63FF), width: 2),
                   ),
                 ),
               ),
             ),
 
-            const SizedBox(height: 30),
+            const SizedBox(height: 8),
+
+            // Lien mot de passe oublié
+            Align(
+              alignment: Alignment.centerRight,
+              child: GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ResetPasswordScreen(
+                        role: 'professeur',
+                        couleur: Color(0xFF6C63FF),
+                      ),
+                    ),
+                  );
+                },
+                child: const Text(
+                  'Mot de passe oublié ?',
+                  style: TextStyle(
+                    color: Color(0xFF6C63FF),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 22),
 
             SizedBox(
               width: double.infinity,

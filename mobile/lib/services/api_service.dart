@@ -34,6 +34,15 @@ class ApiService {
     }
     return false;
   }
+  // Réinitialise le mot de passe d'un professeur
+Future<Map<String, dynamic>> resetPasswordProfesseur(String email) async {
+  final response = await http.post(
+    Uri.parse('$baseUrl/professeur/reset-password'),
+    headers: {'Content-Type': 'application/json'},
+    body: json.encode({'email': email}),
+  );
+  return json.decode(response.body);
+}
 
   // Inscrit un nouveau professeur
   Future<bool> register(
