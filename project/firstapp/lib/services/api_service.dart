@@ -10,7 +10,8 @@ class ApiService {
   factory ApiService() => _instance;
   ApiService._internal();
   
-  static const String baseUrl = 'http://10.0.2.2/api';
+  // static const String baseUrl = 'http://172.26.131.224/api';
+  static const String baseUrl = 'http://192.168.1.12/api';
   
   // Données de session conservées en mémoire
   String? token; 

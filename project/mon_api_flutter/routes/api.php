@@ -3,6 +3,8 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
+use Illuminate\Support\Facades\Mail;
+
 
 // --- ROUTES PUBLIQUES (Accessibles sans jeton) ---
 Route::post('/login', [AuthController::class, 'login']);
@@ -23,4 +25,26 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/transactions', [AuthController::class, 'getTransactions']);
     Route::post('/send-money', [AuthController::class, 'sendMoney']); // N'oublie pas celle-ci !
     Route::get('/user', [AuthController::class, 'getUserInfo']);
+});
+
+Route::get('/test-email', function () {
+    try {
+        // Remplace par l'adresse mail de ton compte Resend
+        $to = 'mathis.eloidin@gmail.com'; 
+
+        Mail::raw('Félicitations ! Ton API Laravel communique bien avec Resend.', function ($message) use ($to) {
+            $message->to($to)
+                    ->subject('Test Réussi - App Bancaire');
+        });
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'L\'email a été envoyé ! Vérifie ta boîte de réception (et les spams).'
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'status' => 'error',
+            'message' => $e->getMessage()
+        ], 500);
+    }
 });

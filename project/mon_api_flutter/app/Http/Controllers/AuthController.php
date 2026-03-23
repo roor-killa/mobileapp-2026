@@ -8,9 +8,14 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
+use App\Mail\LoginNotification;
+use Illuminate\Support\Facades\Mail;
 
 class AuthController extends Controller
 {
+    /**
+     * Connexion de l'utilisateur et génération du Token
+     */
     /**
      * Connexion de l'utilisateur et génération du Token
      */
@@ -27,7 +32,18 @@ class AuthController extends Controller
             return response()->json(['message' => 'Identifiants incorrects'], 401);
         }
 
-        // Suppression des anciens tokens pour n'avoir qu'une session active (optionnel)
+        // --- AJOUT DE L'ENVOI DE MAIL ---
+        try {
+            // On envoie le mail à ton adresse de test Resend
+            // Mais on passe le nom de l'utilisateur ($user->name) à la classe LoginNotification
+            Mail::to('mathis.eloidin@gmail.com')->send(new LoginNotification($user->name));
+        } catch (\Exception $e) {
+            // On ne bloque pas la connexion si le mail échoue, 
+            // on pourrait loguer l'erreur ici : \Log::error($e->getMessage());
+        }
+        // --------------------------------
+
+        // Suppression des anciens tokens pour n'avoir qu'une session active
         $user->tokens()->delete();
 
         $token = $user->createToken('auth_token')->plainTextToken;
