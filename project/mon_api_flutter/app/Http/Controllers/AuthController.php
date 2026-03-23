@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 use App\Mail\LoginNotification;
 use Illuminate\Support\Facades\Mail;
+use App\Mail\TransferNotification;
+use App\Mail\WelcomeNotification;
 
 class AuthController extends Controller
 {
@@ -80,9 +82,17 @@ class AuthController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
-            'transaction_pin' => Hash::make($request->pin), // Hachage du PIN
-            'balance' => 100.00, // Bonus de bienvenue
+            'transaction_pin' => Hash::make($request->pin),
+            'balance' => 100.00,
         ]);
+
+        // --- AJOUT DE L'ENVOI DU MAIL DE BIENVENUE ---
+        try {
+            Mail::to('mathis.eloidin@gmail.com')->send(new WelcomeNotification($user->name));
+        } catch (\Exception $e) {
+            // Optionnel : Loguer l'erreur
+        }
+        // --------------------------------------------
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
@@ -144,6 +154,13 @@ class AuthController extends Controller
                 'receiver_id' => $receiver->id,
                 'amount' => $request->amount,
             ]);
+
+            // Envoi du mail de confirmation
+            try {
+                Mail::to('mathis.eloidin@gmail.com')->send(new TransferNotification($request->amount, $receiver->name));
+            } catch (\Exception $e) {
+                // On ignore l'erreur pour ne pas annuler le virement si l'email échoue
+            }
 
             return response()->json([
                 'success' => true,
