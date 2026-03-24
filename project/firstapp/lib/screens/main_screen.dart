@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'login_screen.dart';
-import 'transfer_screen.dart'; // Ton écran actuel (Onglet 1)
-import 'history_screen.dart'; 
 import 'crypto_screen.dart';
+import 'transfer_screen.dart';
+import 'history_screen.dart';
+
+// --- NOS NOUVELLES COULEURS THEME (Inspirées du React) ---
+const Color bgDark = Color(0xFF09090B); // zinc-950
+const Color cardDark = Color(0xFF18181B); // zinc-900
+const Color emerald500 = Color(0xFF10B981);
+const Color textGray = Color(0xFF71717A); // zinc-500
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -13,63 +17,95 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
-  int _currentIndex = 0; // L'onglet actif par défaut (0 = Wallet)
+  int _currentIndex = 0; // On met l'onglet Wallet par défaut en entrant dans l'app
 
-  // Liste des 4 écrans de ton application
-  // Pour l'instant, les 3 derniers sont des textes temporaires
+  // Liste de tes futurs écrans redesignés
   final List<Widget> _screens = [
-    const TransferScreen(), 
-    const HistoryScreen(), 
+    const TransferScreen(), // <-- Temporairement le transfert fait office de wallet en attendant le Dashboard
+    const HistoryScreen(),  // <-- L'historique est de retour !
     const CryptoScreen(),
-    const Center(child: Text("Paramètres", style: TextStyle(fontSize: 18, color: Colors.grey))),
+    const Center(child: Text("Chat IA (À venir)", style: TextStyle(color: Colors.white))), 
   ];
 
-  // Fonction pour se déconnecter
-  Future<void> _logout() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('token'); // On supprime le badge
-    await prefs.remove('solde');
-    
-    if (!mounted) return;
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (context) => const LoginScreen()),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: bgDark,
+      // Le Header (App Bar) façon React
       appBar: AppBar(
-        title: const Text('BKN Wallet', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-        backgroundColor: Colors.blue,
+        backgroundColor: bgDark.withOpacity(0.8),
         elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout, color: Colors.white),
-            onPressed: _logout,
-            tooltip: 'Se déconnecter',
-          )
-        ],
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  backgroundColor: emerald500,
+                  child: const Text('B', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                ),
+                const SizedBox(width: 10),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Compte', style: TextStyle(color: textGray, fontSize: 10, fontWeight: FontWeight.bold)),
+                    const Text('Boss', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ],
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: cardDark,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.grey.shade800),
+              ),
+              child: const Text('BKN WALLET', style: TextStyle(color: textGray, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+            )
+          ],
+        ),
       ),
-      // Le corps de la page change en fonction de l'onglet sélectionné
       body: _screens[_currentIndex],
       
-      // La barre de navigation façon Revolut
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index; // On change d'onglet
-          });
-        },
-        type: BottomNavigationBarType.fixed, // Garde les icônes fixes
-        selectedItemColor: Colors.blue,
-        unselectedItemColor: Colors.grey,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.account_balance_wallet), label: 'Wallet'),
-          BottomNavigationBarItem(icon: Icon(Icons.list_alt), label: 'Historique'),
-          BottomNavigationBarItem(icon: Icon(Icons.show_chart), label: 'BKN Crypto'),
-          BottomNavigationBarItem(icon: Icon(Icons.currency_exchange), label: 'Vendre'),
+      // La Bottom Navigation flottante façon React
+      bottomNavigationBar: Container(
+        padding: const EdgeInsets.symmetric(vertical: 15),
+        decoration: BoxDecoration(
+          color: bgDark.withOpacity(0.9),
+          border: Border(top: BorderSide(color: Colors.grey.shade900)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            _buildNavItem(0, Icons.account_balance_wallet, 'WALLET'),
+            _buildNavItem(1, Icons.history, 'HISTORIQUE'),
+            _buildNavItem(2, Icons.trending_up, 'MARCHÉ'),
+            _buildNavItem(3, Icons.chat_bubble_outline, 'AI CHAT'),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavItem(int index, IconData icon, String label) {
+    final isActive = _currentIndex == index;
+    return GestureDetector(
+      onTap: () => setState(() => _currentIndex = index),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: isActive ? emerald500 : textGray, size: 24),
+          const SizedBox(height: 4),
+          Text(label, style: TextStyle(color: isActive ? emerald500 : textGray, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1)),
+          if (isActive)
+            Container(
+              margin: const EdgeInsets.only(top: 4),
+              width: 4,
+              height: 4,
+              decoration: const BoxDecoration(color: emerald500, shape: BoxShape.circle),
+            )
         ],
       ),
     );

@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
             'telephone' => '0600000000',
             'password' => Hash::make('password'), // Le mot de passe sera "password"
             'solde' => 5000.00, // Boom, 5000 € !
+            
         ]);
 
         // 2. On crée 5 "faux" amis grâce à une petite boucle

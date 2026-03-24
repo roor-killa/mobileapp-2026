@@ -5,8 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/transfer_response.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://10.0.2.2:8000/api';  
-
+  static const String baseUrl = 'http://10.0.2.2/api';
   Future<Map<String, dynamic>> register(String name, String prenom, String email, String telephone, String password) async {
     final url = Uri.parse('$baseUrl/register');
     try {

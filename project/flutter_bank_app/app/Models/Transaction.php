@@ -9,6 +9,13 @@ class Transaction extends Model
 {
     use HasFactory;
 
-    // On autorise le remplissage de ces colonnes
-    protected $fillable = ['user_id', 'type', 'montant', 'description'];
+    // ---> C'EST CETTE LIGNE QU'IL FAUT AJOUTER <---
+    protected $fillable = [
+        'sender_id', 
+        'recipient_id', 
+        'montant', 
+        'type', 
+        'description', 
+        'user_id' // Garde user_id s'il est utilisé par tes anciennes transactions
+    ];
 }

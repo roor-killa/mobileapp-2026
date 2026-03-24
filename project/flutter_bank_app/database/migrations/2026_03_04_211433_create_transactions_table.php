@@ -13,19 +13,15 @@ return new class extends Migration
     {
         Schema::create('transactions', function (Blueprint $table) {
             $table->id();
-            // L'ID de l'utilisateur à qui appartient la transaction
-            $table->foreignId('user_id')->constrained()->onDelete('cascade'); 
-            
-            // Le type: 'rechargement', 'envoi', 'reception'
-            $table->string('type'); 
-            
-            // Le montant de la transaction
-            $table->decimal('montant', 10, 2); 
-            
-            // Un petit texte (ex: "Rechargement par carte" ou "Envoyé à test@mail.com")
-            $table->string('description'); 
-            
-            $table->timestamps(); // Ajoute automatiquement 'created_at' (la date) et 'updated_at'
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            // ---> AJOUTE CES DEUX LIGNES :
+            $table->unsignedBigInteger('sender_id')->nullable();
+            $table->unsignedBigInteger('recipient_id')->nullable();
+            // <---
+            $table->string('type');
+            $table->decimal('montant', 10, 2);
+            $table->string('description');
+            $table->timestamps();
         });
     }
 
