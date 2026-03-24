@@ -43,12 +43,50 @@ class ApiService {
     throw Exception('Impossible de charger le portefeuille');
   }
 
+  // GET /api/wallet/exchange-rate
+  Future<double> getExchangeRate() async {
+    final response = await http.get(
+      Uri.parse('$_baseUrl/wallet/exchange-rate'),
+      headers: await _headers(),
+    );
+    if (response.statusCode == 200) {
+      return (jsonDecode(response.body)['EUR_TO_BKN'] as num).toDouble();
+    }
+    return 10.0; // fallback
+  }
+
   // POST /api/wallet/transfer
-  Future<Map<String, dynamic>> transfer(String recipientEmail, double amount) async {
+  Future<Map<String, dynamic>> transfer(
+    String recipientEmail,
+    double amount, {
+    String currency = 'EUR',
+  }) async {
     final response = await http.post(
       Uri.parse('$_baseUrl/wallet/transfer'),
       headers: await _headers(),
-      body: jsonEncode({'recipient_email': recipientEmail, 'amount': amount}),
+      body: jsonEncode({
+        'recipient_email': recipientEmail,
+        'amount': amount,
+        'currency': currency,
+      }),
+    );
+    return jsonDecode(response.body);
+  }
+
+  // POST /api/wallet/convert
+  Future<Map<String, dynamic>> convert({
+    required String fromCurrency,
+    required String toCurrency,
+    required double amount,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$_baseUrl/wallet/convert'),
+      headers: await _headers(),
+      body: jsonEncode({
+        'from_currency': fromCurrency,
+        'to_currency': toCurrency,
+        'amount': amount,
+      }),
     );
     return jsonDecode(response.body);
   }

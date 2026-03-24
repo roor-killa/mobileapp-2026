@@ -16,8 +16,9 @@ class WalletController extends Controller
         $wallet = $request->user()->wallet;
 
         return response()->json([
-            'balance'   => (float) $wallet->balance,
-            'wallet_id' => $wallet->id,
+            'balance'     => (float) $wallet->balance,
+            'balance_bkn' => (float) $wallet->balance_bkn,
+            'wallet_id'   => $wallet->id,
         ]);
     }
 
@@ -27,8 +28,10 @@ class WalletController extends Controller
         $request->validate([
             'recipient_email' => 'required|email|exists:users,email',
             'amount'          => 'required|numeric|min:0.01',
+            'currency'        => 'sometimes|in:EUR,BKN',
         ]);
 
+        $currency  = $request->input('currency', 'EUR');
         $sender    = $request->user();
         $recipient = User::where('email', $request->recipient_email)->firstOrFail();
 
@@ -38,22 +41,24 @@ class WalletController extends Controller
 
         $amount       = round((float) $request->amount, 2);
         $senderWallet = $sender->wallet;
+        $balanceField = $currency === 'BKN' ? 'balance_bkn' : 'balance';
 
-        if ($senderWallet->balance < $amount) {
+        if ($senderWallet->$balanceField < $amount) {
             return response()->json(['message' => 'Solde insuffisant.'], 422);
         }
 
-        DB::transaction(function () use ($senderWallet, $recipient, $amount) {
+        DB::transaction(function () use ($senderWallet, $recipient, $amount, $currency, $balanceField) {
             $recipientWallet = $recipient->wallet;
 
-            $senderWallet->decrement('balance', $amount);
-            $recipientWallet->increment('balance', $amount);
+            $senderWallet->decrement($balanceField, $amount);
+            $recipientWallet->increment($balanceField, $amount);
 
             Transaction::create([
                 'wallet_id'         => $senderWallet->id,
                 'related_wallet_id' => $recipientWallet->id,
                 'type'              => 'transfer_out',
                 'amount'            => $amount,
+                'currency'          => $currency,
                 'status'            => 'completed',
             ]);
 
@@ -62,6 +67,7 @@ class WalletController extends Controller
                 'related_wallet_id' => $senderWallet->id,
                 'type'              => 'transfer_in',
                 'amount'            => $amount,
+                'currency'          => $currency,
                 'status'            => 'completed',
             ]);
         });
@@ -69,9 +75,69 @@ class WalletController extends Controller
         $senderWallet->refresh();
 
         return response()->json([
-            'success'       => true,
-            'message'       => 'Transfert effectué avec succès.',
-            'nouveau_solde' => (float) $senderWallet->balance,
+            'success'           => true,
+            'message'           => 'Transfert effectué avec succès.',
+            'nouveau_solde'     => (float) $senderWallet->balance,
+            'nouveau_solde_bkn' => (float) $senderWallet->balance_bkn,
+            'currency'          => $currency,
+        ]);
+    }
+
+    // GET /api/wallet/exchange-rate
+    public function exchangeRate()
+    {
+        $rate = DB::table('exchange_rates')->where('key', 'EUR_TO_BKN')->value('value');
+
+        return response()->json([
+            'EUR_TO_BKN' => (float) ($rate ?? 10),
+        ]);
+    }
+
+    // POST /api/wallet/convert
+    public function convert(Request $request)
+    {
+        $request->validate([
+            'from_currency' => 'required|in:EUR,BKN',
+            'to_currency'   => 'required|in:EUR,BKN|different:from_currency',
+            'amount'        => 'required|numeric|min:0.01',
+        ]);
+
+        $from   = $request->from_currency;
+        $to     = $request->to_currency;
+        $amount = round((float) $request->amount, 2);
+        $wallet = $request->user()->wallet;
+
+        $rate       = (float) (DB::table('exchange_rates')->where('key', 'EUR_TO_BKN')->value('value') ?? 10);
+        $fromField  = $from === 'EUR' ? 'balance' : 'balance_bkn';
+        $toField    = $to   === 'EUR' ? 'balance' : 'balance_bkn';
+        $converted  = $from === 'EUR'
+            ? round($amount * $rate, 2)
+            : round($amount / $rate, 2);
+
+        if ($wallet->$fromField < $amount) {
+            return response()->json(['message' => 'Solde insuffisant.'], 422);
+        }
+
+        DB::transaction(function () use ($wallet, $amount, $converted, $fromField, $toField, $from) {
+            $wallet->decrement($fromField, $amount);
+            $wallet->increment($toField, $converted);
+
+            Transaction::create([
+                'wallet_id' => $wallet->id,
+                'type'      => 'conversion',
+                'amount'    => $amount,
+                'currency'  => $from,
+                'status'    => 'completed',
+            ]);
+        });
+
+        $wallet->refresh();
+
+        return response()->json([
+            'success'           => true,
+            'message'           => "Conversion : {$amount} {$from} → {$converted} {$to}.",
+            'nouveau_solde'     => (float) $wallet->balance,
+            'nouveau_solde_bkn' => (float) $wallet->balance_bkn,
         ]);
     }
 
@@ -129,6 +195,7 @@ class WalletController extends Controller
                 'wallet_id'                => $wallet->id,
                 'type'                     => 'topup',
                 'amount'                   => $amount,
+                'currency'                 => 'EUR',
                 'stripe_payment_intent_id' => $request->payment_intent_id,
                 'status'                   => 'completed',
             ]);
@@ -151,13 +218,14 @@ class WalletController extends Controller
             ->with('relatedWallet.user')
             ->latest()
             ->take(20)
-            ->get(['id', 'type', 'amount', 'status', 'created_at', 'related_wallet_id']);
+            ->get(['id', 'type', 'amount', 'currency', 'status', 'created_at', 'related_wallet_id']);
 
         return response()->json([
             'transactions' => $transactions->map(fn($t) => [
                 'id'                => $t->id,
                 'type'              => $t->type,
                 'amount'            => $t->amount,
+                'currency'          => $t->currency ?? 'EUR',
                 'status'            => $t->status,
                 'created_at'        => $t->created_at,
                 'related_user_name' => $t->relatedWallet?->user?->name,

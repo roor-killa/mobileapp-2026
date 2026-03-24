@@ -20,6 +20,7 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
   String? _qrData;
   String? _userEmail;
   double? _montant;
+  String  _currency     = 'EUR';
   bool    _loadingEmail = true;
 
   @override
@@ -59,7 +60,11 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
 
     setState(() {
       _montant = montant;
-      _qrData  = jsonEncode({'email': _userEmail, 'amount': montant});
+      _qrData  = jsonEncode({
+        'email':    _userEmail,
+        'amount':   montant,
+        'currency': _currency,
+      });
     });
   }
 
@@ -75,6 +80,29 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
           children: [
             const SizedBox(height: 8),
 
+            // Sélecteur de devise
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.currency_exchange, color: AppColors.textSecondary, size: 20),
+                  const SizedBox(width: 12),
+                  const Text('Devise', style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+                  const Spacer(),
+                  _currencyToggle('EUR'),
+                  const SizedBox(width: 8),
+                  _currencyToggle('BKN'),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
             TextField(
               controller: _amountController,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -86,8 +114,11 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
               decoration: kDarkInput(
                 label: 'Montant à recevoir',
                 hint: '0.00',
-                prefixIcon: const Icon(Icons.euro, color: AppColors.textSecondary),
-                suffixText: 'EUR',
+                prefixIcon: Icon(
+                  _currency == 'EUR' ? Icons.euro : Icons.toll_rounded,
+                  color: AppColors.textSecondary,
+                ),
+                suffixText: _currency,
               ),
             ),
 
@@ -102,7 +133,6 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
             if (_qrData != null) ...[
               const SizedBox(height: 32),
 
-              // Carte QR blanche (les QR codes lisibles sur fond clair)
               Container(
                 padding: const EdgeInsets.all(28),
                 decoration: BoxDecoration(
@@ -119,7 +149,7 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
                 child: Column(
                   children: [
                     Text(
-                      '${_montant!.toStringAsFixed(2)} €',
+                      '${_montant!.toStringAsFixed(2)} $_currency',
                       style: const TextStyle(
                         fontSize: 36,
                         fontWeight: FontWeight.bold,
@@ -148,6 +178,34 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
               ),
             ],
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _currencyToggle(String currency) {
+    final selected = _currency == currency;
+    return GestureDetector(
+      onTap: () => setState(() {
+        _currency = currency;
+        _qrData   = null; // reset QR si on change de devise
+      }),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.primary.withValues(alpha: 0.2) : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: selected ? AppColors.primary : Colors.transparent,
+          ),
+        ),
+        child: Text(
+          currency,
+          style: TextStyle(
+            color: selected ? AppColors.primaryLight : AppColors.textSecondary,
+            fontWeight: FontWeight.w600,
+            fontSize: 13,
+          ),
         ),
       ),
     );

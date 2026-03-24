@@ -37,17 +37,18 @@ class _ScanPayScreenState extends State<ScanPayScreen> {
       return;
     }
 
-    final email  = data['email']  as String?;
-    final amount = (data['amount'] as num?)?.toDouble();
+    final email    = data['email']    as String?;
+    final amount   = (data['amount']  as num?)?.toDouble();
+    final currency = data['currency'] as String? ?? 'EUR';
 
     if (email == null || amount == null || amount <= 0) return;
 
     setState(() => _scanning = false);
     _cameraCtrl.stop();
-    _afficherConfirmation(email, amount);
+    _afficherConfirmation(email, amount, currency);
   }
 
-  Future<void> _afficherConfirmation(String email, double amount) async {
+  Future<void> _afficherConfirmation(String email, double amount, String currency) async {
     final confirme = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -68,11 +69,7 @@ class _ScanPayScreenState extends State<ScanPayScreen> {
                       color: AppColors.primary.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(
-                      Icons.qr_code_scanner_rounded,
-                      color: AppColors.primary,
-                      size: 18,
-                    ),
+                    child: const Icon(Icons.qr_code_scanner_rounded, color: AppColors.primary, size: 18),
                   ),
                   const SizedBox(width: 12),
                   const Text(
@@ -97,7 +94,11 @@ class _ScanPayScreenState extends State<ScanPayScreen> {
                   children: [
                     _row('Destinataire', email),
                     const Divider(color: AppColors.border, height: 24),
-                    _row('Montant', '${amount.toStringAsFixed(2)} €', highlight: true),
+                    _row(
+                      'Montant',
+                      '${amount.toStringAsFixed(2)} $currency',
+                      highlight: true,
+                    ),
                   ],
                 ),
               ),
@@ -137,10 +138,7 @@ class _ScanPayScreenState extends State<ScanPayScreen> {
                         ),
                         child: const Text(
                           'Payer',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
                         ),
                       ),
                     ),
@@ -161,7 +159,7 @@ class _ScanPayScreenState extends State<ScanPayScreen> {
       return;
     }
 
-    await _executerPaiement(email, amount);
+    await _executerPaiement(email, amount, currency);
   }
 
   Widget _row(String label, String value, {bool highlight = false}) {
@@ -184,17 +182,17 @@ class _ScanPayScreenState extends State<ScanPayScreen> {
     );
   }
 
-  Future<void> _executerPaiement(String email, double amount) async {
+  Future<void> _executerPaiement(String email, double amount, String currency) async {
     setState(() => _processing = true);
     try {
-      final result  = await _apiService.transfer(email, amount);
+      final result  = await _apiService.transfer(email, amount, currency: currency);
       if (!mounted) return;
       final success = result['success'] == true;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             success
-                ? 'Paiement de ${amount.toStringAsFixed(2)} € effectué !'
+                ? 'Paiement de ${amount.toStringAsFixed(2)} $currency effectué !'
                 : (result['message'] ?? 'Échec du paiement'),
           ),
           backgroundColor: success ? AppColors.success : AppColors.danger,
@@ -269,19 +267,16 @@ class _ScanPayScreenState extends State<ScanPayScreen> {
       ),
       body: Stack(
         children: [
-          // Caméra plein écran
           MobileScanner(
             controller: _cameraCtrl,
             onDetect: _onDetect,
           ),
 
-          // Overlay sombre avec découpe centrale
           CustomPaint(
             size: Size.infinite,
             painter: _ScanOverlayPainter(),
           ),
 
-          // Cadre avec coins stylés
           Center(
             child: SizedBox(
               width: 260,
@@ -292,7 +287,6 @@ class _ScanPayScreenState extends State<ScanPayScreen> {
             ),
           ),
 
-          // Overlay traitement
           if (_processing)
             Container(
               color: Colors.black87,
@@ -315,7 +309,6 @@ class _ScanPayScreenState extends State<ScanPayScreen> {
               ),
             ),
 
-          // Label bas
           if (!_processing)
             Positioned(
               bottom: 52,
@@ -385,7 +378,6 @@ class _CornerFramePainter extends CustomPainter {
     final w = size.width;
     final h = size.height;
 
-    // Coin haut-gauche
     canvas.drawPath(
       Path()
         ..moveTo(0, len)
@@ -394,7 +386,6 @@ class _CornerFramePainter extends CustomPainter {
         ..lineTo(len, 0),
       paint,
     );
-    // Coin haut-droit
     canvas.drawPath(
       Path()
         ..moveTo(w - len, 0)
@@ -403,7 +394,6 @@ class _CornerFramePainter extends CustomPainter {
         ..lineTo(w, len),
       paint,
     );
-    // Coin bas-gauche
     canvas.drawPath(
       Path()
         ..moveTo(0, h - len)
@@ -412,7 +402,6 @@ class _CornerFramePainter extends CustomPainter {
         ..lineTo(len, h),
       paint,
     );
-    // Coin bas-droit
     canvas.drawPath(
       Path()
         ..moveTo(w - len, h)

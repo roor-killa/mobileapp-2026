@@ -11,6 +11,7 @@ class Transaction extends Model
         'related_wallet_id',
         'type',
         'amount',
+        'currency',
         'stripe_payment_intent_id',
         'status',
     ];

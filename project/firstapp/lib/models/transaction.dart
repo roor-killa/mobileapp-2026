@@ -1,7 +1,8 @@
 class Transaction {
   final int id;
-  final String type; // 'topup', 'transfer_out', 'transfer_in'
+  final String type; // 'topup', 'transfer_out', 'transfer_in', 'conversion'
   final double amount;
+  final String currency; // 'EUR' ou 'BKN'
   final String status;
   final DateTime createdAt;
   final String? relatedUserName;
@@ -10,6 +11,7 @@ class Transaction {
     required this.id,
     required this.type,
     required this.amount,
+    required this.currency,
     required this.status,
     required this.createdAt,
     this.relatedUserName,
@@ -20,6 +22,7 @@ class Transaction {
       id:              json['id'],
       type:            json['type'],
       amount:          double.parse(json['amount'].toString()),
+      currency:        json['currency'] as String? ?? 'EUR',
       status:          json['status'],
       createdAt:       DateTime.parse(json['created_at']),
       relatedUserName: json['related_user_name'] as String?,

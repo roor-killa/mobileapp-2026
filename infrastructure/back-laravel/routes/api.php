@@ -18,9 +18,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', fn(\Illuminate\Http\Request $r) => response()->json($r->user()->only('id', 'name', 'email')));
 
     // Wallet
-    Route::get('/wallet',              [WalletController::class, 'show']);
-    Route::post('/wallet/transfer',    [WalletController::class, 'transfer']);
-    Route::get('/wallet/transactions', [WalletController::class, 'transactions']);
+    Route::get('/wallet',                [WalletController::class, 'show']);
+    Route::post('/wallet/transfer',      [WalletController::class, 'transfer']);
+    Route::get('/wallet/transactions',   [WalletController::class, 'transactions']);
+    Route::get('/wallet/exchange-rate',  [WalletController::class, 'exchangeRate']);
+    Route::post('/wallet/convert',       [WalletController::class, 'convert']);
 
     // Top-up Stripe
     Route::post('/wallet/topup/create-intent', [WalletController::class, 'createPaymentIntent']);

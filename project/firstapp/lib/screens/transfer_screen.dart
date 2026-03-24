@@ -19,6 +19,8 @@ class _TransferScreenState extends State<TransferScreen> {
   bool?   _lastSuccess;
   String  _lastMessage  = '';
   double? _nouveauSolde;
+  double? _nouveauSoldeBkn;
+  String  _currency     = 'EUR';
 
   Future<void> _confirmerEtTransferer() async {
     final email       = _recipientController.text.trim();
@@ -54,11 +56,7 @@ class _TransferScreenState extends State<TransferScreen> {
                       color: AppColors.primary.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(
-                      Icons.send_rounded,
-                      color: AppColors.primary,
-                      size: 18,
-                    ),
+                    child: const Icon(Icons.send_rounded, color: AppColors.primary, size: 18),
                   ),
                   const SizedBox(width: 12),
                   const Text(
@@ -85,7 +83,7 @@ class _TransferScreenState extends State<TransferScreen> {
                     const Divider(color: AppColors.border, height: 24),
                     _confirmRow(
                       'Montant',
-                      '${montant.toStringAsFixed(2)} €',
+                      '${montant.toStringAsFixed(2)} $_currency',
                       highlight: true,
                     ),
                   ],
@@ -127,10 +125,7 @@ class _TransferScreenState extends State<TransferScreen> {
                         ),
                         child: const Text(
                           'Confirmer',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
                         ),
                       ),
                     ),
@@ -174,12 +169,15 @@ class _TransferScreenState extends State<TransferScreen> {
     });
 
     try {
-      final result = await _apiService.transfer(email, montant);
+      final result = await _apiService.transfer(email, montant, currency: _currency);
       setState(() {
-        _lastSuccess  = result['success'] == true;
-        _lastMessage  = result['message'] ?? '';
-        _nouveauSolde = result['nouveau_solde'] != null
+        _lastSuccess     = result['success'] == true;
+        _lastMessage     = result['message'] ?? '';
+        _nouveauSolde    = result['nouveau_solde'] != null
             ? (result['nouveau_solde'] as num).toDouble()
+            : null;
+        _nouveauSoldeBkn = result['nouveau_solde_bkn'] != null
+            ? (result['nouveau_solde_bkn'] as num).toDouble()
             : null;
         _isLoading = false;
       });
@@ -223,10 +221,30 @@ class _TransferScreenState extends State<TransferScreen> {
               decoration: kDarkInput(
                 label: 'Email du destinataire',
                 hint: 'ex: bob@exemple.com',
-                prefixIcon: const Icon(
-                  Icons.person_outline_rounded,
-                  color: AppColors.textSecondary,
-                ),
+                prefixIcon: const Icon(Icons.person_outline_rounded, color: AppColors.textSecondary),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // Sélecteur de devise
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.currency_exchange, color: AppColors.textSecondary, size: 20),
+                  const SizedBox(width: 12),
+                  const Text('Devise', style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+                  const Spacer(),
+                  _currencyToggle('EUR'),
+                  const SizedBox(width: 8),
+                  _currencyToggle('BKN'),
+                ],
               ),
             ),
 
@@ -246,8 +264,11 @@ class _TransferScreenState extends State<TransferScreen> {
               decoration: kDarkInput(
                 label: 'Montant',
                 hint: '0.00',
-                prefixIcon: const Icon(Icons.euro, color: AppColors.textSecondary),
-                suffixText: 'EUR',
+                prefixIcon: Icon(
+                  _currency == 'EUR' ? Icons.euro : Icons.toll_rounded,
+                  color: AppColors.textSecondary,
+                ),
+                suffixText: _currency,
               ),
             ),
 
@@ -264,6 +285,31 @@ class _TransferScreenState extends State<TransferScreen> {
               _buildResultCard(),
             ],
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _currencyToggle(String currency) {
+    final selected = _currency == currency;
+    return GestureDetector(
+      onTap: () => setState(() => _currency = currency),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.primary.withValues(alpha: 0.2) : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: selected ? AppColors.primary : Colors.transparent,
+          ),
+        ),
+        child: Text(
+          currency,
+          style: TextStyle(
+            color: selected ? AppColors.primaryLight : AppColors.textSecondary,
+            fontWeight: FontWeight.w600,
+            fontSize: 13,
+          ),
         ),
       ),
     );
@@ -305,30 +351,36 @@ class _TransferScreenState extends State<TransferScreen> {
               ),
             ],
           ),
-          if (ok && _nouveauSolde != null) ...[
+          if (ok && (_nouveauSolde != null || _nouveauSoldeBkn != null)) ...[
             const SizedBox(height: 16),
             const Divider(color: AppColors.border),
             const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Nouveau solde',
-                  style: TextStyle(color: AppColors.textSecondary),
-                ),
-                Text(
-                  '${_nouveauSolde!.toStringAsFixed(2)} €',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                  ),
-                ),
-              ],
-            ),
+            if (_nouveauSolde != null)
+              _soldeRow('Solde EUR', '${_nouveauSolde!.toStringAsFixed(2)} €'),
+            if (_nouveauSoldeBkn != null) ...[
+              const SizedBox(height: 8),
+              _soldeRow('Solde BKN', '${_nouveauSoldeBkn!.toStringAsFixed(2)} BKN'),
+            ],
           ],
         ],
       ),
+    );
+  }
+
+  Widget _soldeRow(String label, String value) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: const TextStyle(color: AppColors.textSecondary)),
+        Text(
+          value,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
+        ),
+      ],
     );
   }
 

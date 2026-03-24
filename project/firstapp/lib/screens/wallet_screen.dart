@@ -10,6 +10,7 @@ import 'transfer_screen.dart';
 import 'topup_screen.dart';
 import 'receive_screen.dart';
 import 'scan_pay_screen.dart';
+import 'convert_screen.dart';
 
 class WalletScreen extends StatefulWidget {
   const WalletScreen({super.key});
@@ -177,6 +178,7 @@ class _WalletScreenState extends State<WalletScreen> {
 
           const SizedBox(height: 14),
 
+          // Solde EUR
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -205,6 +207,42 @@ class _WalletScreenState extends State<WalletScreen> {
             ],
           ),
 
+          const SizedBox(height: 10),
+
+          // Solde BKN
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'BKN',
+                  style: TextStyle(
+                    color: Colors.white60,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 1,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  _balanceVisible
+                      ? (_wallet?.balanceBkn.toStringAsFixed(2) ?? '0.00')
+                      : '••••',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
           const SizedBox(height: 20),
           Container(height: 1, color: Colors.white.withValues(alpha: 0.15)),
           const SizedBox(height: 16),
@@ -227,55 +265,93 @@ class _WalletScreenState extends State<WalletScreen> {
   Widget _buildActionButtons() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 28, 24, 28),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
+      child: Column(
         children: [
-          _actionBtn(
-            icon: Icons.send_rounded,
-            label: 'Envoyer',
-            color: AppColors.primary,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _actionBtn(
+                icon: Icons.send_rounded,
+                label: 'Envoyer',
+                color: AppColors.primary,
+                onTap: () async {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const TransferScreen()),
+                  );
+                  _loadData();
+                },
+              ),
+              _actionBtn(
+                icon: Icons.add_rounded,
+                label: 'Recharger',
+                color: AppColors.success,
+                onTap: kIsWeb
+                    ? null
+                    : () async {
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const TopUpScreen()),
+                        );
+                        _loadData();
+                      },
+              ),
+              _actionBtn(
+                icon: Icons.qr_code_rounded,
+                label: 'Recevoir',
+                color: const Color(0xFFFF6B9D),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ReceiveScreen()),
+                ),
+              ),
+              _actionBtn(
+                icon: Icons.qr_code_scanner_rounded,
+                label: 'Scanner',
+                color: AppColors.warning,
+                onTap: () async {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const ScanPayScreen()),
+                  );
+                  _loadData();
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // Bouton Convertir EUR ↔ BKN
+          GestureDetector(
             onTap: () async {
               await Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const TransferScreen()),
+                MaterialPageRoute(builder: (_) => const ConvertScreen()),
               );
               _loadData();
             },
-          ),
-          _actionBtn(
-            icon: Icons.add_rounded,
-            label: 'Recharger',
-            color: AppColors.success,
-            onTap: kIsWeb
-                ? null
-                : () async {
-                    await Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const TopUpScreen()),
-                    );
-                    _loadData();
-                  },
-          ),
-          _actionBtn(
-            icon: Icons.qr_code_rounded,
-            label: 'Recevoir',
-            color: const Color(0xFFFF6B9D),
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const ReceiveScreen()),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.swap_horiz_rounded, color: AppColors.primaryLight, size: 20),
+                  SizedBox(width: 8),
+                  Text(
+                    'Convertir EUR ↔ BKN',
+                    style: TextStyle(
+                      color: AppColors.primaryLight,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          _actionBtn(
-            icon: Icons.qr_code_scanner_rounded,
-            label: 'Scanner',
-            color: AppColors.warning,
-            onTap: () async {
-              await Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const ScanPayScreen()),
-              );
-              _loadData();
-            },
           ),
         ],
       ),
@@ -361,17 +437,20 @@ class _WalletScreenState extends State<WalletScreen> {
 
   Widget _buildTransactionTile(Transaction t) {
     final isPositive = t.type == 'topup' || t.type == 'transfer_in';
+    final isConvert  = t.type == 'conversion';
 
     final icon = switch (t.type) {
       'topup'        => Icons.add_card_rounded,
       'transfer_out' => Icons.arrow_upward_rounded,
       'transfer_in'  => Icons.arrow_downward_rounded,
+      'conversion'   => Icons.swap_horiz_rounded,
       _              => Icons.swap_horiz_rounded,
     };
 
     final iconColor = switch (t.type) {
       'topup' || 'transfer_in' => AppColors.success,
       'transfer_out'           => AppColors.danger,
+      'conversion'             => AppColors.primaryLight,
       _                        => AppColors.textSecondary,
     };
 
@@ -379,8 +458,13 @@ class _WalletScreenState extends State<WalletScreen> {
       'topup'        => 'Rechargement',
       'transfer_out' => 'Envoyé',
       'transfer_in'  => 'Reçu',
+      'conversion'   => 'Conversion',
       _              => t.type,
     };
+
+    final amountStr = isConvert
+        ? '${t.amount.toStringAsFixed(2)} ${t.currency}'
+        : '${isPositive ? '+' : '-'}${t.amount.toStringAsFixed(2)} ${t.currency}';
 
     return Container(
       margin: const EdgeInsets.fromLTRB(24, 0, 24, 10),
@@ -426,11 +510,13 @@ class _WalletScreenState extends State<WalletScreen> {
             ),
           ),
           Text(
-            '${isPositive ? '+' : '-'}${t.amount.toStringAsFixed(2)} €',
+            amountStr,
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w700,
-              color: isPositive ? AppColors.success : AppColors.danger,
+              color: isConvert
+                  ? AppColors.primaryLight
+                  : (isPositive ? AppColors.success : AppColors.danger),
             ),
           ),
         ],
