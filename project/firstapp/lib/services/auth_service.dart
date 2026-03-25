@@ -3,6 +3,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import '../models/user.dart';
 import '../config.dart';
+import 'notification_service.dart';
 
 class AuthService {
   static String get _baseUrl => apiBaseUrl;
@@ -49,6 +50,7 @@ class AuthService {
     if (response.statusCode == 201) {
       await saveToken(data['token']);
       await saveEmail(data['user']['email']);
+      NotificationService.registerToken();
       return {'success': true, 'user': User.fromJson(data['user'])};
     }
     final message = data['message'] ?? data['errors']?.toString() ?? 'Erreur inscription';
@@ -67,6 +69,7 @@ class AuthService {
     if (response.statusCode == 200) {
       await saveToken(data['token']);
       await saveEmail(data['user']['email']);
+      NotificationService.registerToken();
       return {'success': true, 'user': User.fromJson(data['user'])};
     }
     final message = data['message'] ?? 'Identifiants incorrects';

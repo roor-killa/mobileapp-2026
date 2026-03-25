@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "42237182374",
+    "project_id": "mobileapp-bkn",
+    "storage_bucket": "mobileapp-bkn.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:42237182374:android:3764bf12b26117dffd8f67",
+        "android_client_info": {
+          "package_name": "com.bokaynou.bkn"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAh76n-9BRh6zfFO51f76rkKC0tyqzgVwM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

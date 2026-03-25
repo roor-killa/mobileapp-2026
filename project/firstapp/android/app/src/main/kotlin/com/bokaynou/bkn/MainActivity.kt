@@ -1,4 +1,4 @@
-package com.example.firstapp
+package com.bokaynou.bkn
 
 import io.flutter.embedding.android.FlutterActivity
 

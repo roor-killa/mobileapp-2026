@@ -114,6 +114,15 @@ class ApiService {
     return jsonDecode(response.body);
   }
 
+  // POST /api/user/fcm-token
+  Future<void> saveFcmToken(String token) async {
+    await http.post(
+      Uri.parse('$_baseUrl/user/fcm-token'),
+      headers: await _headers(),
+      body: jsonEncode({'fcm_token': token}),
+    );
+  }
+
   // GET /api/wallet/transactions
   Future<List<Transaction>> getTransactions() async {
     final response = await http.get(
