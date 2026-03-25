@@ -4,6 +4,7 @@ import '../models/transfer_response.dart';
 import '../models/transaction.dart';
 import '../services/api_service.dart';
 import '../login_screen.dart';
+import 'package:flutter_stripe/flutter_stripe.dart' hide Card;
 
 class TransferScreen extends StatefulWidget {
   const TransferScreen({super.key});
@@ -45,6 +46,40 @@ class _TransferScreenState extends State<TransferScreen> {
       MaterialPageRoute(builder: (context) => const LoginScreen()),
       (route) => false,
     );
+  }
+  Future<void> _rechargerViaStripe(double montant) async {
+    setState(() => _isLoading = true);
+
+    try {
+      // 1. Appeler ton API Laravel pour créer un PaymentIntent
+      // Tu devras créer cette méthode dans ton ApiService
+      final paymentData = await _apiService.creerPaymentIntent(montant);
+
+      // 2. Initialiser le Payment Sheet
+      await Stripe.instance.initPaymentSheet(
+        paymentSheetParameters: SetupPaymentSheetParameters(
+          paymentIntentClientSecret: paymentData['clientSecret'],
+          merchantDisplayName: 'Mon Wallet App',
+          style: ThemeMode.light,
+        ),
+      );
+
+      // 3. Afficher l'interface de saisie de carte
+      await Stripe.instance.presentPaymentSheet();
+
+      // 4. Si on arrive ici, le paiement a réussi !
+      _afficherErreur("Recharge réussie !"); // Ou un dialogue de succès
+      _chargerDonneesInitiales(); // Rafraîchir le solde
+
+    } catch (e) {
+      if (e is StripeException) {
+        _afficherErreur("Paiement annulé ou échoué");
+      } else {
+        _afficherErreur("Erreur : $e");
+      }
+    } finally {
+      setState(() => _isLoading = false);
+    }
   }
 
   Future<void> _chargerDonneesInitiales() async {
@@ -222,6 +257,13 @@ class _TransferScreenState extends State<TransferScreen> {
             Text(
               _soldeActuel != null ? '${_soldeActuel!.toStringAsFixed(2)} €' : '--- €',
               style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.blue),
+            ),
+            const SizedBox(height: 15),
+            ElevatedButton.icon(
+              onPressed: () => _rechargerViaStripe(20.0), // Exemple avec 20€
+              icon: const Icon(Icons.add),
+              label: const Text("Recharger mon compte"),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
             ),
           ],
         ),

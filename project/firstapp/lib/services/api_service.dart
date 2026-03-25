@@ -10,8 +10,8 @@ class ApiService {
   factory ApiService() => _instance;
   ApiService._internal();
   
-  // static const String baseUrl = 'http://172.26.131.224/api';
-  static const String baseUrl = 'http://192.168.1.12/api';
+  static const String baseUrl = 'http://172.26.131.224/api';
+  // static const String baseUrl = 'http://192.168.1.12/api';
   
   // Données de session conservées en mémoire
   String? token; 
@@ -177,6 +177,28 @@ class ApiService {
     } catch (e) {
       print('❌ Erreur Solde : $e');
       return 0.0;
+    }
+  }
+
+  Future<Map<String, dynamic>> creerPaymentIntent(double montant) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/payment/intent'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': 'Bearer $token', // Assure-toi que le token est bien présent
+      },
+      body: jsonEncode({
+        'amount': montant, // On envoie juste 20.0, Laravel s'occupe du reste (* 100)
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      // Log l'erreur pour débugger plus facilement
+      print("Erreur API Payment: ${response.body}");
+      throw Exception("Échec de la création du paiement");
     }
   }
 }

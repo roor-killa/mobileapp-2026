@@ -22,12 +22,20 @@ android {
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.example.firstapp"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
-        versionCode = flutter.versionCode
-        versionName = flutter.versionName
+        
+        // On force la version 21 pour Stripe
+        minSdkVersion(24) 
+        
+        // On utilise les parenthèses pour corriger l'erreur "Function invocation expected"
+        targetSdkVersion(flutter.targetSdkVersion)
+        
+        // Correction des erreurs "Unresolved reference"
+        // On accède aux propriétés via le projet
+        val flutterVersionCode = project.findProperty("flutterVersionCode") as? String
+        val flutterVersionName = project.findProperty("flutterVersionName") as? String
+
+        versionCode = flutterVersionCode?.toInt() ?: 1
+        versionName = flutterVersionName ?: "1.0"
     }
 
     buildTypes {
@@ -41,4 +49,10 @@ android {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    // Ces deux lignes permettent à Android de trouver "Theme.AppCompat"
+    implementation("androidx.appcompat:appcompat:1.6.1")
+    implementation("com.google.android.material:material:1.9.0")
 }

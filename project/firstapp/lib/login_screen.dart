@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import '../services/api_service.dart';
 import 'screens/transfer_screen.dart';
 import 'register_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -27,8 +28,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
     setState(() => _isLoading = true);
 
-    // final String url = "http://172.26.131.224/api/login"; campus
-    final String url = "http://192.168.1.12/api/login"; 
+    final String url = "http://172.26.131.224/api/login"; 
+    // final String url = "http://192.168.1.12/api/login"; 
 
     try {
       final response = await http.post(
@@ -46,17 +47,17 @@ class _LoginScreenState extends State<LoginScreen> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         String token = data['access_token'];
-        
-        // --- MODIFICATION ICI ---
-        // On récupère l'ID de l'utilisateur depuis la réponse JSON
-        // Laravel renvoie généralement l'utilisateur dans data['user']
         var userId = data['user']['id']; 
         
+        // --- SAUVEGARDE PERSISTANTE ---
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('auth_token', token);
+        // ------------------------------
+
         print("✅ Login réussi ! Token: $token, ID: $userId");
 
-        // On enregistre les deux informations dans le Singleton
         _apiService.token = token; 
-        _apiService.currentUserId = userId; // Indispensable pour la couleur de l'historique
+        _apiService.currentUserId = userId; 
 
         if (!mounted) return;
         

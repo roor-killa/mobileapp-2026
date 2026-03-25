@@ -1,5 +1,8 @@
 package com.example.firstapp
 
-import io.flutter.embedding.android.FlutterActivity
+// ATTENTION : On change l'import ici
+import io.flutter.embedding.android.FlutterFragmentActivity
 
-class MainActivity : FlutterActivity()
+class MainActivity: FlutterFragmentActivity() {
+    // La classe est maintenant une sous-classe de FlutterFragmentActivity
+}
