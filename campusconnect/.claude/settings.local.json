@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C \"c:\\\\Licence\\\\App_Mobile\\\\mobileapp-2026\" ls-tree -r HEAD --name-only)",
+      "Bash(git -C \"c:/Licence/App_Mobile/mobileapp-2026\" ls-tree -r HEAD --name-only)",
+      "Bash(git -C \"c:/Licence/App_Mobile/mobileapp-2026\" log --oneline --all)",
+      "Bash(git -C \"c:/Licence/App_Mobile/mobileapp-2026\" ls-tree -r 5740938 --name-only)"
+    ]
+  }
+}
