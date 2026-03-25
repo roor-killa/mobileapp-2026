@@ -25,6 +25,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(title: const Text('Historique')),
       body: Consumer<WalletProvider>(
         builder: (context, wp, _) {
@@ -108,12 +109,12 @@ class _TransactionCard extends StatelessWidget {
   const _TransactionCard({required this.tx});
 
   static const _typeConfig = {
-    'send': {'icon': Icons.arrow_upward_rounded, 'color': Colors.redAccent, 'label': 'Envoi'},
-    'receive': {'icon': Icons.arrow_downward_rounded, 'color': Color(0xFF10B981), 'label': 'Réception'},
+    'send': {'icon': Icons.arrow_upward_rounded, 'color': AppTheme.error, 'label': 'Envoi'},
+    'receive': {'icon': Icons.arrow_downward_rounded, 'color': AppTheme.accent, 'label': 'Réception'},
     'swap': {'icon': Icons.swap_horiz_rounded, 'color': Color(0xFFF59E0B), 'label': 'Échange'},
     'buy': {'icon': Icons.shopping_cart_rounded, 'color': Color(0xFF3B82F6), 'label': 'Achat'},
-    'bank_send': {'icon': Icons.account_balance_rounded, 'color': Colors.redAccent, 'label': 'Virement envoyé'},
-    'bank_receive': {'icon': Icons.account_balance_rounded, 'color': Color(0xFF10B981), 'label': 'Virement reçu'},
+    'bank_send': {'icon': Icons.account_balance_rounded, 'color': AppTheme.error, 'label': 'Virement envoyé'},
+    'bank_receive': {'icon': Icons.account_balance_rounded, 'color': AppTheme.accent, 'label': 'Virement reçu'},
   };
 
   @override
@@ -175,11 +176,11 @@ class _TransactionCard extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(amountText, style: TextStyle(color: isNeg ? Colors.redAccent : const Color(0xFF10B981), fontWeight: FontWeight.w600, fontSize: 14)),
+              Text(amountText, style: TextStyle(color: isNeg ? AppTheme.error : AppTheme.accent, fontWeight: FontWeight.w600, fontSize: 14)),
               if (tx.eurValue != null)
                 Text('${tx.eurValue!.toStringAsFixed(2)} \u20AC', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
               if (tx.type == 'swap' && tx.toSymbol != null)
-                Text('+${tx.toAmount?.toStringAsFixed(4)} ${tx.toSymbol}', style: const TextStyle(color: Color(0xFF10B981), fontSize: 12, fontWeight: FontWeight.w500)),
+                Text('+${tx.toAmount?.toStringAsFixed(4)} ${tx.toSymbol}', style: const TextStyle(color: AppTheme.accent, fontSize: 12, fontWeight: FontWeight.w500)),
             ],
           ),
         ],

@@ -3,7 +3,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { WalletsService } from './wallets.service';
 
 @Controller('wallets')
-@UseGuards(AuthGuard('supabase-jwt'))
+@UseGuards(AuthGuard('appwrite-jwt'))
 export class WalletsController {
   constructor(private readonly walletsService: WalletsService) {}
 

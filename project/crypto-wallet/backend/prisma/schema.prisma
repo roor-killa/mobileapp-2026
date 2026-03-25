@@ -12,10 +12,40 @@ model User {
   email        String   @unique
   passwordHash String
   name         String
-  supabaseId   String?  @unique // id utilisateur Supabase Auth (pour connexion via l'app)
+  pseudonym    String?  @unique // Pseudo pour les virements (ex: JeanD)
+  iban         String?  @unique // IBAN unique NodEX (ex: FR76 3000 6000 01XX XXXX XXXX XXX)
+  appwriteId   String?  @unique // id utilisateur Appwrite Auth (pour connexion via l'app)
+  balanceEur   Decimal  @default(2000) // Solde EUR pour virements NodEX
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   wallets      Wallet[]
+  card         UserCard?
+}
+
+model UserCard {
+  id           String   @id @default(uuid())
+  userId       String   @unique
+  cardNumber   String   // 16 chiffres (Visa 4xxx), format Luhn valide
+  last4        String   // 4 derniers chiffres pour affichage masqué
+  expiryMonth  Int      // 01-12
+  expiryYear   Int      // ex: 28 pour 2028
+  cvv          String   // 3 chiffres
+  pin          String   // 4 chiffres (code PIN carte)
+  createdAt    DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+model VirementEur {
+  id         String   @id @default(uuid())
+  fromUserId String
+  toUserId   String
+  amount     Decimal
+  createdAt  DateTime @default(now())
+
+  @@index([fromUserId])
+  @@index([toUserId])
 }
 
 model Wallet {

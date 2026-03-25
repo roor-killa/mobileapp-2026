@@ -4,7 +4,7 @@ import { PassportModule } from '@nestjs/passport';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './jwt.strategy';
-import { SupabaseJwtStrategy } from './supabase-jwt.strategy';
+import { AppwriteJwtStrategy } from './appwrite-jwt.strategy';
 import { PrismaService } from '../../common/prisma.service';
 import { VaultModule } from '../vault/vault.module';
 
@@ -18,7 +18,7 @@ import { VaultModule } from '../vault/vault.module';
     VaultModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, SupabaseJwtStrategy, PrismaService],
+  providers: [AuthService, JwtStrategy, AppwriteJwtStrategy, PrismaService],
   exports: [AuthService],
 })
 export class AuthModule {}

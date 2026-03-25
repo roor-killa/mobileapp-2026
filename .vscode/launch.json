@@ -1,0 +1,44 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "backend (NestJS)",
+            "type": "node",
+            "request": "launch",
+            "runtimeExecutable": "npm",
+            "runtimeArgs": ["run", "start:dev"],
+            "cwd": "${workspaceFolder}/project/crypto-wallet/backend"
+        },
+        {
+            "name": "NodEX iOS (simulateur)",
+            "cwd": "${workspaceFolder}/project/crypto-wallet/flutter_app",
+            "request": "launch",
+            "type": "dart",
+            "program": "lib/main.dart",
+            "deviceId": "iPhone 16e"
+        },
+        {
+            "name": "flutter_app (Chrome web)",
+            "cwd": "${workspaceFolder}/project/crypto-wallet/flutter_app",
+            "request": "launch",
+            "type": "dart",
+            "args": ["--web-port=8089"]
+        },
+        {
+            "name": "flutter_app (profile mode)",
+            "cwd": "${workspaceFolder}/project/crypto-wallet/flutter_app",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "profile",
+            "args": ["--web-port=8089"]
+        },
+        {
+            "name": "flutter_app (release mode)",
+            "cwd": "${workspaceFolder}/project/crypto-wallet/flutter_app",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "release",
+            "args": ["--web-port=8089"]
+        }
+    ]
+}

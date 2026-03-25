@@ -15,6 +15,71 @@ class _TransferScreenState extends State<TransferScreen> {
   final _amount = TextEditingController();
   String? _selectedWalletId;
 
+  void _showConfirmDialog(BuildContext context, WalletProvider wp, String walletId, String symbol, double amt, String addr, double balance, VoidCallback onSuccess) {
+    final shortAddr = addr.length > 16 ? '${addr.substring(0, 8)}...${addr.substring(addr.length - 8)}' : addr;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.card,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
+            SizedBox(width: 12),
+            Text('Confirmer l\'envoi', style: TextStyle(color: AppTheme.textPrimary, fontSize: 18)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Vérifiez les détails avant d\'envoyer :', style: TextStyle(color: AppTheme.textSecondary, fontSize: 14)),
+            const SizedBox(height: 16),
+            _confirmRow('Montant', '${amt.toStringAsFixed(4)} $symbol'),
+            _confirmRow('Vers', shortAddr),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: Colors.orange.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+              child: const Row(
+                children: [
+                  Icon(Icons.info_outline_rounded, color: Colors.orange, size: 20),
+                  SizedBox(width: 10),
+                  Expanded(child: Text('Les transactions crypto sont irréversibles. Vérifiez l\'adresse.', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12))),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              wp.sendCrypto(walletId, amt, addr);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('${amt.toStringAsFixed(4)} $symbol envoyé'), backgroundColor: AppTheme.primary),
+              );
+              onSuccess();
+            },
+            child: const Text('Confirmer l\'envoi'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _confirmRow(String label, String value) => Padding(
+    padding: const EdgeInsets.only(bottom: 8),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(width: 80, child: Text(label, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13))),
+        Expanded(child: Text(value, style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600, fontFamily: 'monospace'))),
+      ],
+    ),
+  );
+
   @override
   void dispose() {
     _address.dispose();
@@ -147,13 +212,11 @@ class _TransferScreenState extends State<TransferScreen> {
                         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Remplis tous les champs'), backgroundColor: Colors.redAccent));
                         return;
                       }
-                      wp.sendCrypto(selected.id, amt, addr);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('${amt.toStringAsFixed(4)} ${selected.symbol} envoyé'), backgroundColor: AppTheme.primary),
-                      );
-                      _amount.clear();
-                      _address.clear();
-                      setState(() {});
+                      _showConfirmDialog(context, wp, selected.id, selected.symbol, amt, addr, selected.balance, () {
+                        _amount.clear();
+                        _address.clear();
+                        setState(() {});
+                      });
                     },
                     style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 18)),
                     child: const Text('Confirmer l\'envoi', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),

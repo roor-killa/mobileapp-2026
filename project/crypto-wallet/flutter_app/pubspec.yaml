@@ -11,10 +11,16 @@ dependencies:
     sdk: flutter
   cupertino_icons: ^1.0.8
   http: ^1.2.0
+  crypto: ^3.0.5
   provider: ^6.1.2
   shared_preferences: ^2.2.2
-  supabase_flutter: ^2.8.0
+  appwrite: ^18.0.0
+  flutter_stripe: ^12.4.0
   qr_flutter: ^4.1.0
+  flutter_secure_storage: ^9.2.2
+  local_auth: ^2.3.0
+  # Transitions entre onglets (même approche que FlutterShop / Material)
+  animations: ^2.0.11
 
 dev_dependencies:
   flutter_test:

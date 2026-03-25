@@ -1,7 +1,11 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import '../config/api_config.dart';
+import '../models/virement_response.dart';
 import '../services/api_client.dart';
+import '../utils/nodex_synthetic_banking.dart';
 
 class Wallet {
   final String id;
@@ -35,6 +39,9 @@ const _chainMeta = {
   'BTC': {'name': 'Bitcoin', 'icon': 'B', 'cgId': 'bitcoin'},
 };
 
+/// Solde de départ en euros (affiché au premier chargement)
+const double _soldeDepartEur = 2000.0;
+
 class WalletProvider with ChangeNotifier {
   final _api = ApiClient();
   List<Wallet> _wallets = [];
@@ -42,7 +49,11 @@ class WalletProvider with ChangeNotifier {
   Map<String, double> _changes24h = {};
   List<Transaction> _transactions = [];
   bool _loading = false;
-  double _eurBalance = 2500.0;
+  double _eurBalance = _soldeDepartEur;
+  /// Dernier userId chargé - pour isoler le solde EUR par utilisateur
+  String? _lastUserId;
+
+  static const _prefsKeyPrefix = 'nodex_eur_balance_';
 
   List<Wallet> get wallets => _wallets;
   Map<String, double> get prices => _prices;
@@ -50,6 +61,33 @@ class WalletProvider with ChangeNotifier {
   List<Transaction> get transactions => _transactions;
   bool get loading => _loading;
   double get eurBalance => _eurBalance;
+
+  String? _myIban;
+  String? _myPseudonym;
+  /// Nom du titulaire (RIB), renvoyé par l’API à partir du compte en base.
+  String? _myHolderName;
+  List<Map<String, dynamic>> _virementsHistory = [];
+  String? get myIban => _myIban;
+  String? get myPseudonym => _myPseudonym;
+  String? get myHolderName => _myHolderName;
+  List<Map<String, dynamic>> get virementsHistory => _virementsHistory;
+
+  /// Diagnostic : teste la connexion backend et l'auth.
+  Future<String> testConnection() async {
+    try {
+      final r = await http.get(Uri.parse('${ApiConfig.baseUrl}/health')).timeout(const Duration(seconds: 5));
+      if (r.statusCode != 200) return 'Backend: erreur ${r.statusCode}';
+      final me = await _api.get('/virements/me');
+      if (me.statusCode == 200) {
+        final d = jsonDecode(me.body) as Map<String, dynamic>;
+        return 'OK. Titulaire: ${d['holderName'] ?? d['name'] ?? '?'} | IBAN: ${d['iban'] ?? '?'} | Pseudo: ${d['pseudonym'] ?? '?'}';
+      }
+      if (me.statusCode == 401) return 'Session expirée. Déconnectez-vous et reconnectez-vous.';
+      return 'Auth: ${me.statusCode}';
+    } catch (e) {
+      return 'Erreur: ${e.toString().length > 100 ? e.toString().substring(0, 100) : e}';
+    }
+  }
 
   double get totalBalanceEur {
     double total = _eurBalance;
@@ -67,28 +105,6 @@ class WalletProvider with ChangeNotifier {
     return total;
   }
 
-  void _loadDemoWallets() {
-    _wallets = [
-      Wallet(id: 'w-eth', blockchain: 'ETH', address: '0x742d35Cc6634C0532925a3b844Bc9e7595f2bD18', balance: 1.2450, symbol: 'ETH', name: 'Ethereum', icon: 'E'),
-      Wallet(id: 'w-sol', blockchain: 'SOL', address: '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU', balance: 15.80, symbol: 'SOL', name: 'Solana', icon: 'S'),
-      Wallet(id: 'w-algo', blockchain: 'ALGO', address: 'ALGO7XKXTG2CW87D97TXJSDPBD5JBKHETQA83TZRUJOSGAS', balance: 250.0, symbol: 'ALGO', name: 'Algorand', icon: 'A'),
-      Wallet(id: 'w-btc', blockchain: 'BTC', address: 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh', balance: 0.0520, symbol: 'BTC', name: 'Bitcoin', icon: 'B'),
-    ];
-    if (_transactions.isEmpty) {
-      _transactions = [
-        Transaction(id: 't1', type: 'receive', symbol: 'ETH', amount: 0.5, eurValue: 1625, description: 'Reçu de 0x8a2f...3e91', date: DateTime.now().subtract(const Duration(hours: 2))),
-        Transaction(id: 't2', type: 'send', symbol: 'SOL', amount: -3.0, eurValue: 435, description: 'Envoyé à 7xKX...gAsU', date: DateTime.now().subtract(const Duration(hours: 8))),
-        Transaction(id: 't3', type: 'buy', symbol: 'BTC', amount: 0.012, eurValue: 744, description: 'Achat par carte Visa', date: DateTime.now().subtract(const Duration(days: 1))),
-        Transaction(id: 't4', type: 'swap', symbol: 'ETH', amount: -0.1, toSymbol: 'SOL', toAmount: 8.5, description: 'Échange ETH → SOL', date: DateTime.now().subtract(const Duration(days: 1, hours: 6))),
-        Transaction(id: 't5', type: 'bank_receive', symbol: 'EUR', amount: 500, eurValue: 500, description: 'Virement reçu - Jean Dupont', date: DateTime.now().subtract(const Duration(days: 2))),
-        Transaction(id: 't6', type: 'bank_send', symbol: 'EUR', amount: -150, eurValue: 150, description: 'Virement vers FR76...890', date: DateTime.now().subtract(const Duration(days: 3))),
-        Transaction(id: 't7', type: 'receive', symbol: 'ALGO', amount: 100, eurValue: 32, description: 'Reçu de ALGO7X...GAS', date: DateTime.now().subtract(const Duration(days: 4))),
-        Transaction(id: 't8', type: 'buy', symbol: 'ETH', amount: 0.25, eurValue: 812.50, description: 'Achat par carte Visa', date: DateTime.now().subtract(const Duration(days: 5))),
-        Transaction(id: 't9', type: 'send', symbol: 'BTC', amount: -0.005, eurValue: 310, description: 'Envoyé à bc1q...0wlh', date: DateTime.now().subtract(const Duration(days: 7))),
-        Transaction(id: 't10', type: 'bank_receive', symbol: 'EUR', amount: 2000, eurValue: 2000, description: 'Virement reçu - Salaire', date: DateTime.now().subtract(const Duration(days: 10))),
-      ];
-    }
-  }
 
   void addTransaction(Transaction tx) {
     _transactions.insert(0, tx);
@@ -116,6 +132,7 @@ class WalletProvider with ChangeNotifier {
     final cryptoAmount = eurAmount / price;
     w.balance += cryptoAmount;
     _eurBalance -= eurAmount * 1.015;
+    _saveEurBalance();
     addTransaction(Transaction(
       id: 'tx-${DateTime.now().millisecondsSinceEpoch}',
       type: 'buy',
@@ -148,8 +165,10 @@ class WalletProvider with ChangeNotifier {
     ));
   }
 
+  /// Virement local uniquement (vers IBAN externe - simulation).
   void bankSend(String name, String iban, double amount) {
     _eurBalance -= amount;
+    _saveEurBalance();
     addTransaction(Transaction(
       id: 'tx-${DateTime.now().millisecondsSinceEpoch}',
       type: 'bank_send',
@@ -159,6 +178,166 @@ class WalletProvider with ChangeNotifier {
       description: 'Virement vers ${name.isNotEmpty ? name : iban}',
       date: DateTime.now(),
     ));
+  }
+
+  static bool _isTransientNetworkError(Object e) {
+    final s = e.toString();
+    return s.contains('SocketException') ||
+        s.contains('Connection refused') ||
+        s.contains('Failed host lookup') ||
+        s.contains('TimeoutException') ||
+        s.contains('Network is unreachable');
+  }
+
+  /// Virement vers un compte NodEX (via API - IBAN, pseudonyme ou email).
+  /// Retourne null si succès, sinon le message d'erreur.
+  Future<String?> bankSendToNodEX(String toIdentifier, double amount) async {
+    if (amount <= 0) return 'Montant invalide';
+    if (amount > _eurBalance) return 'Solde insuffisant';
+    if (toIdentifier.trim().isEmpty) return 'Indiquez l\'IBAN ou le pseudonyme du destinataire';
+
+    for (var attempt = 0; attempt < 2; attempt++) {
+      try {
+        if (kDebugMode) debugPrint('[Virement] Envoi vers $toIdentifier: $amount € (tentative ${attempt + 1})');
+        final res = await _api.post('/virements/send', {
+          'toIdentifier': toIdentifier.trim(),
+          'amount': amount,
+        });
+        if (res.statusCode == 200 || res.statusCode == 201) {
+          final data = jsonDecode(res.body) as Map<String, dynamic>;
+          final virement = VirementResponse.fromJson(data);
+          if (!virement.success || virement.newBalance < 0) return 'Réponse serveur invalide';
+          if (kDebugMode) debugPrint('[Virement] Succès - nouveau solde: ${virement.newBalance}');
+          _eurBalance = virement.newBalance;
+          _saveEurBalance();
+          addTransaction(Transaction(
+            id: 'tx-${DateTime.now().millisecondsSinceEpoch}',
+            type: 'bank_send',
+            symbol: 'EUR',
+            amount: -amount,
+            eurValue: amount,
+            description: 'Virement vers $toIdentifier',
+            date: DateTime.now(),
+          ));
+          notifyListeners();
+          _refreshVirementsHistory();
+          return null;
+        }
+        if (res.statusCode == 401 && attempt == 0) {
+          await Future<void>.delayed(const Duration(milliseconds: 400));
+          continue;
+        }
+        String msg = 'Erreur serveur (${res.statusCode})';
+        try {
+          final err = jsonDecode(res.body) as Map<String, dynamic>;
+          final m = err['message'];
+          if (m is String) msg = m;
+          else if (m is List && m.isNotEmpty) msg = m.first.toString();
+        } catch (_) {}
+        if (kDebugMode) debugPrint('[Virement] Erreur ${res.statusCode}: ${res.body}');
+        return msg;
+      } catch (e) {
+        if (kDebugMode) debugPrint('[Virement] Exception: $e');
+        if (attempt == 0 && _isTransientNetworkError(e)) {
+          await Future<void>.delayed(const Duration(milliseconds: 600));
+          continue;
+        }
+        final s = e.toString();
+        if (_isTransientNetworkError(e)) {
+          return 'Connexion au serveur NodEX impossible. Vérifiez le réseau et l’adresse dans Réglages → Serveur & assistant.';
+        }
+        return 'Erreur : ${s.length > 120 ? s.substring(0, 120) : s}';
+      }
+    }
+    return 'Échec du virement après nouvelle tentative.';
+  }
+
+  /// Charge le solde EUR depuis SharedPreferences pour un utilisateur.
+  Future<double> _loadEurBalanceForUser(String userId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = '$_prefsKeyPrefix$userId';
+      final val = prefs.getDouble(key);
+      return val ?? _soldeDepartEur;
+    } catch (_) {
+      return _soldeDepartEur;
+    }
+  }
+
+  /// Sauvegarde le solde EUR pour l'utilisateur courant.
+  Future<void> _saveEurBalance() async {
+    final uid = _lastUserId;
+    if (uid == null) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setDouble('$_prefsKeyPrefix$uid', _eurBalance);
+    } catch (_) {}
+  }
+
+  /// Réinitialise le provider (appelé à la déconnexion).
+  void resetForLogout() {
+    _wallets = [];
+    _transactions = [];
+    _lastUserId = null;
+    _eurBalance = _soldeDepartEur;
+    _myIban = null;
+    _myPseudonym = null;
+    _myHolderName = null;
+    _virementsHistory = [];
+    notifyListeners();
+  }
+
+  Future<void> _fetchTransactions() async {
+    _transactions = [];
+    for (final w in _wallets) {
+      try {
+        final res = await _api.get('/wallets/${w.id}/transactions');
+        if (res.statusCode == 200) {
+          final list = jsonDecode(res.body) as List;
+          for (final e in list) {
+            final m = e as Map<String, dynamic>;
+            final amt = (m['amount'] as num?)?.toDouble() ?? 0.0;
+            final type = m['type'] ?? 'send';
+            final price = _prices[m['tokenSymbol'] ?? w.symbol] ?? 0.0;
+            _transactions.add(Transaction(
+              id: m['id']?.toString() ?? '',
+              type: type,
+              symbol: m['tokenSymbol'] ?? w.symbol,
+              amount: type == 'send' ? -amt : amt,
+              eurValue: price > 0 ? amt * price : null,
+              description: type == 'send' ? 'Envoyé à ${_shortenAddr(m['toAddress'] ?? '')}' : 'Reçu de ${_shortenAddr(m['fromAddress'] ?? '')}',
+              status: m['status'] ?? 'confirmed',
+              date: m['createdAt'] != null ? DateTime.tryParse(m['createdAt'].toString()) ?? DateTime.now() : DateTime.now(),
+            ));
+          }
+        }
+      } catch (_) {}
+    }
+    _transactions.sort((a, b) => b.date.compareTo(a.date));
+  }
+
+  static String _shortenAddr(String addr) {
+    if (addr.length <= 12) return addr;
+    return '${addr.substring(0, 6)}...${addr.substring(addr.length - 4)}';
+  }
+
+  /// 4 portefeuilles locaux (solde 0) quand le backend ne fournit pas la liste.
+  void _seedDemoWallets(String userId) {
+    final h = userId.hashCode.abs();
+    _wallets = _chainMeta.entries.map((e) {
+      final symbol = e.key;
+      final meta = e.value;
+      final addr = symbol == 'BTC' ? 'bc1${(h + symbol.hashCode).toRadixString(16)}demo' : '0x${(h + symbol.hashCode).toRadixString(16).padLeft(8, '0')}';
+      return Wallet(
+        id: 'demo-$h-$symbol',
+        blockchain: meta['name']!,
+        address: addr,
+        balance: 0,
+        symbol: symbol,
+        name: meta['name']!,
+        icon: meta['icon']!,
+      );
+    }).toList();
   }
 
   Future<void> _fetchPricesFromCoinGecko() async {
@@ -180,16 +359,65 @@ class WalletProvider with ChangeNotifier {
         }
       }
     } catch (_) {
-      if (_prices.isEmpty) {
-        _prices = {'ETH': 3250.0, 'SOL': 145.0, 'ALGO': 0.32, 'BTC': 62000.0};
-        _changes24h = {'ETH': 2.1, 'SOL': -1.3, 'ALGO': 0.8, 'BTC': 1.5};
-      }
+      // Pas de données fictives - garder vide si l'API échoue
     }
   }
 
-  Future<void> fetch() async {
+  /// Rafraîchit uniquement l'historique des virements (après envoi réussi).
+  Future<void> _refreshVirementsHistory() async {
+    try {
+      final hRes = await _api.get('/virements/history');
+      if (hRes.statusCode == 200) {
+        final list = jsonDecode(hRes.body) as List;
+        _virementsHistory = list.map((e) => (e as Map<String, dynamic>)).toList();
+        _mergeVirementsIntoTransactions();
+        notifyListeners();
+      }
+    } catch (_) {}
+  }
+
+  /// Fusionne les virements dans _transactions pour "Dernières transactions" et Historique.
+  void _mergeVirementsIntoTransactions() {
+    _transactions.removeWhere((t) => t.type == 'bank_send' || t.type == 'bank_receive');
+    for (final v in _virementsHistory) {
+      final id = v['id']?.toString() ?? '';
+      if (id.isEmpty) continue;
+      final type = v['type'] as String?;
+      final amt = (v['amount'] as num?)?.toDouble() ?? 0.0;
+      final dateStr = v['date'] as String?;
+      final other = v['otherPseudonym'] as String? ?? '';
+      final date = dateStr != null ? DateTime.tryParse(dateStr) ?? DateTime.now() : DateTime.now();
+      final isReceived = type == 'received';
+      _transactions.add(Transaction(
+        id: id,
+        type: isReceived ? 'bank_receive' : 'bank_send',
+        symbol: 'EUR',
+        amount: isReceived ? amt : -amt,
+        eurValue: amt,
+        description: isReceived
+            ? (other.isNotEmpty ? 'Reçu de $other' : 'Virement reçu')
+            : (other.isNotEmpty ? 'Envoyé à $other' : 'Virement envoyé'),
+        status: 'confirmed',
+        date: date,
+      ));
+    }
+    _transactions.sort((a, b) => b.date.compareTo(a.date));
+  }
+
+  /// Charge les wallets et le solde EUR. Passe [userId] pour isoler le solde par utilisateur.
+  Future<void> fetch([String? userId]) async {
     _loading = true;
     notifyListeners();
+
+    // Si l'utilisateur a changé, charger son solde EUR et oublier l’ancien RIB
+    if (userId != null && userId != _lastUserId) {
+      _lastUserId = userId;
+      _myIban = null;
+      _myPseudonym = null;
+      _myHolderName = null;
+      _eurBalance = await _loadEurBalanceForUser(userId);
+    }
+
     await _fetchPricesFromCoinGecko();
     try {
       final wRes = await _api.get('/wallets');
@@ -204,13 +432,71 @@ class WalletProvider with ChangeNotifier {
           final balance = b is num ? b.toDouble() : (double.tryParse(b?.toString() ?? '0') ?? 0.0);
           return Wallet(id: m['id']?.toString() ?? '', blockchain: m['blockchain'] ?? m['chain'] ?? chain, address: m['address'] ?? '', balance: balance, symbol: chain, name: meta['name']!, icon: meta['icon']!);
         }).toList();
+        await _fetchTransactions();
       } else {
-        if (_wallets.isEmpty) _loadDemoWallets();
+        _wallets = [];
+        _transactions = [];
       }
     } catch (_) {
-      if (_wallets.isEmpty) _loadDemoWallets();
+      _wallets = [];
+      _transactions = [];
     }
+    // Portefeuilles de démo si l’API ne répond pas (401, backend arrêté) — pour afficher ETH/BTC/SOL/ALGO
+    final uid = userId ?? _lastUserId;
+    if (_wallets.isEmpty && uid != null) {
+      _seedDemoWallets(uid);
+    }
+    // Toujours charger virements (me + history) — même si /wallets a échoué (Laravel)
+    await _fetchVirementsAndMerge();
+    _applySyntheticRibIfMissing(userId ?? _lastUserId);
     _loading = false;
     notifyListeners();
+  }
+
+  /// IBAN / pseudo identiques à la base si l’API ne répond pas : le RIB reste utilisable.
+  void _applySyntheticRibIfMissing(String? appwriteId) {
+    if (appwriteId == null || appwriteId.isEmpty) return;
+    final iban = _myIban?.trim() ?? '';
+    if (iban.isNotEmpty) return;
+    _myIban = nodexSyntheticIban(appwriteId);
+    _myPseudonym ??= nodexSyntheticPseudonym(appwriteId);
+  }
+
+  /// Charge virements/me, virements/history et fusionne dans _transactions.
+  Future<void> _fetchVirementsAndMerge() async {
+    try {
+      final bRes = await _api.get('/virements/me');
+      if (bRes.statusCode == 200) {
+        final data = jsonDecode(bRes.body) as Map<String, dynamic>;
+        final apiBalance = (data['balanceEur'] as num?)?.toDouble();
+        if (apiBalance != null) {
+          _eurBalance = apiBalance;
+          _saveEurBalance();
+        }
+        _myIban = data['iban']?.toString();
+        _myPseudonym = data['pseudonym']?.toString();
+        _myHolderName = data['holderName']?.toString() ?? data['name']?.toString();
+      }
+    } catch (_) {
+      try {
+        final bRes = await _api.get('/virements/balance');
+        if (bRes.statusCode == 200) {
+          final data = jsonDecode(bRes.body) as Map<String, dynamic>;
+          final apiBalance = (data['balanceEur'] as num?)?.toDouble();
+          if (apiBalance != null) {
+            _eurBalance = apiBalance;
+            _saveEurBalance();
+          }
+        }
+      } catch (_) {}
+    }
+    try {
+      final hRes = await _api.get('/virements/history');
+      if (hRes.statusCode == 200) {
+        final list = jsonDecode(hRes.body) as List;
+        _virementsHistory = list.map((e) => (e as Map<String, dynamic>)).toList();
+        _mergeVirementsIntoTransactions();
+      }
+    } catch (_) {}
   }
 }

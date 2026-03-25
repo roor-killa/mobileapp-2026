@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../app_theme.dart';
 import '../providers/wallet_provider.dart';
+import '../services/stripe_service.dart';
 
 class BuyScreen extends StatefulWidget {
   const BuyScreen({super.key});
@@ -14,6 +15,7 @@ class _BuyScreenState extends State<BuyScreen> {
   final _amount = TextEditingController(text: '100');
   int _selectedIndex = 0;
   final _presets = [50, 100, 200, 500, 1000];
+  bool _paymentLoading = false;
 
   @override
   void dispose() {
@@ -150,17 +152,59 @@ class _BuyScreenState extends State<BuyScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: () {
-                      if (eurAmount <= 0) return;
-                      wp.buyCrypto(w.id, eurAmount);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('${cryptoAmount.toStringAsFixed(6)} ${w.symbol} acheté pour ${eurAmount.toStringAsFixed(2)} \u20AC'), backgroundColor: AppTheme.primary),
-                      );
-                      _amount.text = '100';
-                      setState(() {});
-                    },
+                    onPressed: _paymentLoading || eurAmount < 0.5
+                        ? null
+                        : () async {
+                            setState(() => _paymentLoading = true);
+                            try {
+                              if (StripeService.isConfigured) {
+                                final err = await StripeService.payWithCard(
+                                  amountEur: eurAmount,
+                                  walletId: w.id,
+                                  symbol: w.symbol,
+                                );
+                                if (!mounted) return;
+                                setState(() => _paymentLoading = false);
+                                if (err == null) {
+                                  wp.fetch();
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('${cryptoAmount.toStringAsFixed(6)} ${w.symbol} acheté pour ${eurAmount.toStringAsFixed(2)} \u20AC'),
+                                      backgroundColor: AppTheme.primary,
+                                    ),
+                                  );
+                                  _amount.text = '100';
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text(err), backgroundColor: Colors.redAccent),
+                                  );
+                                }
+                              } else {
+                                wp.buyCrypto(w.id, eurAmount);
+                                if (mounted) {
+                                  setState(() => _paymentLoading = false);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('${cryptoAmount.toStringAsFixed(6)} ${w.symbol} acheté (simulation)'),
+                                      backgroundColor: AppTheme.primary,
+                                    ),
+                                  );
+                                  _amount.text = '100';
+                                }
+                              }
+                            } catch (e) {
+                              if (mounted) {
+                                setState(() => _paymentLoading = false);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text(e.toString()), backgroundColor: Colors.redAccent),
+                                );
+                              }
+                            }
+                          },
                     style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 18)),
-                    child: Text('Acheter ${w.symbol}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                    child: _paymentLoading
+                        ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : Text('Acheter ${w.symbol}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                   ),
                 ),
               ],

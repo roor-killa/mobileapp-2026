@@ -1,7 +1,16 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../app_theme.dart';
+import 'package:provider/provider.dart';
 
+import '../app_theme.dart';
+import '../models/user_card.dart';
+import '../providers/auth_provider.dart';
+import '../providers/wallet_provider.dart';
+import '../services/api_client.dart';
+
+/// Carte virtuelle NodEX (RIB / IBAN : onglet Virement > Recevoir).
 class CardScreen extends StatefulWidget {
   const CardScreen({super.key});
 
@@ -10,356 +19,409 @@ class CardScreen extends StatefulWidget {
 }
 
 class _CardScreenState extends State<CardScreen> {
+  UserCard? _card;
+  bool _cardLoading = true;
   bool _blocked = false;
-  bool _showDetails = false;
-  bool _onlinePayments = true;
-  bool _abroadPayments = true;
-  bool _atmWithdrawals = false;
-  bool _contactless = true;
-  double _paymentLimit = 3000;
-  double _atmLimit = 500;
-  double _onlineLimit = 2000;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _bootstrap());
+  }
+
+  Future<void> _bootstrap() async {
+    if (!mounted) return;
+    final auth = context.read<AuthProvider>();
+    final wp = context.read<WalletProvider>();
+    await auth.syncApiToken();
+    if (!mounted) return;
+    await wp.fetch(auth.user?.id);
+    if (!mounted) return;
+    await _loadCard();
+  }
+
+  Future<void> _loadCard() async {
+    if (!mounted) return;
+    final auth = context.read<AuthProvider>();
+    await auth.syncApiToken();
+    if (!mounted) return;
+    setState(() => _cardLoading = true);
+    try {
+      for (var attempt = 0; attempt < 2; attempt++) {
+        final res = await ApiClient().get('/card');
+        if (res.statusCode == 200) {
+          final data = jsonDecode(res.body) as Map<String, dynamic>;
+          if (data.containsKey('error')) {
+            if (mounted) setState(() => _card = null);
+          } else {
+            if (mounted) setState(() => _card = UserCard.fromJson(data));
+          }
+          if (mounted) setState(() => _cardLoading = false);
+          return;
+        }
+        if (res.statusCode == 401 && attempt == 0) {
+          await auth.syncApiToken();
+          continue;
+        }
+        break;
+      }
+      if (mounted) setState(() => _card = null);
+    } catch (_) {
+      if (mounted) setState(() => _card = null);
+    } finally {
+      if (mounted) setState(() => _cardLoading = false);
+    }
+  }
+
+  String _titulaire(WalletProvider wp, AuthProvider auth) {
+    final appwriteName = auth.user?.name?.trim() ?? '';
+    if (appwriteName.isNotEmpty) return appwriteName;
+    final dbName = wp.myHolderName?.trim() ?? '';
+    if (dbName.isNotEmpty && dbName != 'Utilisateur') return dbName;
+    final parts = auth.user?.email.split('@');
+    if (parts != null && parts.isNotEmpty && parts.first.trim().isNotEmpty) {
+      return parts.first.trim();
+    }
+    if (dbName.isNotEmpty) return dbName;
+    return '—';
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Ma carte')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            _buildCreditCard(),
-            if (_blocked)
-              Container(
-                margin: const EdgeInsets.only(top: 12),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                decoration: BoxDecoration(color: Colors.redAccent.withOpacity(0.15), borderRadius: BorderRadius.circular(10)),
-                child: const Row(
-                  children: [
-                    Icon(Icons.warning_rounded, color: Colors.redAccent, size: 20),
-                    SizedBox(width: 8),
-                    Text('Carte bloquée', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w600)),
-                  ],
-                ),
-              ),
-            const SizedBox(height: 24),
-            _buildActions(),
-            const SizedBox(height: 24),
-            _buildToggleSettings(),
-            const SizedBox(height: 24),
-            _buildLimits(),
-            const SizedBox(height: 24),
-            _buildSpending(),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCreditCard() {
-    return Container(
-      width: double.infinity,
-      height: 200,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: _blocked ? [Colors.grey.shade700, Colors.grey.shade900] : [const Color(0xFF7C3AED), const Color(0xFF3B0F8F)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: (_blocked ? Colors.grey : AppTheme.primary).withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10))],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text('NodEX', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: 2)),
-              Icon(_blocked ? Icons.lock_rounded : Icons.contactless_rounded, color: Colors.white70, size: 28),
-            ],
-          ),
-          GestureDetector(
-            onTap: () {
-              Clipboard.setData(const ClipboardData(text: '4242888812345678'));
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Numéro copié'), backgroundColor: AppTheme.primary));
+      backgroundColor: Colors.transparent,
+      appBar: AppBar(
+        title: const Text('Carte virtuelle'),
+        actions: [
+          IconButton(
+            tooltip: 'Actualiser la carte',
+            onPressed: () async {
+              await _bootstrap();
+              if (!mounted) return;
             },
-            child: Text(
-              _showDetails ? '4242  8888  1234  5678' : '••••  ••••  ••••  5678',
-              style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w500, letterSpacing: 3, fontFamily: 'monospace'),
-            ),
-          ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('TITULAIRE', style: TextStyle(color: Colors.white54, fontSize: 10)),
-                Text('NEYMAR NODEX', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500, letterSpacing: 1)),
-              ]),
-              Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                const Text('EXPIRE', style: TextStyle(color: Colors.white54, fontSize: 10)),
-                const Text('12/28', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
-              ]),
-              if (_showDetails)
-                const Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                  Text('CVV', style: TextStyle(color: Colors.white54, fontSize: 10)),
-                  Text('742', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
-                ])
-              else
-                const Text('VISA', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold, fontStyle: FontStyle.italic)),
-            ],
+            icon: const Icon(Icons.refresh_rounded),
           ),
         ],
       ),
-    );
-  }
+      body: RefreshIndicator(
+        onRefresh: _bootstrap,
+        color: AppTheme.primary,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(20),
+          child: Consumer2<WalletProvider, AuthProvider>(
+            builder: (context, wp, auth, _) {
+              final titulaire = _titulaire(wp, auth);
 
-  Widget _buildActions() {
-    return Row(
-      children: [
-        _actionBtn(
-          icon: _blocked ? Icons.lock_open_rounded : Icons.lock_rounded,
-          label: _blocked ? 'Débloquer' : 'Bloquer',
-          color: _blocked ? const Color(0xFF10B981) : Colors.redAccent,
-          onTap: () {
-            setState(() => _blocked = !_blocked);
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(_blocked ? 'Carte bloquée' : 'Carte débloquée'), backgroundColor: _blocked ? Colors.redAccent : const Color(0xFF10B981)),
-            );
-          },
-        ),
-        const SizedBox(width: 10),
-        _actionBtn(
-          icon: _showDetails ? Icons.visibility_off_rounded : Icons.visibility_rounded,
-          label: _showDetails ? 'Masquer' : 'Détails',
-          color: AppTheme.primary,
-          onTap: () => setState(() => _showDetails = !_showDetails),
-        ),
-        const SizedBox(width: 10),
-        _actionBtn(
-          icon: Icons.pin_rounded,
-          label: 'Code PIN',
-          color: const Color(0xFFF59E0B),
-          onTap: () => _showPinDialog(),
-        ),
-        const SizedBox(width: 10),
-        _actionBtn(
-          icon: Icons.tune_rounded,
-          label: 'Plafonds',
-          color: const Color(0xFF10B981),
-          onTap: () => _showLimitsDialog(),
-        ),
-      ],
-    );
-  }
-
-  Widget _actionBtn({required IconData icon, required String label, required Color color, required VoidCallback onTap}) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Column(
-          children: [
-            Container(
-              width: 48, height: 48,
-              decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(14)),
-              child: Icon(icon, color: color, size: 22),
-            ),
-            const SizedBox(height: 6),
-            Text(label, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
-          ],
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'Carte virtuelle NodEX',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 14),
+                  if (_cardLoading)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 32),
+                      child: Center(child: CircularProgressIndicator(color: AppTheme.primary)),
+                    )
+                  else
+                    Builder(
+                      builder: (ctx) {
+                        final isPreview = _card == null;
+                        final displayCard = _card ?? UserCard.preview(holderName: titulaire);
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _VirtualCardPreview(
+                              card: displayCard,
+                              blocked: isPreview ? false : _blocked,
+                              isPreview: isPreview,
+                              onTapDetails: () => _showCardDetailsDialog(ctx, displayCard, isPreview),
+                            ),
+                            const SizedBox(height: 16),
+                            Row(
+                              children: [
+                                if (!isPreview) ...[
+                                  Expanded(
+                                    child: OutlinedButton.icon(
+                                      onPressed: () => setState(() => _blocked = !_blocked),
+                                      icon: Icon(_blocked ? Icons.lock_open_rounded : Icons.lock_rounded),
+                                      label: Text(_blocked ? 'Débloquer' : 'Bloquer'),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                ],
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    onPressed: () => _showCardDetailsDialog(ctx, displayCard, isPreview),
+                                    icon: const Icon(Icons.visibility_rounded),
+                                    label: Text(isPreview ? 'Numéro & CVV (aperçu)' : 'Numéro & CVV'),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  const SizedBox(height: 40),
+                ],
+              );
+            },
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildToggleSettings() {
-    return Container(
-      decoration: BoxDecoration(color: AppTheme.card, borderRadius: BorderRadius.circular(16)),
-      child: Column(
-        children: [
-          _toggle(Icons.shopping_bag_rounded, 'Paiements en ligne', _onlinePayments, (v) => setState(() => _onlinePayments = v)),
-          const Divider(height: 1, color: AppTheme.border, indent: 52),
-          _toggle(Icons.flight_rounded, 'Paiements à l\'étranger', _abroadPayments, (v) => setState(() => _abroadPayments = v)),
-          const Divider(height: 1, color: AppTheme.border, indent: 52),
-          _toggle(Icons.atm_rounded, 'Retraits DAB', _atmWithdrawals, (v) => setState(() => _atmWithdrawals = v)),
-          const Divider(height: 1, color: AppTheme.border, indent: 52),
-          _toggle(Icons.contactless_rounded, 'Sans contact', _contactless, (v) => setState(() => _contactless = v)),
-        ],
-      ),
-    );
-  }
-
-  Widget _toggle(IconData icon, String label, bool value, ValueChanged<bool> onChanged) {
-    return ListTile(
-      leading: Icon(icon, color: AppTheme.primary, size: 22),
-      title: Text(label, style: const TextStyle(color: AppTheme.textPrimary, fontSize: 14)),
-      trailing: Switch(value: value, onChanged: onChanged, activeColor: AppTheme.primary),
-    );
-  }
-
-  Widget _buildLimits() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('Plafonds actuels', style: TextStyle(color: AppTheme.textPrimary, fontSize: 16, fontWeight: FontWeight.w600)),
-        const SizedBox(height: 12),
-        _limitRow(Icons.credit_card_rounded, 'Paiement', _paymentLimit, 5000),
-        const SizedBox(height: 8),
-        _limitRow(Icons.atm_rounded, 'Retrait DAB', _atmLimit, 1000),
-        const SizedBox(height: 8),
-        _limitRow(Icons.shopping_cart_rounded, 'En ligne', _onlineLimit, 5000),
-      ],
-    );
-  }
-
-  Widget _limitRow(IconData icon, String label, double current, double max) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: AppTheme.card, borderRadius: BorderRadius.circular(12)),
-      child: Row(
-        children: [
-          Icon(icon, color: AppTheme.textSecondary, size: 20),
-          const SizedBox(width: 12),
-          Expanded(
+  void _showCardDetailsDialog(BuildContext context, UserCard c, bool isPreview) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: const BoxDecoration(
+          color: AppTheme.card,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: SafeArea(
+          child: SingleChildScrollView(
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: const TextStyle(color: AppTheme.textPrimary, fontSize: 14)),
-                const SizedBox(height: 4),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(value: current / max, backgroundColor: AppTheme.border, color: AppTheme.primary, minHeight: 4),
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(color: AppTheme.border, borderRadius: BorderRadius.circular(2)),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Text('Détails de la carte', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+                if (isPreview) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppTheme.primary.withValues(alpha: 0.35)),
+                    ),
+                    child: const Text(
+                      'Mode aperçu : chiffres d’exemple. Avec le serveur Laravel, vos vraies données s’affichent ici.',
+                      style: TextStyle(color: AppTheme.textPrimary, fontSize: 13, height: 1.35),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 16),
+                _DetailRow(
+                  icon: Icons.credit_card_rounded,
+                  label: 'Numéro',
+                  value: c.cardNumber,
+                  onCopy: () {
+                    Clipboard.setData(ClipboardData(text: c.cardNumber.replaceAll(' ', '')));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Numéro copié'), backgroundColor: AppTheme.primary),
+                    );
+                  },
+                ),
+                const SizedBox(height: 12),
+                _DetailRow(
+                  icon: Icons.person_rounded,
+                  label: 'Titulaire',
+                  value: c.holderName.toUpperCase(),
+                  onCopy: () => Clipboard.setData(ClipboardData(text: c.holderName)),
+                ),
+                const SizedBox(height: 12),
+                _DetailRow(
+                  icon: Icons.calendar_today_rounded,
+                  label: 'Expiration',
+                  value: c.expiry,
+                  onCopy: () => Clipboard.setData(ClipboardData(text: c.expiry)),
+                ),
+                const SizedBox(height: 12),
+                _DetailRow(
+                  icon: Icons.lock_rounded,
+                  label: 'CVV',
+                  value: c.cvv,
+                  onCopy: () => Clipboard.setData(ClipboardData(text: c.cvv)),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 12),
-          Text('${current.toInt()} / ${max.toInt()} \u20AC', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
-        ],
+        ),
       ),
     );
   }
+}
 
-  Widget _buildSpending() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('Dépenses récentes', style: TextStyle(color: AppTheme.textPrimary, fontSize: 16, fontWeight: FontWeight.w600)),
-        const SizedBox(height: 12),
-        _spendRow(Icons.restaurant_rounded, 'Restaurant Le Petit', '-32,50 \u20AC', 'Hier', Colors.orange),
-        _spendRow(Icons.local_gas_station_rounded, 'Station Total', '-55,00 \u20AC', 'Il y a 2j', Colors.blue),
-        _spendRow(Icons.shopping_cart_rounded, 'Amazon', '-89,99 \u20AC', 'Il y a 3j', Colors.amber),
-        _spendRow(Icons.coffee_rounded, 'Starbucks', '-5,80 \u20AC', 'Il y a 4j', Colors.brown),
-        _spendRow(Icons.local_grocery_store_rounded, 'Carrefour', '-67,30 \u20AC', 'Il y a 5j', Colors.green),
-      ],
-    );
-  }
+class _VirtualCardPreview extends StatelessWidget {
+  final UserCard card;
+  final bool blocked;
+  final bool isPreview;
+  final VoidCallback onTapDetails;
 
-  Widget _spendRow(IconData icon, String label, String amount, String time, Color iconColor) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(color: AppTheme.card, borderRadius: BorderRadius.circular(12)),
-      child: Row(
-        children: [
-          Container(
-            width: 36, height: 36,
-            decoration: BoxDecoration(color: iconColor.withOpacity(0.12), borderRadius: BorderRadius.circular(10)),
-            child: Icon(icon, color: iconColor, size: 20),
+  const _VirtualCardPreview({
+    required this.card,
+    required this.blocked,
+    this.isPreview = false,
+    required this.onTapDetails,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final last4 = card.last4;
+    final holder = card.holderName.toUpperCase();
+    return GestureDetector(
+      onTap: onTapDetails,
+      child: Container(
+        width: double.infinity,
+        height: 200,
+        padding: const EdgeInsets.all(22),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: blocked
+                ? [Colors.grey.shade600, Colors.grey.shade800]
+                : isPreview
+                    ? [
+                        AppTheme.primary.withValues(alpha: 0.85),
+                        AppTheme.secondary.withValues(alpha: 0.75),
+                      ]
+                    : [AppTheme.primary, AppTheme.secondary],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
-          const SizedBox(width: 12),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(label, style: const TextStyle(color: AppTheme.textPrimary, fontSize: 14)),
-            Text(time, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
-          ])),
-          Text(amount, style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w600)),
-        ],
-      ),
-    );
-  }
-
-  void _showPinDialog() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppTheme.card,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Code PIN', style: TextStyle(color: AppTheme.textPrimary)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(color: AppTheme.background, borderRadius: BorderRadius.circular(14)),
-              child: const Text('1 2 3 4', style: TextStyle(color: AppTheme.textPrimary, fontSize: 32, fontWeight: FontWeight.bold, letterSpacing: 8, fontFamily: 'monospace')),
+          borderRadius: BorderRadius.circular(20),
+          border: isPreview ? Border.all(color: Colors.white.withValues(alpha: 0.35), width: 1.5) : null,
+          boxShadow: [
+            BoxShadow(
+              color: (blocked ? Colors.grey : AppTheme.primary).withValues(alpha: 0.35),
+              blurRadius: 18,
+              offset: const Offset(0, 8),
             ),
-            const SizedBox(height: 16),
-            const Text('Votre code PIN actuel', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
           ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Fermer')),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nouveau PIN généré'), backgroundColor: AppTheme.primary));
-            },
-            child: const Text('Changer le PIN'),
-          ),
-        ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('NodEX', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: 2)),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (isPreview)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Text(
+                            'APERÇU',
+                            style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 0.5),
+                          ),
+                        ),
+                      ),
+                    Icon(blocked ? Icons.lock_rounded : Icons.contactless_rounded, color: Colors.white70, size: 28),
+                  ],
+                ),
+              ],
+            ),
+            Text(
+              '••••  ••••  ••••  $last4',
+              style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w500, letterSpacing: 3, fontFamily: 'monospace'),
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('TITULAIRE', style: TextStyle(color: Colors.white54, fontSize: 10)),
+                      Text(
+                        holder.length > 22 ? '${holder.substring(0, 22)}…' : holder,
+                        style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    const Text('EXPIRE', style: TextStyle(color: Colors.white54, fontSize: 10)),
+                    Text(card.expiry, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+                  ],
+                ),
+                const Text('VISA', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold, fontStyle: FontStyle.italic)),
+              ],
+            ),
+            const Align(
+              alignment: Alignment.centerRight,
+              child: Text('Appuyez pour voir le numéro complet', style: TextStyle(color: Colors.white70, fontSize: 11)),
+            ),
+          ],
+        ),
       ),
     );
   }
+}
 
-  void _showLimitsDialog() {
-    double tempPayment = _paymentLimit;
-    double tempAtm = _atmLimit;
-    double tempOnline = _onlineLimit;
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDState) => AlertDialog(
-          backgroundColor: AppTheme.card,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text('Modifier les plafonds', style: TextStyle(color: AppTheme.textPrimary)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
+class _DetailRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final VoidCallback onCopy;
+
+  const _DetailRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.onCopy,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onCopy,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: AppTheme.background,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppTheme.border),
+          ),
+          child: Row(
             children: [
-              _sliderRow('Paiement', tempPayment, 5000, (v) => setDState(() => tempPayment = v)),
-              const SizedBox(height: 12),
-              _sliderRow('Retrait DAB', tempAtm, 1000, (v) => setDState(() => tempAtm = v)),
-              const SizedBox(height: 12),
-              _sliderRow('En ligne', tempOnline, 5000, (v) => setDState(() => tempOnline = v)),
+              Icon(icon, color: AppTheme.primary, size: 22),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(label, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                    Text(value, style: const TextStyle(color: AppTheme.textPrimary, fontSize: 15, fontWeight: FontWeight.w600, fontFamily: 'monospace')),
+                  ],
+                ),
+              ),
+              const Icon(Icons.copy_rounded, color: AppTheme.primary, size: 20),
             ],
           ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
-            ElevatedButton(
-              onPressed: () {
-                setState(() { _paymentLimit = tempPayment; _atmLimit = tempAtm; _onlineLimit = tempOnline; });
-                Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Plafonds mis à jour'), backgroundColor: AppTheme.primary));
-              },
-              child: const Text('Enregistrer'),
-            ),
-          ],
         ),
       ),
-    );
-  }
-
-  Widget _sliderRow(String label, double value, double max, ValueChanged<double> onChanged) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          Text(label, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
-          Text('${value.toInt()} \u20AC', style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600)),
-        ]),
-        Slider(value: value, min: 0, max: max, divisions: (max / 100).toInt(), onChanged: onChanged, activeColor: AppTheme.primary),
-      ],
     );
   }
 }

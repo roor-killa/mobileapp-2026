@@ -1,52 +1,91 @@
 import 'package:flutter/material.dart';
+import 'panache_theme.dart';
 
+/// Dégradés, ombres et raccourcis NodEX. Le [ThemeData] principal est [myTheme]
+/// dans [panache_theme.dart] (workflow type [Panache](https://github.com/rxlabz/panache)).
 class AppTheme {
-  static const Color background = Color(0xFF0F0B2E);
-  static const Color card = Color(0xFF16132B);
-  static const Color primary = Color(0xFF7C3AED);
-  static const Color textPrimary = Colors.white;
-  static const Color textSecondary = Color(0xFF8E8E93);
-  static const Color border = Color(0xFF2A2A4A);
-  static const Color inputBg = Color(0xFF1A1A2E);
+  static const Color background = NodexPanacheColors.scaffoldBackground;
+  static const Color backgroundAlt = NodexPanacheColors.backgroundAlt;
+  static const Color card = NodexPanacheColors.card;
+  static const Color cardElevated = NodexPanacheColors.cardElevated;
+  static const Color primary = NodexPanacheColors.primary;
+  static const Color primaryLight = NodexPanacheColors.primaryLight;
+  static const Color secondary = NodexPanacheColors.accent;
+  static const Color accent = NodexPanacheColors.success;
+  static const Color textPrimary = NodexPanacheColors.textPrimary;
+  static const Color textSecondary = NodexPanacheColors.textSecondary;
+  static const Color border = NodexPanacheColors.divider;
+  static const Color inputBg = NodexPanacheColors.inputFill;
+  static const Color error = NodexPanacheColors.error;
+  static const Color surfaceBright = Color(0xFFE2E8F0);
+  static const Color warningSurface = Color(0xFF2D2410);
+  static const Color warningBorder = Color(0xFF854D0E);
+  static const Color warningText = Color(0xFFFDE68A);
 
-  static ThemeData get dark => ThemeData(
-        useMaterial3: true,
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: background,
-        colorScheme: ColorScheme.dark(
-          primary: primary,
-          surface: card,
-          onPrimary: Colors.white,
-          onSurface: textPrimary,
-          onSurfaceVariant: textSecondary,
+  static const double radiusSm = NodexPanacheRadii.sm;
+  static const double radiusMd = NodexPanacheRadii.md;
+  static const double radiusLg = NodexPanacheRadii.lg;
+  static const double radiusXl = NodexPanacheRadii.xl;
+
+  static LinearGradient get heroGradient => const LinearGradient(
+        colors: [
+          Color(0xFF0E7490),
+          Color(0xFF4F46E5),
+          Color(0xFF6D28D9),
+        ],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      );
+
+  static LinearGradient get brandIconGradient => const LinearGradient(
+        colors: [
+          Color(0xFF22D3EE),
+          Color(0xFF818CF8),
+          Color(0xFFC084FC),
+        ],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      );
+
+  static List<BoxShadow> get cardShadow => [
+        BoxShadow(
+          color: primary.withValues(alpha: 0.07),
+          blurRadius: 20,
+          offset: const Offset(0, 8),
         ),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: background,
-          elevation: 0,
-          foregroundColor: textPrimary,
+        BoxShadow(
+          color: const Color(0xFF000000).withValues(alpha: 0.4),
+          blurRadius: 10,
+          offset: const Offset(0, 4),
         ),
-        bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-          backgroundColor: card,
-          selectedItemColor: primary,
-          unselectedItemColor: textSecondary,
+      ];
+
+  static List<BoxShadow> get cardShadowStrong => [
+        BoxShadow(
+          color: primary.withValues(alpha: 0.35),
+          blurRadius: 28,
+          offset: const Offset(0, 12),
         ),
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: inputBg,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: border),
-          ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        BoxShadow(
+          color: secondary.withValues(alpha: 0.2),
+          blurRadius: 36,
+          offset: const Offset(0, 4),
         ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: primary,
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          ),
+      ];
+
+  static BoxDecoration get loginBackgroundDecoration => BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            const Color(0xFF0F172A),
+            background,
+            const Color(0xFF1E1B4B).withValues(alpha: 0.55),
+          ],
+          stops: const [0.0, 0.45, 1.0],
         ),
       );
+
+  /// Alias vers le thème Panache / Material 3.
+  static ThemeData get light => myTheme;
 }

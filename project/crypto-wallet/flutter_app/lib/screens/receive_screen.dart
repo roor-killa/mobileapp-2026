@@ -64,7 +64,7 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
                 const SizedBox(height: 32),
                 Container(
                   padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+                  decoration: BoxDecoration(color: AppTheme.surfaceBright, borderRadius: BorderRadius.circular(20)),
                   child: QrImageView(data: w.address, version: QrVersions.auto, size: 200),
                 ),
                 const SizedBox(height: 24),

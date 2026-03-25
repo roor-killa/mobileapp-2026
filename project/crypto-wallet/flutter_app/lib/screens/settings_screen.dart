@@ -2,6 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../app_theme.dart';
 import '../providers/auth_provider.dart';
+import '../providers/security_provider.dart';
+import '../providers/wallet_provider.dart';
+import 'api_server_settings_screen.dart';
+import 'chat_screen.dart';
+import 'ondes_screen.dart';
+import 'security_settings_screen.dart';
+
+String _initial(String s) => s.trim().isNotEmpty ? s.trim()[0].toUpperCase() : '?';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -9,6 +17,7 @@ class SettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(title: const Text('Réglages')),
       body: Consumer<AuthProvider>(
         builder: (context, auth, _) {
@@ -25,7 +34,7 @@ class SettingsScreen extends StatelessWidget {
                     children: [
                       CircleAvatar(
                         backgroundColor: AppTheme.primary, radius: 28,
-                        child: Text((u?.name ?? u?.email ?? '?')[0].toUpperCase(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 22)),
+                        child: Text(_initial(u?.name ?? u?.email ?? '?'), style: const TextStyle(color: Color(0xFF042028), fontWeight: FontWeight.bold, fontSize: 22)),
                       ),
                       const SizedBox(width: 16),
                       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -39,12 +48,16 @@ class SettingsScreen extends StatelessWidget {
               ),
               const SizedBox(height: 24),
               _section('Général', [
+                _item(Icons.dns_rounded, 'Serveur & assistant (IA)', null, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ApiServerSettingsScreen()))),
+                _item(Icons.waves_rounded, 'Ondes', null, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const OndesScreen()))),
                 _item(Icons.language_rounded, 'Devise', 'EUR', () => _showDeviseDialog(context)),
                 _item(Icons.palette_outlined, 'Thème', 'Sombre', () => _showSnack(context, 'Thème sombre activé')),
                 _item(Icons.notifications_none_rounded, 'Notifications', null, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const _NotifSettingsScreen()))),
               ]),
               const SizedBox(height: 16),
               _section('Sécurité', [
+                _item(Icons.security_rounded, 'Paramètres de sécurité', null, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SecuritySettingsScreen()))),
+                _item(Icons.devices_rounded, 'Se déconnecter de tous les appareils', null, () => _showSignOutAllDialog(context, auth)),
                 _item(Icons.fingerprint_rounded, 'Biométrie', null, () => _showBiometricDialog(context)),
                 _item(Icons.lock_outline_rounded, 'Changer le mot de passe', null, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const _ChangePasswordScreen()))),
                 _item(Icons.shield_outlined, 'Authentification 2FA', null, () => _show2FADialog(context)),
@@ -65,7 +78,11 @@ class SettingsScreen extends StatelessWidget {
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
-                  onPressed: () async => await auth.logout(),
+                  onPressed: () async {
+                    context.read<SecurityProvider>().addLog('logout', 'Déconnexion');
+                    context.read<WalletProvider>().resetForLogout();
+                    await auth.logout();
+                  },
                   icon: const Icon(Icons.logout_rounded, color: Colors.redAccent, size: 20),
                   label: const Text('Se déconnecter', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w600)),
                   style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.redAccent), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)), padding: const EdgeInsets.symmetric(vertical: 16)),
@@ -163,6 +180,33 @@ class SettingsScreen extends StatelessWidget {
     ));
   }
 
+  static void _showSignOutAllDialog(BuildContext ctx, AuthProvider auth) {
+    showDialog(
+      context: ctx,
+      builder: (c) => AlertDialog(
+        backgroundColor: AppTheme.card,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Déconnexion de tous les appareils', style: TextStyle(color: AppTheme.textPrimary)),
+        content: const Text(
+          'Vous serez déconnecté sur cet appareil et sur tous les autres (téléphone, tablette, etc.). Vous devrez vous reconnecter partout.',
+          style: TextStyle(color: AppTheme.textSecondary),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c), child: const Text('Annuler')),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(c);
+              c.read<WalletProvider>().resetForLogout();
+              await auth.logoutFromAllDevices();
+              if (c.mounted) _showSnack(c, 'Déconnecté de tous les appareils');
+            },
+            child: const Text('Déconnecter partout'),
+          ),
+        ],
+      ),
+    );
+  }
+
   static void _showDeleteDialog(BuildContext ctx, AuthProvider auth) {
     showDialog(context: ctx, builder: (c) => AlertDialog(
       backgroundColor: AppTheme.card,
@@ -171,7 +215,7 @@ class SettingsScreen extends StatelessWidget {
       content: const Text('Cette action est irréversible. Toutes vos données et vos fonds seront perdus.', style: TextStyle(color: AppTheme.textSecondary)),
       actions: [
         TextButton(onPressed: () => Navigator.pop(c), child: const Text('Annuler')),
-        ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent), onPressed: () { Navigator.pop(c); auth.logout(); }, child: const Text('Supprimer')),
+        ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent), onPressed: () { Navigator.pop(c); c.read<WalletProvider>().resetForLogout(); auth.logout(); }, child: const Text('Supprimer')),
       ],
     ));
   }
@@ -187,14 +231,10 @@ class _ProfileScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Mon profil')),
       body: ListView(padding: const EdgeInsets.all(20), children: [
-        Center(child: CircleAvatar(backgroundColor: AppTheme.primary, radius: 48, child: Text((name ?? email ?? '?')[0].toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold)))),
+        Center(child: CircleAvatar(backgroundColor: AppTheme.primary, radius: 48, child: Text(_initial(name ?? email ?? '?'), style: const TextStyle(color: Color(0xFF042028), fontSize: 36, fontWeight: FontWeight.bold)))),
         const SizedBox(height: 24),
         _infoTile('Nom', name ?? '-'),
         _infoTile('Email', email ?? '-'),
-        _infoTile('Téléphone', '+33 6 •• •• •• 42'),
-        _infoTile('Adresse', '12 rue de la Paix, 75001 Paris'),
-        _infoTile('Date de naissance', '15/03/1998'),
-        _infoTile('Pièce d\'identité', 'Vérifiée ✓'),
         const SizedBox(height: 24),
         ElevatedButton(onPressed: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profil mis à jour'), backgroundColor: AppTheme.primary)), child: const Text('Modifier le profil')),
       ]),
@@ -222,37 +262,118 @@ class _ChangePasswordScreen extends StatefulWidget {
 }
 
 class _ChangePasswordScreenState extends State<_ChangePasswordScreen> {
-  final _current = TextEditingController();
   final _new1 = TextEditingController();
   final _new2 = TextEditingController();
+  bool _obscure1 = true;
+  bool _obscure2 = true;
+  bool _loading = false;
 
   @override
-  void dispose() { _current.dispose(); _new1.dispose(); _new2.dispose(); super.dispose(); }
+  void dispose() { _new1.dispose(); _new2.dispose(); super.dispose(); }
+
+  Future<void> _submit() async {
+    final pwd = _new1.text;
+    final conf = _new2.text;
+
+    if (pwd.isEmpty || conf.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Veuillez remplir tous les champs'), backgroundColor: Colors.redAccent));
+      return;
+    }
+    if (pwd.length < 8) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Le mot de passe doit contenir au moins 8 caractères'), backgroundColor: Colors.redAccent));
+      return;
+    }
+    if (pwd != conf) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Les mots de passe ne correspondent pas'), backgroundColor: Colors.redAccent));
+      return;
+    }
+
+    setState(() => _loading = true);
+    try {
+      await context.read<AuthProvider>().updatePassword(pwd);
+      if (mounted) {
+        context.read<SecurityProvider>().addLog('password_change', 'Mot de passe modifié');
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mot de passe changé avec succès'), backgroundColor: AppTheme.primary));
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', '')), backgroundColor: Colors.redAccent),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Changer le mot de passe')),
-      body: Padding(padding: const EdgeInsets.all(20), child: Column(children: [
-        TextField(controller: _current, obscureText: true, decoration: const InputDecoration(labelText: 'Mot de passe actuel', prefixIcon: Icon(Icons.lock_outline, color: AppTheme.textSecondary)), style: const TextStyle(color: AppTheme.textPrimary)),
-        const SizedBox(height: 16),
-        TextField(controller: _new1, obscureText: true, decoration: const InputDecoration(labelText: 'Nouveau mot de passe', prefixIcon: Icon(Icons.lock_rounded, color: AppTheme.textSecondary)), style: const TextStyle(color: AppTheme.textPrimary)),
-        const SizedBox(height: 16),
-        TextField(controller: _new2, obscureText: true, decoration: const InputDecoration(labelText: 'Confirmer le nouveau', prefixIcon: Icon(Icons.lock_rounded, color: AppTheme.textSecondary)), style: const TextStyle(color: AppTheme.textPrimary)),
-        const SizedBox(height: 32),
-        SizedBox(width: double.infinity, child: ElevatedButton(
-          onPressed: () {
-            if (_new1.text != _new2.text) {
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Les mots de passe ne correspondent pas'), backgroundColor: Colors.redAccent));
-              return;
-            }
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mot de passe changé'), backgroundColor: AppTheme.primary));
-            Navigator.pop(context);
-          },
-          style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
-          child: const Text('Changer le mot de passe'),
-        )),
-      ])),
+      body: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextField(
+              controller: _new1,
+              obscureText: _obscure1,
+              decoration: InputDecoration(
+                labelText: 'Nouveau mot de passe (min. 8 caractères)',
+                prefixIcon: const Icon(Icons.lock_rounded, color: AppTheme.textSecondary),
+                suffixIcon: IconButton(
+                  icon: Icon(_obscure1 ? Icons.visibility_off : Icons.visibility, color: AppTheme.textSecondary),
+                  onPressed: () => setState(() => _obscure1 = !_obscure1),
+                ),
+              ),
+              style: const TextStyle(color: AppTheme.textPrimary),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _new2,
+              obscureText: _obscure2,
+              decoration: InputDecoration(
+                labelText: 'Confirmer le nouveau mot de passe',
+                prefixIcon: const Icon(Icons.lock_rounded, color: AppTheme.textSecondary),
+                suffixIcon: IconButton(
+                  icon: Icon(_obscure2 ? Icons.visibility_off : Icons.visibility, color: AppTheme.textSecondary),
+                  onPressed: () => setState(() => _obscure2 = !_obscure2),
+                ),
+              ),
+              style: const TextStyle(color: AppTheme.textPrimary),
+            ),
+            const SizedBox(height: 24),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppTheme.primary.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.info_outline_rounded, color: AppTheme.primary, size: 20),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Utilisez un mot de passe fort : majuscules, minuscules, chiffres et caractères spéciaux.',
+                      style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 32),
+            ElevatedButton(
+              onPressed: _loading ? null : _submit,
+              style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
+              child: _loading
+                  ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Text('Changer le mot de passe'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -304,11 +425,15 @@ class _HelpScreen extends StatelessWidget {
       body: ListView(padding: const EdgeInsets.all(16), children: [
         _faq('Comment envoyer des cryptos ?', 'Allez dans Accueil > Envoyer, sélectionnez le wallet, entrez l\'adresse et le montant.'),
         _faq('Comment acheter des cryptos ?', 'Allez dans Accueil > Acheter, choisissez la crypto et le montant en euros.'),
-        _faq('Comment recevoir un virement ?', 'Allez dans Virement > Recevoir pour voir votre IBAN NodEX.'),
+        _faq('Comment recevoir un virement ?', 'Allez dans Virement > Recevoir : vous y voyez votre IBAN et pseudonyme. Copiez le RIB ou l’IBAN et envoyez-les à celui qui doit vous virer de l’argent.'),
         _faq('Comment bloquer ma carte ?', 'Allez dans Carte > Bloquer. Vous pouvez la débloquer à tout moment.'),
         _faq('Comment contacter le support ?', 'Envoyez un email à support@nodex.app ou appelez le 01 23 45 67 89.'),
         const SizedBox(height: 24),
-        ElevatedButton.icon(icon: const Icon(Icons.chat_rounded), label: const Text('Contacter le support'), onPressed: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Chat ouvert (démo)'), backgroundColor: AppTheme.primary))),
+        ElevatedButton.icon(
+          icon: const Icon(Icons.chat_rounded),
+          label: const Text('Assistant NodEX'),
+          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ChatScreen())),
+        ),
       ]),
     );
   }

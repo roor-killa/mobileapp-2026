@@ -1,6 +1,6 @@
 # NodEX — Résumé
 
-Application portefeuille crypto (ETH, SOL, ALGO) : app Flutter + API NestJS + base Supabase.
+Application portefeuille crypto (ETH, SOL, ALGO) : app Flutter + API NestJS + auth Appwrite.
 
 ---
 
@@ -15,16 +15,16 @@ crypto-wallet/
 ```
 
 - **backend** : API REST sur `http://localhost:3000`
-- **flutter_app** : interface utilisateur (connexion Supabase, wallets, transferts)
+- **flutter_app** : interface utilisateur (connexion Appwrite, wallets, transferts)
 
 ---
 
 ## Application Flutter (NodEX)
 
 - **Écrans** : Connexion / Inscription, Accueil (solde total + actifs), Wallets, Envoyer, Réglages
-- **Auth** : Supabase (email / mot de passe). Le JWT Supabase est envoyé à l’API pour les appels protégés
+- **Auth** : Appwrite (email / mot de passe). Le JWT Appwrite est envoyé à l’API pour les appels protégés
 - **Config** :
-  - `lib/config/supabase_config.dart` : URL + clé publique Supabase
+  - `lib/config/appwrite_config.dart` : endpoint + projectId Appwrite
   - `lib/config/api_config.dart` : URL du backend (`localhost:3000` par défaut ; à adapter pour téléphone physique)
 
 Lancer l’app :
@@ -40,12 +40,12 @@ Base URL : `http://localhost:3000`
 | Méthode | Route | Auth | Description |
 |--------|--------|------|-------------|
 | GET | `/health` | Non | Santé du serveur |
-| GET | `/wallets` | JWT Supabase | Liste des wallets (ETH, SOL, ALGO) + soldes |
-| GET | `/wallets/:id/transactions` | JWT Supabase | Historique d’un wallet |
+| GET | `/wallets` | JWT Appwrite | Liste des wallets (ETH, SOL, ALGO) + soldes |
+| GET | `/wallets/:id/transactions` | JWT Appwrite | Historique d’un wallet |
 | GET | `/prices` | Non | Prix EUR (BTC, ETH, SOL, ALGO, USDC) depuis cache |
-| POST | `/transfers` | JWT Supabase | Envoi de crypto (body : fromWalletId, toAddress, amount, tokenSymbol, clientKeyShare) |
+| POST | `/transfers` | JWT Appwrite | Envoi de crypto (body : fromWalletId, toAddress, amount, tokenSymbol, clientKeyShare) |
 
-**Auth** : les routes protégées attendent l’en-tête `Authorization: Bearer <JWT Supabase>`. À la première requête avec un JWT valide, l’API crée l’utilisateur en base (si besoin) et ses wallets ETH, SOL, ALGO.
+**Auth** : les routes protégées attendent l’en-tête `Authorization: Bearer <JWT Appwrite>`. À la première requête avec un JWT valide, l’API crée l’utilisateur en base (si besoin) et ses wallets ETH, SOL, ALGO.
 
 Lancer l’API : `cd backend && npm run start:dev`
 
@@ -54,7 +54,7 @@ Lancer l’API : `cd backend && npm run start:dev`
 ## Base de données (Supabase PostgreSQL)
 
 - **Prisma** : schéma dans `backend/prisma/schema.prisma`
-- **Tables** : User (id, email, passwordHash, name, supabaseId), Wallet (userId, chain, address, keyShareServer), Transaction, PriceCache
+- **Tables** : User (id, email, passwordHash, name, appwriteId), Wallet (userId, chain, address, keyShareServer), Transaction, PriceCache
 - **Connexion** : `DATABASE_URL` dans `backend/.env` (utiliser l’URL **pooler** Supabase, ex. port 6543)
 
 ---
@@ -65,7 +65,7 @@ Lancer l’API : `cd backend && npm run start:dev`
 |----------|------|
 | `DATABASE_URL` | Connexion PostgreSQL (Supabase pooler recommandé) |
 | `JWT_SECRET` | Clé pour JWT backend (register/login classiques) |
-| `SUPABASE_JWT_SECRET` | Secret JWT Supabase (Settings → API) pour valider le token de l’app |
+| `APPWRITE_ENDPOINT / APPWRITE_PROJECT_ID` | Secret JWT Appwrite (Settings → API) pour valider le token de l’app |
 | `ALCHEMY_ETH_URL` | RPC Ethereum (soldes ETH) |
 | `SOLANA_RPC_URL` | RPC Solana (soldes SOL) |
 | `COINGECKO_API_URL` | API prix (pas de clé nécessaire en gratuit) |
@@ -86,9 +86,14 @@ Prix : CoinGecko (BTC, ETH, SOL, ALGO, USDC).
 
 ---
 
+## Configuration Appwrite (Flutter)
+
+Dans `lib/config/appwrite_config.dart` : renseignez `endpoint` et `projectId` depuis votre Appwrite Console (Settings).
+
 ## Fichiers supprimés (nettoyage)
 
-- `flutter_app/lib/services/auth_service.dart` : ancien auth backend, remplacé par Supabase
+- `flutter_app/lib/services/auth_service.dart` : ancien auth backend
+- `auth_service_supabase.dart`, `auth_service_pocketbase.dart` : remplacés par Appwrite
 - `PRIVY_SETUP.md`, `NEON_SETUP.md`, `ARCHITECTURE.md`, `API_KEYS.md`, `SUPABASE_SETUP.md` : contenu regroupé ici ou obsolète
 
 Le dossier `mobile/` (ancienne app Expo) peut être supprimé à la main si présent : `rm -rf mobile`.

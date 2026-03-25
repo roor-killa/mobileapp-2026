@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/api_config.dart';
+import 'auth_service_appwrite.dart';
 
 const _tokenKey = 'jwt_token';
 
@@ -10,10 +11,14 @@ class ApiClient {
   factory ApiClient() => _instance;
 
   ApiClient._();
+  final AuthServiceAppwrite _auth = AuthServiceAppwrite();
 
   String get _base => ApiConfig.baseUrl;
 
+  /// Utilise le JWT Appwrite (créé à la demande via createJWT), sinon SharedPreferences.
   Future<String?> _getToken() async {
+    final jwt = await _auth.getAccessToken();
+    if (jwt != null && jwt.isNotEmpty) return jwt;
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_tokenKey);
   }
@@ -42,21 +47,24 @@ class ApiClient {
     return headers;
   }
 
+  Uri _uri(String path) =>
+      path.startsWith('http') ? Uri.parse(path) : Uri.parse('$_base$path');
+
   Future<http.Response> get(String path) async {
-    final uri = Uri.parse('$_base$path');
+    final uri = _uri(path);
     final response = await http.get(uri, headers: await _headers()).timeout(
       const Duration(seconds: 15),
     );
-    if (response.statusCode == 401) await _clearToken();
+    // Ne pas effacer le token au 401 : le backend peut refuser un JWT expiré
+    // alors qu’Appwrite a encore une session — on réessaie avec syncApiToken().
     return response;
   }
 
   Future<http.Response> post(String path, Map<String, dynamic> body) async {
-    final uri = Uri.parse('$_base$path');
+    final uri = _uri(path);
     final response = await http
         .post(uri, headers: await _headers(), body: jsonEncode(body))
         .timeout(const Duration(seconds: 15));
-    if (response.statusCode == 401) await _clearToken();
     return response;
   }
 }
