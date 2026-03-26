@@ -117,9 +117,6 @@ app.*.symbols
 !**/ios/**/default.perspectivev3
 !/packages/flutter_tools/test/data/dart_dependencies_test/**/.packages
 !/dev/ci/**/Gemfile.lock
-# Dossier avec un .git imbriqué vide (bloque `git add` sans branche valide)
-chat-with-perplexity-ai/
-
 .DS_Store
 node_modules/
 dist/
