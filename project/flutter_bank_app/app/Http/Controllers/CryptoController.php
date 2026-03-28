@@ -19,8 +19,18 @@ class CryptoController extends Controller
             $dernierPrix = BknPrice::create(['prix' => 1.0000]);
         }
 
-        // On récupère l'historique des prix pour dessiner le graphique dans Flutter
-        $historique = BknPrice::orderBy('created_at', 'asc')->get();
+        // === NOUVEAU : GESTION DES PÉRIODES (1H, 1J, 1S) ===
+        // On regarde si Flutter a envoyé une limite (ex: ?limit=12 pour 1H)
+        // S'il n'y a rien, on renvoie 100 points par défaut.
+        $limite = $request->query('limit', 100);
+
+        // Au lieu de tout récupérer (ce qui ferait exploser l'appli s'il y a 100 000 prix),
+        // on prend seulement les derniers X prix, puis on les remet dans le bon ordre chrono.
+        $historique = BknPrice::latest()
+            ->take((int)$limite)
+            ->get()
+            ->reverse() // On les remet du plus vieux au plus récent pour le graphique
+            ->values(); // Réinitialise les clés du tableau pour que Flutter soit content
 
         return response()->json([
             'success' => true,
@@ -59,8 +69,10 @@ class CryptoController extends Controller
             'description' => "Achat de $quantite BKN",
         ]);
 
-        // 3. LA BOURSE : Le prix augmente de 0.01 € par BKN acheté !
-        $nouveauPrix = $dernierPrix + ($quantite * 0.01);
+        // === NOUVEAU : LA BOURSE À 0.1% ===
+        // pow(1.001, quantite) veut dire "multiplie par 1.001 autant de fois qu'il y a de BKN achetés"
+        $nouveauPrix = $dernierPrix * pow(1.001, $quantite);
+        
         BknPrice::create(['prix' => $nouveauPrix]);
 
         return response()->json([
@@ -100,13 +112,15 @@ class CryptoController extends Controller
             'description' => "Vente de $quantite BKN",
         ]);
 
-        // 3. LA BOURSE : Le prix baisse de 0.01 € par BKN vendu !
-        $nouveauPrix = $dernierPrix - ($quantite * 0.01);
+        // === NOUVEAU : LA BOURSE À -0.1% ===
+        // pow(0.999, quantite) veut dire "baisse de 0.1% autant de fois qu'il y a de BKN vendus"
+        $nouveauPrix = $dernierPrix * pow(0.999, $quantite);
         
-        // Sécurité : On empêche le prix de descendre en dessous de 0.10 € (le BKN a toujours une petite valeur !)
-        if ($nouveauPrix < 0.10) {
-            $nouveauPrix = 0.10;
+        // Sécurité : On empêche le prix de descendre en dessous de 0.01 € (limite absolue)
+        if ($nouveauPrix < 0.01) {
+            $nouveauPrix = 0.01;
         }
+        
         BknPrice::create(['prix' => $nouveauPrix]);
 
         return response()->json([

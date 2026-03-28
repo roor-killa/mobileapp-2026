@@ -34,7 +34,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
       // CAS 1 : Si ton serveur a renvoyé DIRECTEMENT la liste des transactions
       if (result is List) {
         setState(() {
-          _transactions = List.from(result.reversed);
+          _transactions = List.from(result);
           _isLoading = false;
         });
       } 
@@ -42,7 +42,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
       else if (result is Map) {
         if (result['success'] == true) {
           setState(() {
-            _transactions = List.from(result['transactions'].reversed);
+            _transactions = List.from(result['transactions']);
             _isLoading = false;
           });
         } else {

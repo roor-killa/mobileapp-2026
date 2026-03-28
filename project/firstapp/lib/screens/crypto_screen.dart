@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:fl_chart/fl_chart.dart';
+import 'package:fl_chart/fl_chart.dart'; // L'outil graphique
 import '../services/api_service.dart';
 
 // Constantes couleurs
@@ -24,10 +24,17 @@ class _CryptoScreenState extends State<CryptoScreen> {
   bool _isTrading = false;
   String _tradeType = 'BUY'; // 'BUY' ou 'SELL'
   
+  // NOUVEAU : On gère la période du graphique
+  int _selectedPeriod = 100; // 12=1H, 100=1D, 500=1W, 1000=All
+  
   double _prixActuel = 0.0;
   double _soldeEuros = 0.0;
   double _soldeBkn = 0.0;
-  List<FlSpot> _spots = [];
+  
+  // Variables pour le graphique
+  List<dynamic> _history = [];
+  double _high = 0.0;
+  double _low = 0.0;
 
   @override
   void initState() {
@@ -35,31 +42,54 @@ class _CryptoScreenState extends State<CryptoScreen> {
     _chargerMarche();
   }
 
+  // EXPLICATION : Fusion de ta logique et de la nouvelle logique graphique
   Future<void> _chargerMarche() async {
-    final data = await _apiService.getMarketData();
+    setState(() => _isLoading = true);
+    
+    // On appelle l'API avec la limite choisie par l'utilisateur (ex: 1W)
+    final data = await _apiService.getMarketData(limit: _selectedPeriod);
+    
+    if (!mounted) return;
+
     if (data['success'] == true) {
-      List<FlSpot> nouveauxSpots = [];
-      if (data['price_history'] != null) {
-        final historique = data['price_history'] as List;
-        for (int i = 0; i < historique.length; i++) {
-          double prix = double.parse(historique[i]['prix'].toString());
-          nouveauxSpots.add(FlSpot(i.toDouble(), prix));
-        }
+      // 1. On récupère l'historique (ATTENTION: on utilise 'price_history' comme dans ton ancien code)
+      final historyList = data['price_history'] as List<dynamic>? ?? [];
+      
+      // 2. Calcul du Plus Haut et Plus Bas pour l'affichage
+      double tempHigh = 0;
+      double tempLow = 999999;
+      
+      for (var item in historyList) {
+        double price = double.parse(item['prix'].toString()); // ATTENTION: 'prix' et pas 'price'
+        if (price > tempHigh) tempHigh = price;
+        if (price < tempLow) tempLow = price;
       }
 
       setState(() {
         _prixActuel = double.parse(data['current_price'].toString());
         _soldeEuros = double.parse(data['user_solde_eur'].toString());
         _soldeBkn = double.parse(data['user_solde_bkn'].toString());
-        _spots = nouveauxSpots;
+        _history = historyList;
+        _high = tempHigh == 0 ? _prixActuel : tempHigh;
+        _low = tempLow == 999999 ? _prixActuel : tempLow;
         _isLoading = false;
       });
       
       final prefs = await SharedPreferences.getInstance();
       await prefs.setDouble('solde', _soldeEuros);
+    } else {
+       setState(() => _isLoading = false);
     }
   }
 
+  // EXPLICATION : Changement de période du graphique
+  void _changePeriod(int newPeriod) {
+    if (_selectedPeriod == newPeriod) return;
+    setState(() => _selectedPeriod = newPeriod);
+    _chargerMarche();
+  }
+
+  // EXPLICATION : Ta fonction de trade d'origine, inchangée
   Future<void> _trader() async {
     final quantite = double.tryParse(_quantiteController.text.trim());
     if (quantite == null || quantite <= 0) {
@@ -83,10 +113,16 @@ class _CryptoScreenState extends State<CryptoScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) return const Center(child: CircularProgressIndicator(color: emerald500));
+    // ✅ LE NOUVEAU BLOC GRAPHIQUE INTELLIGENT :
+    SizedBox(
+      height: 180, 
+      // EXPLICATION : Si ça charge, on montre la roue ICI SEULEMENT. 
+      // Sinon, on dessine la courbe. Le reste de la page ne bouge pas !
+      child: _isLoading 
+          ? const Center(child: CircularProgressIndicator(color: emerald500))
+          : _buildChart(),
+    );
 
-    double minPrix = _spots.isNotEmpty ? _spots.map((spot) => spot.y).reduce((a, b) => a < b ? a : b) : 0;
-    double maxPrix = _spots.isNotEmpty ? _spots.map((spot) => spot.y).reduce((a, b) => a > b ? a : b) : 0;
     double totalCost = (double.tryParse(_quantiteController.text) ?? 0) * _prixActuel;
 
     return SingleChildScrollView(
@@ -108,7 +144,7 @@ class _CryptoScreenState extends State<CryptoScreen> {
           ),
           const SizedBox(height: 25),
 
-          // Graphique Card
+          // BLOC GRAPHIQUE (Nouveau)
           Container(
             padding: const EdgeInsets.all(25),
             decoration: BoxDecoration(color: cardDark, borderRadius: BorderRadius.circular(32), border: Border.all(color: Colors.grey.shade900)),
@@ -125,53 +161,57 @@ class _CryptoScreenState extends State<CryptoScreen> {
                         Text('${_prixActuel.toStringAsFixed(4)} €', style: const TextStyle(color: emerald500, fontSize: 28, fontWeight: FontWeight.bold)),
                       ],
                     ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
+                    Row(
                       children: [
-                        const Text('PLUS HAUT', style: TextStyle(color: textGray, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
-                        Text('${maxPrix.toStringAsFixed(4)} €', style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 5),
-                        const Text('PLUS BAS', style: TextStyle(color: textGray, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
-                        Text('${minPrix.toStringAsFixed(4)} €', style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            const Text("PLUS HAUT", style: TextStyle(color: textGray, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+                            Text("${_high.toStringAsFixed(4)} €", style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                        const SizedBox(width: 15),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            const Text("PLUS BAS", style: TextStyle(color: textGray, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+                            Text("${_low.toStringAsFixed(4)} €", style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
                       ],
                     )
                   ],
                 ),
-                const SizedBox(height: 30),
+                const SizedBox(height: 20),
                 
-                // Le Graphique
-                if (_spots.length >= 2)
-                  SizedBox(
-                    height: 180, 
-                    child: LineChart(
-                      LineChartData(
-                        gridData: const FlGridData(show: false), 
-                        titlesData: const FlTitlesData(show: false), 
-                        borderData: FlBorderData(show: false), 
-                        minX: 0, maxX: (_spots.length - 1).toDouble(),
-                        minY: minPrix - 0.02, maxY: maxPrix + 0.02, 
-                        lineBarsData: [
-                          LineChartBarData(
-                            spots: _spots, isCurved: true, color: emerald500, barWidth: 3, isStrokeCapRound: true, dotData: const FlDotData(show: false), 
-                            belowBarData: BarAreaData(
-                              show: true,
-                              gradient: LinearGradient(
-                                colors: [emerald500.withOpacity(0.3), emerald500.withOpacity(0.0)],
-                                begin: Alignment.topCenter, end: Alignment.bottomCenter,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                // Boutons de période
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                  decoration: BoxDecoration(color: bgDark, borderRadius: BorderRadius.circular(12)),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      Expanded(child: Center(child: _buildPeriodButton('1H', 12))),
+                      Expanded(child: Center(child: _buildPeriodButton('1J', 100))),
+                      Expanded(child: Center(child: _buildPeriodButton('1S', 500))),
+                      Expanded(child: Center(child: _buildPeriodButton('TOUT', 1000))),
+                    ],
                   ),
+                ),
+                const SizedBox(height: 20),
+                
+                // Le Graphique Fl_chart
+                SizedBox(
+                  height: 180, 
+                  child: _buildChart(),
+                ),
               ],
             ),
           ),
           
           const SizedBox(height: 25),
 
-          // Zone de Trade
+          // BLOC DE TRADE (Ton ancien code, conservé)
           Container(
             padding: const EdgeInsets.all(25),
             decoration: BoxDecoration(color: cardDark, borderRadius: BorderRadius.circular(32), border: Border.all(color: Colors.grey.shade900)),
@@ -215,7 +255,7 @@ class _CryptoScreenState extends State<CryptoScreen> {
                 
                 const SizedBox(height: 25),
 
-                // Input
+                // Input Quantité
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -228,7 +268,7 @@ class _CryptoScreenState extends State<CryptoScreen> {
                   controller: _quantiteController,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
-                  onChanged: (val) => setState(() {}), // Pour mettre à jour le Total
+                  onChanged: (val) => setState(() {}),
                   decoration: InputDecoration(
                     hintText: "0.00",
                     hintStyle: TextStyle(color: Colors.grey.shade800),
@@ -264,6 +304,68 @@ class _CryptoScreenState extends State<CryptoScreen> {
               ],
             ),
           )
+        ],
+      ),
+    );
+  }
+
+  // --- WIDGETS UTILES ---
+
+  Widget _buildPeriodButton(String label, int value) {
+    bool isSelected = _selectedPeriod == value;
+    return GestureDetector(
+      onTap: () => _changePeriod(value),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? emerald500 : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.black : textGray,
+            fontSize: 10,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.5
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChart() {
+    if (_history.length < 2) return const Center(child: Text("Pas assez de données", style: TextStyle(color: textGray)));
+
+    List<FlSpot> spots = [];
+    for (int i = 0; i < _history.length; i++) {
+      double price = double.parse(_history[i]['prix'].toString());
+      spots.add(FlSpot(i.toDouble(), price));
+    }
+
+    return LineChart(
+      LineChartData(
+        gridData: const FlGridData(show: false), 
+        titlesData: const FlTitlesData(show: false), 
+        borderData: FlBorderData(show: false), 
+        minX: 0, maxX: (_history.length - 1).toDouble(),
+        minY: _low - 0.05, maxY: _high + 0.05, 
+        lineBarsData: [
+          LineChartBarData(
+            spots: spots, 
+            isCurved: true, 
+            color: emerald500, 
+            barWidth: 3, 
+            isStrokeCapRound: true, 
+            dotData: const FlDotData(show: false), 
+            belowBarData: BarAreaData(
+              show: true,
+              gradient: LinearGradient(
+                colors: [emerald500.withOpacity(0.3), emerald500.withOpacity(0.0)],
+                begin: Alignment.topCenter, end: Alignment.bottomCenter,
+              ),
+            ),
+          ),
         ],
       ),
     );

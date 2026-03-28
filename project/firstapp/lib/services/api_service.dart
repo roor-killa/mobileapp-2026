@@ -3,9 +3,31 @@ import 'dart:async';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/transfer_response.dart';
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class ApiService {
-  static const String baseUrl = 'http://10.0.2.2/api';
+  // ⚠️ IMPORTANT : Mets ici la vraie adresse IPv4 de ton PC (ipconfig)
+  // C'est indispensable pour que ton iPhone ou un vrai téléphone Android trouve ton PC.
+  static const String ipWifiPC = '172.20.10.2'; 
+
+  static String get baseUrl {
+    if (kIsWeb) {
+      // Si tu lances sur le navigateur Web de ton PC
+      return 'http://127.0.0.1/api'; 
+    } 
+    
+    if (Platform.isAndroid) {
+      // Si tu es sur l'émulateur Android (le faux téléphone dans ton PC)
+      return 'http://10.0.2.2/api'; 
+    } else if (Platform.isIOS) {
+      // Si tu es sur ton vrai iPhone branché en Wi-Fi
+      return 'http://$ipWifiPC/api'; 
+    } else {
+      // Si tu lances comme un vrai logiciel Windows (Windows Desktop)
+      return 'http://127.0.0.1/api'; 
+    }
+  }
   Future<Map<String, dynamic>> register(String name, String prenom, String email, String telephone, String password) async {
     final url = Uri.parse('$baseUrl/register');
     try {
@@ -137,12 +159,12 @@ class ApiService {
   // MARCHÉ CRYPTO BKN
   // =====================================================================
   
-  Future<Map<String, dynamic>> getMarketData() async {
+  Future<Map<String, dynamic>> getMarketData({int limit = 100}) async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token');
     if (token == null) return {'success': false};
 
-    final url = Uri.parse('$baseUrl/bkn/market');
+    final url = Uri.parse('$baseUrl/bkn/market?limit=$limit');
     try {
       final response = await http.get(url, headers: {'Authorization': 'Bearer $token'});
       return jsonDecode(response.body);
