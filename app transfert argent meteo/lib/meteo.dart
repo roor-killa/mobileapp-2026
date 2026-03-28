@@ -511,7 +511,7 @@ class ChatbotPage extends StatefulWidget {
 }
 
 class _ChatbotPageState extends State<ChatbotPage> {
-  static const String _apiKey = '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'; // ← remplace par ta clé sur api groq
+  static const String _apiKey = String.fromEnvironment('GROQ_API_KEY');
 
   final TextEditingController messageController = TextEditingController();
   final List<ChatMessage> messages = [];
