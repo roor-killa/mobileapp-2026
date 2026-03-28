@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/bank_provider.dart';
 import 'register_screen.dart';
+import 'home_screen.dart';
+import 'forgot_password_screen.dart';
 import '../../meteo.dart' show WeatherStandalonePage;
 
 class LoginScreen extends StatefulWidget {
@@ -27,6 +29,10 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
     if (ok) {
       await context.read<BankProvider>().loadAll();
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+      );
     } else if (auth.error != null) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(auth.error!), backgroundColor: Colors.red.shade700));
@@ -77,14 +83,26 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   validator: (v) => (v == null || v.length < 6) ? 'Min. 6 caractères.' : null,
                 ),
-                const SizedBox(height: 28),
+
+                 // ── Mot de passe oublié ────────────────────────────────────
+                Center(
+                  child: TextButton(
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
+                    ),
+                    child: const Text('Mot de passe oublié ?',
+                        style: TextStyle(color: Color(0xFF1565C0))),
+                  ),
+                ),
+                const SizedBox(height: 2),
                 auth.isLoading
                     ? const Center(child: CircularProgressIndicator())
                     : ElevatedButton(
                         onPressed: _login,
                         child: const Text('Se connecter'),
                       ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 6),
 
                 // ── Bouton Météo ───────────────────────────────────────────
                 ElevatedButton.icon(
@@ -100,7 +118,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
 
-                const SizedBox(height: 16),
+                const SizedBox(height: 2),
                 TextButton(
                   onPressed: () => Navigator.push(context,
                       MaterialPageRoute(builder: (_) => const RegisterScreen())),

@@ -38,7 +38,11 @@ class _State extends State<CreateAccountScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Nouveau compte')),
+      appBar: AppBar(
+        title: const Text('Nouveau compte'), 
+        backgroundColor: const Color(0xFF1565C0),
+        foregroundColor: Colors.white,
+      ),
       body: Padding(
         padding: const EdgeInsets.all(24),
         child: Form(

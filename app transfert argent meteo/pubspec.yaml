@@ -1,5 +1,5 @@
 name: fake_bank
-description: Application de transactions d'argent virtuel
+description: Application de transactions d'argent virtuel et de metéo
 publish_to: 'none'
 version: 1.0.0+1
 

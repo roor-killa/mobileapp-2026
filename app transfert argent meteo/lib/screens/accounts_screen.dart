@@ -20,14 +20,14 @@ class AccountsScreen extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.account_balance_wallet_outlined,
-                        size: 72, color: Colors.grey.shade400),
+                    const Icon(Icons.account_balance_wallet_outlined,
+                        size: 72, color: Colors.white38),
                     const SizedBox(height: 16),
-                    Text("Aucun compte créé",
-                        style: TextStyle(fontSize: 18, color: Colors.grey.shade600)),
+                    const Text("Aucun compte créé",
+                        style: TextStyle(fontSize: 18, color: Colors.white70)),
                     const SizedBox(height: 8),
-                    Text("Appuyez sur + pour créer votre premier compte",
-                        style: TextStyle(color: Colors.grey.shade500)),
+                    const Text("Appuyez sur + pour créer votre premier compte",
+                        style: TextStyle(color: Colors.white60)),
                   ],
                 ),
               )
@@ -46,7 +46,8 @@ class AccountsScreen extends StatelessWidget {
               MaterialPageRoute(builder: (_) => const CreateAccountScreen()),
             ),
             icon: const Icon(Icons.add),
-            label: const Text("Nouveau compte"),
+            label: const Text("Nouveau compte"), backgroundColor: Colors.white, 
+            foregroundColor: const Color(0xFF1565C0),
           ),
         ),
       ],
@@ -60,26 +61,24 @@ class _AccountCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => AccountDetailScreen(accountId: account.id),
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => AccountDetailScreen(accountId: account.id),
+        ),
+      ),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          gradient: const LinearGradient(
+            colors: [Color(0xFF1E88E5), Color(0xFF1565C0)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
         ),
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            gradient: const LinearGradient(
-              colors: [Color(0xFF1565C0), Color(0xFF1E88E5)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
           child: Row(
             children: [
               const CircleAvatar(
@@ -116,7 +115,6 @@ class _AccountCard extends StatelessWidget {
                 ],
               ),
             ],
-          ),
         ),
       ),
     );
