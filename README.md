@@ -173,7 +173,3 @@ git remote -v
 - [Documentation Laravel](https://laravel.com/docs)
 - [Groq — modèles](https://console.groq.com/docs/models)
 - [Appwrite](https://appwrite.io/docs)
-
----
-
-*README rédigé à la première personne pour présenter mon projet au correcteur — branche **`meranville`**, projet **NodEX** sous `project/crypto-wallet/`.*
