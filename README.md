@@ -1,154 +1,179 @@
-# mobileapp-2026 — NodEX (portefeuille crypto)
+# Mon projet : NodEX (portefeuille crypto) — branche `meranville`
 
-Dépôt : [github.com/roor-killa/mobileapp-2026](https://github.com/roor-killa/mobileapp-2026) — branche de travail courante : **`meranville`**
+Je présente ici **mon travail** dans le cadre du dépôt [mobileapp-2026](https://github.com/roor-killa/mobileapp-2026). Mon code se trouve sur la branche Git **`meranville`** (ce n’est pas forcément la branche par défaut sur GitHub : il faut la sélectionner dans le menu des branches pour voir mes fichiers).
 
-Application **NodEX** : portefeuille crypto (Flutter), backend **Laravel**, auth **Appwrite**, assistant **Groq** (Llama 3.1 8B), virements EUR, carte virtuelle.
-
-> Ancien exemple **FirstApp** (transferts) : si présent dans le dépôt, voir `project/firstapp/` et sa doc éventuelle dans l’historique Git.
-
-## Arborescence utile
-
-| Dossier | Rôle |
-|--------|------|
-| `project/crypto-wallet/flutter_app/` | Application Flutter (`pubspec.yaml` ici) |
-| `project/crypto-wallet/backend-laravel/` | API Laravel (`/api/...`) |
-| `project/crypto-wallet/run_iphone.sh` | Script lancement avec URL API (optionnel) |
-| `project/crypto-wallet/flutter_app/run_ios_sim.sh` | Lance le simulateur iPhone automatiquement |
+**Lien du dépôt :** [https://github.com/roor-killa/mobileapp-2026.git](https://github.com/roor-killa/mobileapp-2026.git)
 
 ---
 
-## Prérequis
+## Ce que j’ai réalisé
 
-- [Flutter](https://docs.flutter.dev/get-started/install) (stable)
-- [PHP](https://www.php.net/) 8.2+ et [Composer](https://getcomposer.org/)
-- Xcode + **Simulator** (pour iOS) — ou Android Studio
-- Compte [Appwrite](https://appwrite.io/) (déjà configuré dans `flutter_app` / `backend-laravel` selon ton `.env`)
-- Clé [Groq](https://console.groq.com/keys) pour l’assistant IA (dans le `.env` Laravel ou dans l’app, voir ci‑dessous)
+J’ai développé **NodEX**, une application de **portefeuille crypto** avec les éléments suivants :
+
+- une **application mobile** en **Flutter** (interface utilisateur, écrans, navigation) ;
+- un **backend** en **Laravel** (API REST sous `/api/...`) ;
+- l’**authentification** via **Appwrite** ;
+- un **assistant conversationnel** branché sur **Groq** (modèle type Llama 3.1 8B) ;
+- des fonctionnalités autour des **virements en euros** et d’une **carte virtuelle** (selon l’état du code dans le dépôt).
+
+Mon objectif était d’avoir une appli utilisable en local (simulateur ou téléphone) qui dialogue avec mon API Laravel, avec une base propre pour la suite du cours ou du projet.
 
 ---
 
-## 1. Configuration backend (une fois)
+## Où se trouve mon code dans le dépôt
+
+| Emplacement | Rôle |
+|-------------|------|
+| `project/crypto-wallet/flutter_app/` | Mon appli Flutter — le fichier `pubspec.yaml` est **dans ce dossier** (pas à la racine du dépôt). |
+| `project/crypto-wallet/backend-laravel/` | Mon API Laravel. |
+| `project/crypto-wallet/run_iphone.sh` | Script que j’utilise pour lancer sur iPhone avec une URL d’API en option. |
+| `project/crypto-wallet/flutter_app/run_ios_sim.sh` | Script que j’utilise pour ouvrir le simulateur iPhone et lancer Flutter. |
+
+J’ai aussi laissé un court `README.md` dans `project/crypto-wallet/` qui renvoie vers ce fichier pour les consignes complètes.
+
+> **Note :** d’autres dossiers peuvent exister à la racine du dépôt (autres projets ou consignes du cours). **Mon livrable principal pour NodEX est sous `project/crypto-wallet/`.**
+
+---
+
+## Technologies que j’utilise
+
+- **Flutter** — application multi-plateforme (iOS, Android, etc.).
+- **Laravel (PHP)** — serveur d’API, migrations base de données.
+- **Appwrite** — comptes utilisateurs / auth (configurée via fichiers d’environnement).
+- **Groq** — clé API pour l’assistant IA (côté Laravel et/ou réglages dans l’app).
+
+---
+
+## Ce dont j’ai besoin sur ma machine (prérequis)
+
+- [Flutter](https://docs.flutter.dev/get-started/install) (canal stable), avec `flutter doctor` sans erreurs bloquantes.
+- [PHP](https://www.php.net/) 8.2 ou plus et [Composer](https://getcomposer.org/).
+- Pour iOS : **Xcode** et le **Simulateur** ; pour Android : **Android Studio** (ou équivalent).
+- Un compte [Appwrite](https://appwrite.io/) et les identifiants que j’ai mis dans mes fichiers de config (voir `.env.example`).
+- Une clé [Groq](https://console.groq.com/keys) si je veux tester l’assistant.
+
+---
+
+## Comment j’installe et je lance le backend Laravel (une première fois)
+
+Dans un terminal, depuis la racine du dépôt cloné :
 
 ```bash
 cd project/crypto-wallet/backend-laravel
 cp .env.example .env
 php artisan key:generate
 composer install
-```
-
-Édite **`.env`** (ne le commite jamais : il est ignoré par Git) :
-
-- Base de données (`DB_*` ou SQLite par défaut selon l’exemple)
-- **`GROQ_API_KEY=`** ta clé Groq
-- **`GROQ_MODEL=llama-3.1-8b-instant`** (optionnel, défaut Laravel)
-
-Migrations :
-
-```bash
 php artisan migrate
 ```
 
----
+Ensuite j’édite le fichier **`.env`** (copié depuis l’exemple) pour y mettre :
 
-## 2. Lancer le serveur Laravel
+- les paramètres de **base de données** (`DB_*`, ou SQLite si c’est ce que j’ai choisi dans l’exemple) ;
+- les variables **Appwrite** attendues par le projet (comme indiqué dans `.env.example`) ;
+- **`GROQ_API_KEY=`** ma clé Groq ;
+- éventuellement **`GROQ_MODEL=llama-3.1-8b-instant`** (ou le modèle prévu dans l’exemple).
 
-Toujours dans `backend-laravel` :
+**Important :** je **ne commite jamais** le fichier `.env` : il est dans `.gitignore` pour ne pas publier mes mots de passe et clés sur GitHub. Pour corriger ou noter, le professeur peut partir de **`.env.example`** et recréer un `.env` local.
+
+Pour démarrer le serveur :
 
 ```bash
 php artisan serve --host=0.0.0.0
 ```
 
-Par défaut l’URL est souvent **http://127.0.0.1:8000**.  
-Si tu utilises le port **8089** :
+Souvent l’URL est **http://127.0.0.1:8000**. Si j’utilise le port **8089** :
 
 ```bash
 php artisan serve --host=0.0.0.0 --port=8089
 ```
 
-L’API est accessible sous **`http://<hôte>:<port>/api`** (ex. `http://127.0.0.1:8000/api`).
+L’API est disponible sous **`http://<adresse>:<port>/api`** (exemple : `http://127.0.0.1:8000/api`).
 
 ---
 
-## 3. Lancer l’app Flutter
+## Comment j’installe et je lance l’application Flutter
 
-Ouvre un **second** terminal :
+J’ouvre un **deuxième** terminal :
 
 ```bash
 cd project/crypto-wallet/flutter_app
 flutter pub get
 ```
 
-**Simulateur iPhone** (depuis le même dossier) :
+Pour le simulateur iPhone, depuis ce même dossier :
 
 ```bash
 ./run_ios_sim.sh
 ```
 
-Avec une URL d’API explicite (téléphone réel ou autre machine : remplace par l’IP de ton Mac) :
+Si je teste sur un **téléphone réel** ou une autre machine sur le réseau, je dois remplacer `127.0.0.1` par **l’adresse IP de l’ordinateur qui tourne Laravel** :
 
 ```bash
 ./run_ios_sim.sh --dart-define=API_BASE_URL=http://127.0.0.1:8000/api
 ```
 
-Ou manuellement :
+Sinon, sans script :
 
 ```bash
 flutter devices
-flutter run -d <ID_DU_SIMULATEUR_OU_TELEPHONE>
+flutter run -d <identifiant_de_mon_appareil>
 ```
 
-Sans ligne de commande : dans l’app, **Réglages → Serveur & assistant** — colle l’URL de l’API (finissant par `/api`) et optionnellement une **clé Groq** pour l’assistant si le serveur ne répond pas.
+Dans l’application, j’ai aussi un menu du type **Réglages → Serveur & assistant** où je peux coller l’URL de l’API (qui doit finir par `/api`) et, si besoin, une clé Groq pour l’assistant.
 
 ---
 
-## 4. Git : enregistrer et envoyer sur GitHub
+## Comment j’enregistre mes modifications sur GitHub
 
-Depuis la **racine du dépôt** (là où se trouve ce `README.md`) :
+Depuis la **racine** du dépôt (là où se trouve ce `README.md`) :
 
 ```bash
 git status
 git add .
-git commit -m "Description courte de tes changements"
+git commit -m "Court message décrivant ce que j’ai changé"
 git push origin meranville
 ```
 
-(Sur d’autres branches : `git push origin main` ou le nom de ta branche.)
-
-**Dépôt distant :**
+Le dépôt distant que j’utilise :
 
 ```text
 https://github.com/roor-killa/mobileapp-2026.git
 ```
 
-Pour vérifier ou ajouter le remote :
+Pour vérifier :
 
 ```bash
 git remote -v
-git remote add origin https://github.com/roor-killa/mobileapp-2026.git   # seulement si absent
 ```
 
-### Ne jamais commiter
+---
 
-- `backend-laravel/.env` (secrets, clés)
-- Fichiers contenant des **clés API** ou mots de passe
-- Dossiers `build/`, `.dart_tool/` (déjà dans `.gitignore`)
+## Ce que je m’interdis de mettre sur Git (sécurité)
+
+- le fichier **`backend-laravel/.env`** et toute copie avec de vrais secrets ;
+- des fichiers contenant des **clés API** ou mots de passe en clair ;
+- les dossiers de build Flutter (`build/`, `.dart_tool/`, etc.) — déjà exclus par `.gitignore`.
 
 ---
 
-## Dépannage rapide
+## Problèmes que j’ai pu rencontrer (références rapides)
 
-| Problème | Piste |
-|----------|--------|
-| `No pubspec.yaml` | Tu n’es pas dans `project/crypto-wallet/flutter_app` |
-| `flutter run -d ..` | `..` n’est pas un appareil : utilise `flutter devices` ou `./run_ios_sim.sh` |
-| App ne joint pas l’API | Même Wi‑Fi ; URL `http://IP_DU_MAC:PORT/api` dans Réglages ou `--dart-define` |
-| Assistant silencieux | `GROQ_API_KEY` dans `.env` Laravel **ou** clé Groq dans Réglages |
-| Message `native_assets` / `SdkRoot` au hot reload | Avertissement Flutter iOS souvent bénin ; refaire un `flutter run` complet si besoin |
+| Symptôme | Ce que je vérifie |
+|----------|-------------------|
+| Message du type « No pubspec.yaml » | Je ne suis pas dans le bon dossier : il faut être dans `project/crypto-wallet/flutter_app`. |
+| L’app ne joint pas l’API | Même Wi-Fi ; URL du type `http://IP_DE_MON_MAC:PORT/api` dans les réglages de l’app ou en `--dart-define`. |
+| L’assistant ne répond pas | `GROQ_API_KEY` dans le `.env` Laravel **ou** clé saisie dans les réglages de l’app. |
+| Avertissements `native_assets` / `SdkRoot` au rechargement | Souvent bénin sous Flutter iOS ; je relance un `flutter run` complet si ça bloque. |
 
 ---
 
-## Ressources
+## Liens utiles que j’ai consultés
 
 - [Documentation Flutter](https://docs.flutter.dev/)
-- [Laravel](https://laravel.com/docs)
+- [Documentation Laravel](https://laravel.com/docs)
 - [Groq — modèles](https://console.groq.com/docs/models)
+- [Appwrite](https://appwrite.io/docs)
+
+---
+
+*README rédigé à la première personne pour présenter mon projet au correcteur — branche **`meranville`**, projet **NodEX** sous `project/crypto-wallet/`.*
