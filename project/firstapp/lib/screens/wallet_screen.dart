@@ -3,13 +3,16 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'main_screen.dart'; // Pour récupérer la fameuse mainScreenKey
 
-// --- COULEURS DU THEME ---
-const Color bgDark = Color(0xFF09090B);
-const Color cardDark = Color(0xFF18181B);
-const Color emerald500 = Color(0xFF10B981);
-const Color emerald700 = Color(0xFF047857);
-const Color textGray = Color(0xFF71717A);
+// --- COULEURS DU THEME (VALEURS EXACTES POUR LE DESIGN) ---
+const Color bgDark = Color(0xFF09090B); // Zinc-900 (Fond principal)
+const Color cardDark = Color(0xFF18181B); // Zinc-800 (Cartes et conteneurs "plus clairs")
+const Color zinc700 = Color(0xFF27272A); // Zinc-700 (Bordures)
+const Color darkZincActionCircle = Color(0xFF1F1F22); // Gris foncé opaque pour le cercle
+const Color emerald500 = Color(0xFF10B981); // Emerald-500 (Vert principal)
+const Color emerald700 = Color(0xFF047857); // Emerald-700 (Vert foncé pour dégradé)
+const Color textGray = Color(0xFF71717A); // Zinc-500 (Texte secondaire)
 
 class WalletScreen extends StatefulWidget {
   const WalletScreen({super.key});
@@ -166,7 +169,7 @@ class _WalletScreenState extends State<WalletScreen> {
         return StatefulBuilder(
           builder: (context, setStateSheet) {
             return Container(
-              padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom, left: 30, right: 30, top: 30),
+              padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom + 30, left: 30, right: 30, top: 30),
               decoration: const BoxDecoration(color: cardDark, borderRadius: BorderRadius.vertical(top: Radius.circular(40))),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -229,7 +232,6 @@ class _WalletScreenState extends State<WalletScreen> {
                           label: const Text('CONFIRMER L\'ENVOI', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, letterSpacing: 1)),
                           style: ElevatedButton.styleFrom(backgroundColor: emerald500, padding: const EdgeInsets.symmetric(vertical: 20), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
                         ),
-                  const SizedBox(height: 30),
                 ],
               ),
             );
@@ -324,7 +326,7 @@ class _WalletScreenState extends State<WalletScreen> {
                             
                             final result = await _apiService.createPocket(nomController.text.trim());
                             if (result['success'] == true) {
-                              Navigator.pop(context); // Ferme la popup
+                              Navigator.pop(context); 
                               _chargerSoldeInitial(); // Recharge les pockets
                               _afficherSucces("Sous-compte créé !");
                             } else {
@@ -343,7 +345,156 @@ class _WalletScreenState extends State<WalletScreen> {
       }
     );
   }
-// =========================================================
+
+  // =========================================================
+  // MODAL : GÉRER LES SOUS-COMPTES (Pockets)
+  // =========================================================
+  // =========================================================
+  // MODAL : GÉRER LES SOUS-COMPTES (Pockets) - AVEC ACCORDÉON
+  // =========================================================
+  // =========================================================
+  // MODAL : GÉRER LES SOUS-COMPTES (Pockets) - AVEC ACCORDÉON
+  // =========================================================
+  void _showPocketsModal() {
+    int? expandedPocketId; // Permet de savoir quel pocket est déplié
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setStateSheet) {
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.85,
+              decoration: const BoxDecoration(
+                color: bgDark,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(40)),
+                border: Border(top: BorderSide(color: zinc700)),
+              ),
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Sous-comptes', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+                        GestureDetector(
+                          onTap: () => Navigator.pop(context),
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: const BoxDecoration(color: cardDark, shape: BoxShape.circle),
+                            child: const Icon(Icons.close, color: Colors.white, size: 20),
+                          ),
+                        )
+                      ],
+                    ),
+                  ),
+                  
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Gérer mes sous-comptes', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 5),
+                            Text('Solde principal dispo : ${_soldeActuel.toStringAsFixed(2)} €', style: const TextStyle(color: emerald500, fontSize: 12, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                        GestureDetector(
+                          onTap: () {
+                             Navigator.pop(context); 
+                             _afficherBottomSheetCreationPocket(); 
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: const BoxDecoration(color: emerald500, shape: BoxShape.circle),
+                            child: const Icon(Icons.add, color: Colors.black, size: 24),
+                          ),
+                        )
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  Expanded(
+                    child: ListView(
+                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                      children: _pockets.map((pocket) {
+                        final isExpanded = expandedPocketId == pocket['id'];
+
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 15.0),
+                          child: GestureDetector(
+                            onTap: () {
+                              setStateSheet(() {
+                                expandedPocketId = isExpanded ? null : pocket['id'];
+                              });
+                            },
+                            child: Column(
+                              children: [
+                                _buildPocketCard(pocket['nom'].toString().toUpperCase(), double.parse(pocket['solde'].toString())),
+                                
+                                // LES DEUX BOUTONS QUI APPARAISSENT SI DÉPLIÉ
+                                if (isExpanded) ...[
+                                  const SizedBox(height: 10),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: ElevatedButton.icon(
+                                          onPressed: () {
+                                            Navigator.pop(context);
+                                            _afficherBottomSheetTransfertPocket(pocket);
+                                          },
+                                          icon: const Icon(Icons.swap_horiz, color: emerald500, size: 18),
+                                          label: const Text('Transférer', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: cardDark,
+                                            side: const BorderSide(color: zinc700),
+                                            padding: const EdgeInsets.symmetric(vertical: 12),
+                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: ElevatedButton.icon(
+                                          onPressed: () {
+                                            Navigator.pop(context);
+                                            _afficherBottomSheetPaiement(pocketPreRempli: pocket['nom']);
+                                          },
+                                          icon: const Icon(Icons.credit_card, color: Colors.black, size: 18),
+                                          label: const Text('Payer', style: TextStyle(color: Colors.black, fontSize: 12, fontWeight: FontWeight.bold)),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: emerald500,
+                                            padding: const EdgeInsets.symmetric(vertical: 12),
+                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  )
+                                ]
+                              ],
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  )
+                ],
+              ),
+            );
+          }
+        );
+      }
+    );
+  }
+  // =========================================================
   // MODAL : TRANSFERT VERS/DEPUIS UN POCKET
   // =========================================================
   void _afficherBottomSheetTransfertPocket(dynamic pocket) {
@@ -372,7 +523,6 @@ class _WalletScreenState extends State<WalletScreen> {
                   
                   const Text('DIRECTION DU TRANSFERT', style: TextStyle(color: textGray, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
                   const SizedBox(height: 10),
-                  // Menu déroulant pour choisir le sens
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     decoration: BoxDecoration(color: bgDark, borderRadius: BorderRadius.circular(16)),
@@ -418,7 +568,7 @@ class _WalletScreenState extends State<WalletScreen> {
                               _afficherErreur("Montant invalide."); return;
                             }
                             
-                            // SÉCURITÉ FRONTEND : On vérifie les soldes avant même de demander au serveur
+                            // Vérification des fonds
                             if (direction == 'to_pocket' && montant > _soldeActuel) {
                               _afficherErreur("Fonds insuffisants sur le Solde Principal."); return;
                             }
@@ -427,15 +577,13 @@ class _WalletScreenState extends State<WalletScreen> {
                             }
 
                             setStateSheet(() => isTransferring = true);
-                            
-                            // Appel à l'API qu'on a codée précédemment
                             final result = await _apiService.transferPocket(pocket['id'], montant, direction);
 
                             if (result['success'] == true) {
                               Navigator.pop(context);
-                              _chargerSoldeInitial(); // Met à jour tous les affichages
+                              _chargerSoldeInitial(); 
                               _afficherSucces(result['message'] ?? 'Transfert réussi !');
-                              _showPocketsModal(); // Réouvre la liste des pockets pour voir le changement !
+                              _showPocketsModal(); // Réouvre l'accordéon
                             } else {
                               setStateSheet(() => isTransferring = false);
                               _afficherErreur(result['message'] ?? 'Erreur');
@@ -453,154 +601,6 @@ class _WalletScreenState extends State<WalletScreen> {
       }
     );
   }
-  // =========================================================
-  // MODAL : GÉRER LES SOUS-COMPTES (Pockets)
-  // =========================================================
-  void _showPocketsModal() {
-    int? expandedPocketId; // Permet de savoir quel pocket est déplié
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setStateSheet) {
-            return Container(
-              height: MediaQuery.of(context).size.height * 0.85,
-              decoration: const BoxDecoration(
-                color: bgDark,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(40)),
-                border: Border(top: BorderSide(color: Color(0xFF27272A))),
-              ),
-              child: Column(
-                children: [
-                  // En-tête (inchangé)
-                  Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text('Sous-comptes', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
-                        GestureDetector(
-                          onTap: () => Navigator.pop(context),
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: const BoxDecoration(color: cardDark, shape: BoxShape.circle),
-                            child: const Icon(Icons.close, color: Colors.white, size: 20),
-                          ),
-                        )
-                      ],
-                    ),
-                  ),
-                  
-                  // Bouton Créer (inchangé)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('Gérer mes sous-comptes', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                            const SizedBox(height: 5),
-                            // Petit rappel du solde disponible pour l'utilisateur
-                            Text('Solde principal dispo : ${_soldeActuel.toStringAsFixed(2)} €', style: const TextStyle(color: emerald500, fontSize: 12, fontWeight: FontWeight.bold)),
-                          ],
-                        ),
-                        GestureDetector(
-                          onTap: () {
-                             Navigator.pop(context); 
-                             _afficherBottomSheetCreationPocket(); 
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: const BoxDecoration(color: emerald500, shape: BoxShape.circle),
-                            child: const Icon(Icons.add, color: Colors.black, size: 24),
-                          ),
-                        )
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // LISTE DES POCKETS (Avec l'accordéon)
-                  Expanded(
-                    child: ListView(
-                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                      children: _pockets.map((pocket) {
-                        final isExpanded = expandedPocketId == pocket['id'];
-
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 15.0),
-                          child: GestureDetector(
-                            onTap: () {
-                              setStateSheet(() {
-                                // Si on clique sur celui déjà ouvert, ça le ferme. Sinon, ça l'ouvre.
-                                expandedPocketId = isExpanded ? null : pocket['id'];
-                              });
-                            },
-                            child: Column(
-                              children: [
-                                _buildPocketCard(pocket['nom'].toString().toUpperCase(), double.parse(pocket['solde'].toString())),
-                                
-                                // LES DEUX BOUTONS QUI APPARAISSENT SI DÉPLIÉ
-                                if (isExpanded) ...[
-                                  const SizedBox(height: 10),
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: ElevatedButton.icon(
-                                          onPressed: () {
-                                            Navigator.pop(context);
-                                            _afficherBottomSheetTransfertPocket(pocket); // Nouvelle fonction !
-                                          },
-                                          icon: const Icon(Icons.swap_horiz, color: emerald500, size: 18),
-                                          label: const Text('Transférer', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: cardDark,
-                                            side: const BorderSide(color: Color(0xFF27272A)),
-                                            padding: const EdgeInsets.symmetric(vertical: 12),
-                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Expanded(
-                                        child: ElevatedButton.icon(
-                                          onPressed: () {
-                                            Navigator.pop(context);
-                                            _afficherBottomSheetPaiement(pocketPreRempli: pocket['nom']);
-                                          },
-                                          icon: const Icon(Icons.credit_card, color: Colors.black, size: 18),
-                                          label: const Text('Payer', style: TextStyle(color: Colors.black, fontSize: 12, fontWeight: FontWeight.bold)),
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: emerald500,
-                                            padding: const EdgeInsets.symmetric(vertical: 12),
-                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  )
-                                ]
-                              ],
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  )
-                ],
-              ),
-            );
-          }
-        );
-      }
-    );
-  }
-
   // =========================================================
   // MODAL : RECEVOIR (Génère le QR Code de l'utilisateur)
   // =========================================================
@@ -623,7 +623,7 @@ class _WalletScreenState extends State<WalletScreen> {
               padding: const EdgeInsets.all(15),
               decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
               child: QrImageView(
-                data: _userEmail, // Les données cachées dans le QR Code
+                data: _userEmail, 
                 version: QrVersions.auto,
                 size: 200.0,
                 backgroundColor: Colors.white,
@@ -650,7 +650,7 @@ class _WalletScreenState extends State<WalletScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.7, // Prend 70% de l'écran
+        height: MediaQuery.of(context).size.height * 0.7, 
         padding: const EdgeInsets.only(top: 30, left: 20, right: 20, bottom: 20),
         decoration: const BoxDecoration(color: cardDark, borderRadius: BorderRadius.vertical(top: Radius.circular(40))),
         child: Column(
@@ -685,14 +685,14 @@ class _WalletScreenState extends State<WalletScreen> {
       )
     );
   }
-
+  
   Widget _buildPocketCard(String title, double amount) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: cardDark,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFF27272A)),
+        border: Border.all(color: zinc700),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -762,55 +762,34 @@ class _WalletScreenState extends State<WalletScreen> {
           ),
           const SizedBox(height: 25),
 
-          // ACTIONS RAPIDES
+          // ACTIONS RAPIDES (AVEC LES COULEURS CORRIGÉES)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildQuickAction(Icons.qr_code_scanner, 'ENVOYER', emerald500, _afficherScannerQR),
-              _buildQuickAction(Icons.qr_code, 'RECEVOIR', textGray, _afficherCodeQR),
-              _buildQuickAction(Icons.credit_card, 'PAYER', emerald500, _afficherBottomSheetPaiement),
+              // ENVOYER : Conteneur cardDark (plus clair)
+              _buildQuickAction(Icons.qr_code_scanner, 'ENVOYER', emerald500, _afficherScannerQR, containerBgColor: cardDark),
+              
+              // RECEVOIR : Conteneur bgDark (foncé), mais CERCLE darkZinc (foncé opaque)
+              _buildQuickAction(Icons.qr_code, 'RECEVOIR', textGray, _afficherCodeQR, circleColor: darkZincActionCircle),
+              
+              // PAYER : Conteneur cardDark (plus clair)
+              _buildQuickAction(Icons.credit_card, 'PAYER', emerald500, _afficherBottomSheetPaiement, containerBgColor: cardDark),
             ],
           ),
           const SizedBox(height: 25),
 
-          // STATISTIQUES ET SOUS-COMPTES
+          // STATISTIQUES ET SOUS-COMPTES INVERSÉS
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
               color: cardDark,
               borderRadius: BorderRadius.circular(32),
-              border: Border.all(color: const Color(0xFF27272A)),
+              border: Border.all(color: zinc700),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('STATISTIQUES RAPIDES', style: TextStyle(color: textGray, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
-                const SizedBox(height: 15),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('${_soldeBkn.toStringAsFixed(2)} BKN', style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
-                        const Text('Portefeuille Crypto', style: TextStyle(color: textGray, fontSize: 12)),
-                      ],
-                    ),
-                    const Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text('+12.5%', style: TextStyle(color: emerald500, fontSize: 16, fontWeight: FontWeight.bold)),
-                        Text('Performance', style: TextStyle(color: textGray, fontSize: 12)),
-                      ],
-                    )
-                  ],
-                ),
-                
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 20),
-                  child: Divider(color: Color(0xFF27272A)),
-                ),
-
+                // 1. SOUS-COMPTES EN PREMIER
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -843,30 +822,77 @@ class _WalletScreenState extends State<WalletScreen> {
                     ),
                   );
                 }).toList(),
+
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 20),
+                  child: Divider(color: zinc700),
+                ),
+
+                // 2. STATISTIQUES RAPIDES EN DESSOUS (CLIQUABLE)
+                const Text('STATISTIQUES RAPIDES', style: TextStyle(color: textGray, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+                const SizedBox(height: 15),
+                
+                // Le GestureDetector qui englobe toute la zone BKN
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque, // Rend toute la zone cliquable
+                  onTap: () {
+                    // Ouvre la page du marché BKN par-dessus
+                    mainScreenKey.currentState?.switchTab(2);
+                  },
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('${_soldeBkn.toStringAsFixed(2)} BKN', style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+                          const Row(
+                            children: [
+                              Text('Portefeuille Crypto ', style: TextStyle(color: textGray, fontSize: 12)),
+                              Icon(Icons.open_in_new, color: emerald500, size: 10), // Petite icône pour indiquer que c'est cliquable
+                            ],
+                          ),
+                        ],
+                      ),
+                      const Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text('+12.5%', style: TextStyle(color: emerald500, fontSize: 16, fontWeight: FontWeight.bold)),
+                          Text('Performance', style: TextStyle(color: textGray, fontSize: 12)),
+                        ],
+                      )
+                    ],
+                  ),
+                ),
               ],
             ),
-          )
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildQuickAction(IconData icon, String label, Color iconColor, VoidCallback onTap) {
+  Widget _buildQuickAction(IconData icon, String label, Color iconColor, VoidCallback onTap, {Color? containerBgColor, Color? circleColor}) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
         width: 100,
         padding: const EdgeInsets.symmetric(vertical: 16),
         decoration: BoxDecoration(
-          color: bgDark,
+          // ---> LE FOND DU CONTENEUR EST OPAQUE (bgDark par défaut) <---
+          color: containerBgColor ?? bgDark, 
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: Colors.grey.shade900),
+          border: Border.all(color: zinc700),
         ),
         child: Column(
           children: [
             Container(
               padding: const EdgeInsets.all(12), 
-              decoration: BoxDecoration(color: iconColor.withOpacity(0.1), borderRadius: BorderRadius.circular(16)), 
+              decoration: BoxDecoration(
+                // ---> LE FOND DU CERCLE EST MAINTENANT OPAQUE (avec de l' Emerald très sombre par défaut) <---
+                color: circleColor ?? emerald500.withOpacity(0.05), // Emerald très sombre pour le contraste
+                borderRadius: BorderRadius.circular(16)
+              ), 
               child: Icon(icon, color: iconColor)
             ),
             const SizedBox(height: 15),

@@ -9,8 +9,12 @@ const Color cardDark = Color(0xFF18181B); // zinc-900
 const Color emerald500 = Color(0xFF10B981);
 const Color textGray = Color(0xFF71717A); // zinc-500
 
+// ---> NOUVEAU 1 : La clé globale pour contrôler la navigation depuis d'autres pages <---
+final GlobalKey<_MainScreenState> mainScreenKey = GlobalKey<_MainScreenState>();
+
 class MainScreen extends StatefulWidget {
-  const MainScreen({super.key});
+  // ---> NOUVEAU 2 : On retire le 'const' et on attache la clé globale ici <---
+  MainScreen({Key? key}) : super(key: mainScreenKey);
 
   @override
   State<MainScreen> createState() => _MainScreenState();
@@ -26,6 +30,13 @@ class _MainScreenState extends State<MainScreen> {
     const CryptoScreen(),
     const Center(child: Text("Chat IA (À venir)", style: TextStyle(color: Colors.white))), 
   ];
+
+  // ---> NOUVEAU 3 : La fonction pour changer d'onglet manuellement <---
+  void switchTab(int index) {
+    setState(() {
+      _currentIndex = index;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -91,7 +102,8 @@ class _MainScreenState extends State<MainScreen> {
   Widget _buildNavItem(int index, IconData icon, String label) {
     final isActive = _currentIndex == index;
     return GestureDetector(
-      onTap: () => setState(() => _currentIndex = index),
+      // ---> NOUVEAU 4 : On utilise notre nouvelle fonction switchTab <---
+      onTap: () => switchTab(index),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [

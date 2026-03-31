@@ -49,7 +49,7 @@ class _LoginScreenState extends State<LoginScreen> {
         // On ouvre enfin les portes du Dashboard ! 🚀
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const MainScreen()),
+          MaterialPageRoute(builder: (context) => MainScreen()),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
