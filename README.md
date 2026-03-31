@@ -1,6 +1,6 @@
 # MoneyTransferApp
 
-Application mobile de transfert d'argent développée — L3 Informatique
+Application mobile de transfert d'argent développée - L3 Informatique
 
 ---
 
@@ -12,35 +12,35 @@ MoneyTransferApp est une application complète de transfert d'argent qui permet 
 
 ## Stack technique
 
-| Couche | Technologie | Version |
-|--------|-------------|---------|
-| Mobile | Flutter | 3.x |
-| Backend | Laravel | 12 |
-| Base de données | PostgreSQL | 16 |
-| Cache / Sessions | Redis | 7 |
-| Conteneurisation | Docker + Docker Compose | - |
-| Authentification | Laravel Sanctum | 4.x |
-| Paiement | Stripe | - |
-| IA / Chatbot | Ollama (LLaMA 3.2) | - |
-| Blockchain | Algorand Testnet | - |
-| Email | Mailtrap SMTP | - |
+| Couche           | Technologie             | Version |
+| ---------------- | ----------------------- | ------- |
+| Mobile           | Flutter                 | 3.x     |
+| Backend          | Laravel                 | 12      |
+| Base de données | PostgreSQL              | 16      |
+| Cache / Sessions | Redis                   | 7       |
+| Conteneurisation | Docker + Docker Compose | -       |
+| Authentification | Laravel Sanctum         | 4.x     |
+| Paiement         | Stripe                  | -       |
+| IA / Chatbot     | Ollama (LLaMA 3.2)      | -       |
+| Blockchain       | Algorand Testnet        | -       |
+| Email            | Mailtrap SMTP           | -       |
 
 ---
 
 ## Fonctionnalités
 
-| Fonctionnalité | Description |
-|----------------|-------------|
-| Inscription / Connexion | Authentification sécurisée avec Bearer Token |
-| Transfert d'argent | Envoi entre utilisateurs avec confirmation PIN |
-| Recharge | Paiement par carte via Stripe |
-| QR Code | Génération et scan avec TTL de 10 secondes |
-| Historique | Liste paginée avec preuve blockchain |
-| Chatbot | Assistant IA alimenté par Ollama LLaMA 3.2 |
-| Profil | Modification des informations, mot de passe et PIN |
-| Blockchain | Chaque transfert enregistré sur Algorand testnet |
-| Mot de passe oublié | Réinitialisation par code 8 chiffres email (TTL 15 min) |
-| Notifications email | Alertes automatiques : transfert reçu/envoyé, recharge confirmée |
+| Fonctionnalité         | Description                                                         |
+| ----------------------- | ------------------------------------------------------------------- |
+| Inscription / Connexion | Authentification sécurisée avec Bearer Token                      |
+| Transfert d'argent      | Envoi entre utilisateurs avec confirmation PIN                      |
+| Recharge                | Paiement par carte via Stripe                                       |
+| QR Code                 | Génération et scan avec TTL de 10 secondes                        |
+| Historique              | Liste paginée avec preuve blockchain                               |
+| Chatbot                 | Assistant IA alimenté par Ollama LLaMA 3.2                         |
+| Profil                  | Modification des informations, mot de passe et PIN                  |
+| Blockchain              | Chaque transfert enregistré sur Algorand testnet                   |
+| Mot de passe oublié    | Réinitialisation par code 8 chiffres email (TTL 15 min)            |
+| Notifications email     | Alertes automatiques : transfert reçu/envoyé, recharge confirmée |
 
 ---
 
@@ -174,7 +174,7 @@ flutter run -d emulator-5556   # Terminal 2
 ### Tester les webhooks Stripe (recharge)
 
 ```bash
-# Terminal séparé — laisser tourner pendant les tests
+# Terminal séparé - laisser tourner pendant les tests
 C:\stripe\stripe.exe listen --forward-to http://localhost:8000/api/v1/recharge/webhook
 ```
 
@@ -182,10 +182,10 @@ C:\stripe\stripe.exe listen --forward-to http://localhost:8000/api/v1/recharge/w
 
 ## Comptes de test
 
-| Email | Mot de passe | PIN | Solde initial |
-|-------|-------------|-----|---------------|
-| alice@test.com | password | 123456 | 1 000,00 € |
-| bob@test.com | password | 123456 | 500,00 € |
+| Email          | Mot de passe | PIN    | Solde initial |
+| -------------- | ------------ | ------ | ------------- |
+| alice@test.com | password     | 123456 | 1 000,00 €   |
+| bob@test.com   | password     | 123456 | 500,00 €     |
 
 ### Carte Stripe de test
 
@@ -199,13 +199,13 @@ CVC    : n'importe lequel (3 chiffres)
 
 ## Ports exposés
 
-| Service | Port | URL |
-|---------|------|-----|
-| API Laravel | 8000 | http://localhost:8000 |
-| PostgreSQL | 5432 | - |
-| Redis | 6379 | - |
-| Ollama | 11434 | http://localhost:11434 |
-| PgAdmin | 5400 | http://localhost:5400 |
+| Service     | Port  | URL                    |
+| ----------- | ----- | ---------------------- |
+| API Laravel | 8000  | http://localhost:8000  |
+| PostgreSQL  | 5432  | -                      |
+| Redis       | 6379  | -                      |
+| Ollama      | 11434 | http://localhost:11434 |
+| PgAdmin     | 5400  | http://localhost:5400  |
 
 > **Note :** PgAdmin utilise le port **5400** (5050 réservé par Windows)
 > Login : `admin@moneytransfer.local` / `admin`
@@ -215,28 +215,30 @@ CVC    : n'importe lequel (3 chiffres)
 ## API Endpoints
 
 ### Publiques (sans authentification)
+
 ```
-POST /api/v1/auth/register          — Inscription
-POST /api/v1/auth/login             — Connexion → Token
-POST /api/v1/auth/forgot-password   — Demande reset mot de passe
-POST /api/v1/auth/reset-password    — Réinitialisation mot de passe
-POST /api/v1/recharge/webhook       — Webhook Stripe (signature)
+POST /api/v1/auth/register          - Inscription
+POST /api/v1/auth/login             - Connexion → Token
+POST /api/v1/auth/forgot-password   - Demande reset mot de passe
+POST /api/v1/auth/reset-password    - Réinitialisation mot de passe
+POST /api/v1/recharge/webhook       - Webhook Stripe (signature)
 ```
 
 ### Protégées (Bearer Token requis)
+
 ```
-POST   /api/v1/auth/logout           — Déconnexion
-GET    /api/v1/auth/me               — Profil courant
-POST   /api/v1/transfer              — Transfert (PIN requis)
-POST   /api/v1/recharge/create-intent — Créer PaymentIntent Stripe
-GET    /api/v1/history               — Historique paginé
-GET    /api/v1/history/{id}          — Détail transaction
-PUT    /api/v1/profile               — Modifier informations
-PUT    /api/v1/profile/password      — Changer mot de passe
-PUT    /api/v1/profile/pin           — Changer PIN
-POST   /api/v1/qr/generate           — Générer QR Code
-POST   /api/v1/qr/scan               — Scanner et payer
-POST   /api/v1/chatbot/message       — Message chatbot IA
+POST   /api/v1/auth/logout           - Déconnexion
+GET    /api/v1/auth/me               - Profil courant
+POST   /api/v1/transfer              - Transfert (PIN requis)
+POST   /api/v1/recharge/create-intent - Créer PaymentIntent Stripe
+GET    /api/v1/history               - Historique paginé
+GET    /api/v1/history/{id}          - Détail transaction
+PUT    /api/v1/profile               - Modifier informations
+PUT    /api/v1/profile/password      - Changer mot de passe
+PUT    /api/v1/profile/pin           - Changer PIN
+POST   /api/v1/qr/generate           - Générer QR Code
+POST   /api/v1/qr/scan               - Scanner et payer
+POST   /api/v1/chatbot/message       - Message chatbot IA
 ```
 
 ---
@@ -245,33 +247,32 @@ POST   /api/v1/chatbot/message       — Message chatbot IA
 
 Emails automatiques envoyés via Mailtrap SMTP :
 
-| Événement | Destinataire |
-|---|---|
-| Transfert reçu | Destinataire du virement |
-| Transfert envoyé | Expéditeur du virement |
-| Recharge Stripe confirmée | Utilisateur rechargé |
-| Mot de passe oublié | Utilisateur demandant le reset |
+| Événement                | Destinataire                   |
+| -------------------------- | ------------------------------ |
+| Transfert reçu            | Destinataire du virement       |
+| Transfert envoyé          | Expéditeur du virement        |
+| Recharge Stripe confirmée | Utilisateur rechargé          |
+| Mot de passe oublié       | Utilisateur demandant le reset |
 
 ---
 
 ## Documentation détaillée
 
-| Document | Contenu |
-|----------|---------|
-| [Infrastructure](docs/INFRASTRUCTURE.md) | Docker, services, configuration |
-| [Architecture](docs/ARCHITECTURE.md) | Stack technique, flux de données, schémas |
-| [Sécurité](docs/SECURITY.md) | Authentification, PIN, blockchain, Stripe |
-| [Etape 1 — Backend](docs/ETAPE_1_BACKEND.md) | Laravel, API REST, base de données |
-| [Etape 2 — Frontend](docs/ETAPE_2_FRONTEND.md) | Flutter, navigation, écrans |
-| [Etape 3 — Stripe](docs/ETAPE_3_STRIPE.md) | Intégration paiement par carte |
-| [Etape 3 — Blockchain](docs/ETAPE_3_BLOCKCHAIN.md) | Algorand, signature Ed25519 |
+| Document                                         | Contenu                                             |
+| ------------------------------------------------ | --------------------------------------------------- |
+| [Infrastructure](docs/INFRASTRUCTURE.md)            | Docker, services, configuration                     |
+| [Architecture](docs/ARCHITECTURE.md)                | Stack technique, flux de données, schémas         |
+| [Sécurité](docs/SECURITY.md)                      | Authentification, PIN, blockchain, Stripe           |
+| [Etape 1 - Backend](docs/ETAPE_1_BACKEND.md)        | Laravel, API REST, base de données                 |
+| [Etape 2 - Frontend](docs/ETAPE_2_FRONTEND.md)      | Flutter, navigation, écrans                        |
+| [Etape 3 - Stripe](docs/ETAPE_3_STRIPE.md)          | Intégration paiement par carte                     |
+| [Etape 3 - Blockchain](docs/ETAPE_3_BLOCKCHAIN.md)  | Algorand, signature Ed25519                         |
 | [Mot de passe oublié](docs/MOT_DE_PASSE_OUBLIE.md) | Réinitialisation par code email, sécurité, tests |
-| [Notifications Email](docs/NOTIFICATIONS_EMAIL.md) | Emails automatiques, Mailtrap, tests Thunder Client |
-| [Oral](docs/ORAL.md) | Script de présentation orale |
+| [Notifications Email](docs/NOTIFICATIONS_EMAIL.md)  | Emails automatiques, Mailtrap, tests Thunder Client |
 
 ---
 
 ## Auteur
 
-**Louisy David** — L3 Informatique, Semestre 6
-Programmation Mobile — 2026
+**Louisy David** - L3 Informatique, Semestre 6
+Programmation Mobile - 2026
