@@ -196,7 +196,7 @@ Toutes les URL ci-dessous sont relatives à la **base API** configurée dans l�
 1. L’utilisateur se connecte avec **Appwrite** dans Flutter.  
 2. L’app récupère un **JWT** (ou token stocké en secours dans `SharedPreferences`).  
 3. `ApiClient` ajoute `Authorization: Bearer …` à chaque requête vers Laravel.  
-4. Le trait **`ResolvesNodexUser`** décode le **payload** du JWT (2ᵉ segment en base64), lit `userId`, `sub` ou champs imbriqués, puis fait `NodexUser::where('appwriteId', …)->first()`.  
+4. Le trait **`ResolvesNodexUser`** décode le **payload** du JWT (deuxième segment en base64), lit `userId`, `sub` ou champs imbriqués, puis fait `NodexUser::where('appwriteId', …)->first()`.  
 5. Si aucune ligne : réponses **401** ou message d’erreur métier.
 
 ### 6.2 Flux assistant IA (Groq)
