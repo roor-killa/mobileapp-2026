@@ -24,6 +24,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/wallet/exchange-rate',  [WalletController::class, 'exchangeRate']);
     Route::post('/wallet/convert',       [WalletController::class, 'convert']);
 
+    // FCM Token
+    Route::post('/user/fcm-token', function (\Illuminate\Http\Request $r) {
+        $r->validate(['fcm_token' => 'required|string']);
+        $r->user()->update(['fcm_token' => $r->fcm_token]);
+        return response()->json(['success' => true]);
+    });
+
     // Top-up Stripe
     Route::post('/wallet/topup/create-intent', [WalletController::class, 'createPaymentIntent']);
     Route::post('/wallet/topup/confirm',        [WalletController::class, 'confirmTopUp']);

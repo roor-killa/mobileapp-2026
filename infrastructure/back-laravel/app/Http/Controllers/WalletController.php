@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Transaction;
 use App\Models\User;
+use App\Services\FcmService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Stripe\StripeClient;
@@ -71,6 +72,16 @@ class WalletController extends Controller
                 'status'            => 'completed',
             ]);
         });
+
+        // Notification push au destinataire
+        if ($recipient->fcm_token) {
+            app(FcmService::class)->sendToToken(
+                $recipient->fcm_token,
+                'Paiement reçu',
+                "{$sender->name} vous a envoyé {$amount} {$currency}",
+                ['type' => 'transfer_in', 'amount' => (string) $amount, 'currency' => $currency],
+            );
+        }
 
         $senderWallet->refresh();
 
@@ -186,7 +197,8 @@ class WalletController extends Controller
         }
 
         $amount = round((float) $request->amount, 2);
-        $wallet = $request->user()->wallet;
+        $user   = $request->user();
+        $wallet = $user->wallet;
 
         DB::transaction(function () use ($wallet, $amount, $request) {
             $wallet->increment('balance', $amount);
@@ -200,6 +212,16 @@ class WalletController extends Controller
                 'status'                   => 'completed',
             ]);
         });
+
+        // Notification push à l'utilisateur
+        if ($user->fcm_token) {
+            app(FcmService::class)->sendToToken(
+                $user->fcm_token,
+                'Recharge effectuée',
+                "Votre wallet a été crédité de {$amount} €",
+                ['type' => 'topup', 'amount' => (string) $amount],
+            );
+        }
 
         $wallet->refresh();
 

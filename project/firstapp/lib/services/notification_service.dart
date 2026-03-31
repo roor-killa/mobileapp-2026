@@ -67,16 +67,18 @@ class NotificationService {
   static Future<void> registerToken() async {
     try {
       final token = await _fcm.getToken();
+      print('[FCM] token: $token');
       if (token != null) {
         await ApiService().saveFcmToken(token);
+        print('[FCM] token envoyé au backend');
       }
 
       // Rafraîchissement automatique du token
       _fcm.onTokenRefresh.listen((newToken) {
         ApiService().saveFcmToken(newToken);
       });
-    } catch (_) {
-      // Silencieux : les notifs ne sont pas bloquantes
+    } catch (e) {
+      print('[FCM] erreur: $e');
     }
   }
 }

@@ -3,7 +3,8 @@
     "allow": [
       "Bash(docker exec:*)",
       "Bash(flutter analyze:*)",
-      "Bash(flutter:*)"
+      "Bash(flutter:*)",
+      "Bash(docker ps:*)"
     ]
   }
 }

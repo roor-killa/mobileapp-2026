@@ -8,11 +8,14 @@ import 'screens/wallet_screen.dart';
 import 'services/auth_service.dart';
 import 'services/notification_service.dart';
 import 'theme.dart';
+import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
 
   // Handler messages reçus quand l'app est fermée / en arrière-plan
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);

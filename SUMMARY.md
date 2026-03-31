@@ -73,3 +73,75 @@ Projet de développement mobile L3 (Martinique, 2026). Application de type walle
 - `project/firstapp/lib/screens/wallet_screen.dart` — Écran principal
 - `infrastructure/back-laravel/app/Http/Controllers/WalletController.php` — Logique wallet côté serveur
 - `infrastructure/back-laravel/routes/api.php` — Routes API
+
+  Backend (Laravel)                                                                                                                                                      
+                                                                                                                                                                         
+  ┌──────────────────────────┬───────────────────────────────────────────────────────────────────────────────────────┐
+  │         Fichier          │                                      Changement                                       │                                                   
+  ├──────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────┤
+  │ Migration wallets        │ Ajout colonne balance_bkn (decimal, défaut 0)                                         │
+  ├──────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────┤
+  │ Migration exchange_rates │ Nouvelle table + taux initial 1 EUR = 10 BKN                                          │                                                   
+  ├──────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────┤                                                   
+  │ Migration transactions   │ Ajout colonne currency (EUR/BKN, défaut EUR)                                          │                                                   
+  ├──────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────┤                                                   
+  │ Wallet.php               │ balance_bkn ajouté au fillable                                                        │
+  ├──────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────┤                                                   
+  │ Transaction.php          │ currency ajouté au fillable                                                           │
+  ├──────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────┤                                                   
+  │ WalletController.php     │ show() retourne balance_bkn, transfer() gère la devise, + exchangeRate(), + convert() │
+  ├──────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────┤                                                   
+  │ routes/api.php           │ GET /wallet/exchange-rate et POST /wallet/convert                                     │
+  └──────────────────────────┴───────────────────────────────────────────────────────────────────────────────────────┘                                                   
+                                                            
+  Flutter                                                                                                                                                                
+                                                            
+  ┌──────────────────────┬──────────────────────────────────────────────────────────────────────────────┐                                                                
+  │       Fichier        │                                  Changement                                  │
+  ├──────────────────────┼──────────────────────────────────────────────────────────────────────────────┤                                                                
+  │ wallet.dart          │ Ajout balanceBkn                                                             │
+  ├──────────────────────┼──────────────────────────────────────────────────────────────────────────────┤
+  │ transaction.dart     │ Ajout currency                                                               │                                                                
+  ├──────────────────────┼──────────────────────────────────────────────────────────────────────────────┤
+  │ api_service.dart     │ transfer() avec param currency, + getExchangeRate(), + convert()             │                                                                
+  ├──────────────────────┼──────────────────────────────────────────────────────────────────────────────┤                                                                
+  │ wallet_screen.dart   │ Affichage dual solde (EUR + BKN), bouton Convertir EUR ↔ BKN                 │
+  ├──────────────────────┼──────────────────────────────────────────────────────────────────────────────┤                                                                
+  │ transfer_screen.dart │ Toggle EUR/BKN pour choisir la devise                                        │
+  ├──────────────────────┼──────────────────────────────────────────────────────────────────────────────┤                                                                
+  │ receive_screen.dart  │ Toggle EUR/BKN, currency embarqué dans le QR JSON                            │
+  ├──────────────────────┼──────────────────────────────────────────────────────────────────────────────┤                                                                
+  │ scan_pay_screen.dart │ Parse le champ currency du QR Code                                           │
+  ├──────────────────────┼──────────────────────────────────────────────────────────────────────────────┤                                                                
+  │ convert_screen.dart  │ Nouvel écran : aperçu du montant converti, swap de devise, affichage du taux
+
+  ## FireBase ##
+   1. Créer le projet Firebase                                                                                                                                            
+                                                                                                                                                                         
+  1. Va sur console.firebase.google.com                                                                                                                                  
+  2. Ajouter un projet → nom : mobileapp-bkn → Continuer                                                                                                                 
+  3. Désactive Google Analytics (pas nécessaire) → Créer le projet                                                                                                       
+                                                                                                                                                                         
+  ---                                                                                                                                                                    
+  2. Ajouter l'app iOS                                                                                                                                                   
+                                                            
+  1. Dans le projet Firebase → Ajouter une application → icône iOS
+  2. Bundle ID : com.example.firstapp (vérifie dans Xcode ou dans project/firstapp/ios/Runner.xcodeproj)                                                                 
+  3. Télécharger GoogleService-Info.plist                                                                                                                                
+  4. Le placer dans project/firstapp/ios/Runner/                                                                                                                         
+                                                                                                                                                                         
+  ---                                                                                                                                                                    
+  3. Ajouter l'app Android                                  
+                          
+  1. Ajouter une application → icône Android
+  2. Package : com.example.firstapp                                                                                                                                      
+  3. Télécharger google-services.json
+  4. Le placer dans project/firstapp/android/app/                                                                                                                        
+                                                                                                                                                                         
+  ---
+  4. Clé privée pour le backend Laravel                                                                                                                                  
+                                                            
+  1. Dans Firebase → Paramètres du projet (roue dentée) → onglet Comptes de service
+  2. Cliquer Générer une nouvelle clé privée → télécharger le JSON                                                                                                       
+  3. Le renommer firebase-service-account.json                                                                                                                           
+  4. Le placer dans infrastructure/back-laravel/storage/app/    
