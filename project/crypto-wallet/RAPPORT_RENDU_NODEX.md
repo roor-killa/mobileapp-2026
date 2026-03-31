@@ -211,75 +211,220 @@ Toutes les URL ci-dessous sont relatives à la **base API** configurée dans l�
 
 ---
 
-## 7. Explication de code clé
+## 7. Explication détaillée du code
 
-### 7.1 `ApiClient` — client HTTP unique avec JWT
+Cette section décrit **à quoi sert chaque partie importante** du projet, dans l’ordre logique : démarrage de l’app Flutter, état global, appels réseau, puis chaîne Laravel (middleware → routes → contrôleurs).
 
-Fichier : `flutter_app/lib/services/api_client.dart`.
+---
 
-- **Singleton** (`factory ApiClient()`) : une seule instance pour toute l’app.  
-- **`_getToken()`** : priorité au token **Appwrite** via `AuthServiceAppwrite`, sinon valeur stockée localement (`jwt_token`).  
-- **`_headers()`** : ajoute `Content-Type: application/json` et `Authorization: Bearer …` si demandé.  
-- **`get` / `post`** : construisent l’URL avec `ApiConfig.baseUrl` + chemin (ex. `/virements/history`), timeout 15 s. Un **401** ne vide pas brutalement la session : le commentaire indique qu’on peut resynchroniser le JWT avec Appwrite.
+### 7.A Flutter — point d’entrée et thème système
 
-### 7.2 `ApiConfig` — URL de l’API
+**Fichier : `flutter_app/lib/main.dart`**
 
-Fichier : `flutter_app/lib/config/api_config.dart`.
+| Élément | Rôle |
+|--------|------|
+| `WidgetsFlutterBinding.ensureInitialized()` | Obligatoire avant tout `async` au démarrage (chargement config, stockage). |
+| `usePathUrlStrategy()` | Sur le web, les URLs du type `/verify-email?...` fonctionnent sans `#` (liens Appwrite). |
+| `await ApiConfig.loadFromDisk()` | Relit l’URL d’API sauvegardée dans les réglages. |
+| `await GroqDirectConfig.loadFromDisk()` | Relit une éventuelle clé Groq saisie dans l’app (mode secours). |
+| `await StripeService.init()` | Initialise le SDK Stripe (clé publique) pour les paiements. |
+| `appwriteClient` | Accès lazy au client Appwrite : si la config est invalide, l’erreur est loguée puis propagée. |
+| `SystemChrome.setSystemUIOverlayStyle` | Barre de statut / navigation Android : fond sombre, icônes claires (cohérent avec NodEX). |
+| `MultiProvider` | Enregistre trois **ChangeNotifier** globaux : `AuthProvider`, `WalletProvider`, `SecurityProvider`. |
+| `AuthProvider()..checkAuth()..initAuthListener()` | Au lancement : vérifie si un utilisateur Appwrite est déjà connecté ; prépare le flux auth. |
+| `runApp(App())` | Affiche le widget racine `App` (dans `app.dart`). |
 
-- Ordre : **URL enregistrée dans Réglages** → variable de compilation `API_BASE_URL` → défauts (`127.0.0.1:8000/api` sur iOS/desktop, `10.0.2.2` sur émulateur Android).  
-- **`_normalizeApiBase`** : garantit que l’URL se termine par `/api`.
+---
 
-### 7.3 `ResolvesNodexUser` — qui est l’utilisateur côté API ?
+### 7.B Flutter — navigation, écrans et onglets
 
-Fichier : `backend-laravel/app/Http/Controllers/Concerns/ResolvesNodexUser.php`.
+**Fichier : `flutter_app/lib/app.dart`**
 
-- Découpe le header `Authorization`, extrait le JWT, décode le payload JSON.  
-- Cherche l’identifiant Appwrite dans `userId`, `sub`, `$id`, ou sous-objet `user`.  
-- Retourne le modèle **`NodexUser`** lié à `appwriteId`. Tous les contrôleurs métier utilisent ce trait pour rester cohérents.
+- **`App`** : `MaterialApp` avec le thème `myTheme` (Material 3 sombre, défini dans `panache_theme.dart`).  
+- **Pile d’écrans selon l’état** (`Consumer2<AuthProvider, SecurityProvider>`) :  
+  1. `LoadingScreen` si `auth.isLoading` ;  
+  2. `UpdatePasswordScreen` si récupération de mot de passe Appwrite ;  
+  3. `EmailVerificationPendingScreen` si email pas encore vérifié ;  
+  4. `LoginScreen` si pas connecté ;  
+  5. `AppLockScreen` si PIN / biométrie active et session expirée ou app verrouillée ;  
+  6. sinon **`HomeTabs`**.  
+- **`NodexOpeningSplash`** : animation plein écran au premier lancement, puis `onFinished` enlève le splash.  
+- **`HomeTabs`** : liste fixe de 5 pages — `DashboardScreen`, `WalletsScreen`, `HistoryScreen`, `CardScreen`, `SettingsScreen`. Transitions **`FadeThroughTransition`** entre onglets. Fond **`FuturisticBackground`**.  
+- **FAB « Assistant »** : `Navigator.push` vers `ChatScreen`.  
+- **`WidgetsBindingObserver`** : quand l’app passe en arrière-plan, si le PIN est activé → verrouillage ; au retour → contrôle d’expiration de session.  
+- **`Listener(onPointerDown)`** : chaque toucher réinitialise le minuteur d’inactivité (`SecurityProvider.touchActivity()`).
 
-### 7.4 `ChatController` — proxy Groq + contexte compte
+---
 
-Fichier : `backend-laravel/app/Http/Controllers/ChatController.php`.
+### 7.C Flutter — authentification (Provider + service Appwrite)
 
-- Vérifie l’utilisateur et la présence de **`GROQ_API_KEY`**.  
-- **`injectLiveAccountContext`** : fusionne un bloc texte (solde EUR, nom, pseudo, IBAN, soldes crypto depuis le cache, derniers virements) dans le message **system** envoyé au modèle.  
-- Objectif documenté dans le code : l’IA ne doit **pas inventer** soldes ou IBAN pour ce compte.
+**Fichiers : `flutter_app/lib/providers/auth_provider.dart`, `flutter_app/lib/services/auth_service_appwrite.dart`**
 
-### 7.5 `VirementController` — virements internes EUR
+**`AuthServiceAppwrite`** encapsule le SDK Appwrite :
 
-Fichier : `backend-laravel/app/Http/Controllers/VirementController.php`.
+- `getCurrentUser()` : `account.get()` → objet local `User` (id, email, name).  
+- `getAccessToken()` : `account.createJWT()` → chaîne JWT courte durée (**~15 min**), renvoyée au backend Laravel dans `Authorization`.  
+- `login` / `register` / OTP / magic link / mot de passe oublié : appellent les méthodes Appwrite correspondantes.
 
-- `balance` / `me` : lecture du solde et des infos affichables type RIB.  
-- `history` : fusionne envois et réceptions, résout les **pseudonymes** des contreparties, trie par date.  
-- `send` : transaction en base (débit/crédit) sous contraintes de solde (suite du fichier non citée ici ligne par ligne).
+**`AuthProvider`** :
 
-### 7.6 `WalletController` — portefeuilles crypto
+- `_syncTokenToApi()` : après connexion, copie le JWT dans `ApiClient` (`setToken`) pour que **toutes** les requêtes Laravel portent le bon en-tête.  
+- `checkAuth()` : au démarrage, tente de récupérer l’utilisateur ; sur le **web**, gère les URLs de callback `verify-email` et magic URL (`userId` + `secret` dans la query). Timeout 8 s + filet de sécurité 10 s pour ne pas bloquer indéfiniment sur l’écran de chargement.  
+- `syncApiToken()` : à appeler avant les appels sensibles pour **rafraîchir** le JWT expiré.  
+- `notifyListeners()` : déclenche le **rebuild** des widgets qui écoutent le provider (passage entre écran login et accueil).
 
-Fichier : `backend-laravel/app/Http/Controllers/WalletController.php`.
+---
 
-- Pour chaque symbole (ETH, BTC, SOL, ALGO), construit un objet avec **adresse déterministe** (hash SHA256 du couple `userId` + symbole avec préfixe bc1/0x selon la chaîne).  
-- Les **soldes** viennent du **cache** Laravel `nodex_crypto_{userId}` ou sont à zéro par défaut.
+### 7.D Flutter — sécurité locale (PIN, biométrie, journal)
 
-### 7.7 `CardController` — carte virtuelle
+**Fichier : `flutter_app/lib/providers/security_provider.dart`**
 
-Fichier : `backend-laravel/app/Http/Controllers/CardController.php`.
+- Utilise **`FlutterSecureStorage`** pour le hash du PIN et **`SharedPreferences`** pour les options (timeout, biométrie, journal).  
+- **`SecurityEvent`** : petit modèle JSON pour le journal (type, description, date).  
+- Gestion du **verrouillage** (`isLocked`), du **délai d’inactivité** (`session_timeout_min`), option **biométrie**, nettoyage presse-papiers, tentatives de code PIN échouées (avec option `enableLoginCooldown` désactivée en démo).
 
-- Si aucune ligne `UserCard` : génération numéro (avec contrôle type **Luhn** dans la suite du fichier), date d’expiration, CVV, PIN, association au `userId`.
+---
 
-### 7.8 `ChatService` — stratégie double (Laravel puis direct)
+### 7.E Flutter — client HTTP vers Laravel
 
-Fichier : `flutter_app/lib/services/chat_service.dart`.
+**Fichier : `flutter_app/lib/services/api_client.dart`**
 
-- Construit l’historique des messages (limite des derniers tours).  
-- Tente d’abord **`POST /chat/groq`** via `ApiClient`.  
-- Si **401**, **503**, erreurs serveur ou **réseau**, tente **Groq direct** avec `GroqDirectConfig.effectiveKey` et un message système incluant éventuellement un **contexte local** passé depuis l’UI.
+- **Pattern singleton** : `ApiClient._()` constructeur privé + `factory ApiClient() => _instance` → une seule instance partagée.  
+- **`_uri(path)`** : si `path` commence par `http`, URL absolue ; sinon concatène `ApiConfig.baseUrl` + chemin (ex. `/virements/send`).  
+- **`_getToken()`** : 1) JWT Appwrite via `AuthServiceAppwrite.getAccessToken()` ; 2) sinon token sauvegardé sous la clé `jwt_token` dans `SharedPreferences` (secours).  
+- **`get` / `post`** : en-têtes JSON + Bearer ; **timeout 15 s**. Le code **ne supprime pas** le token sur 401 : la session Appwrite peut encore être valide alors que le JWT Laravel est rejeté → l’utilisateur peut se **resynchroniser** avec `syncApiToken()`.
 
-### 7.9 `WalletProvider` — agrégation CoinGecko + API + virements
+---
 
-Fichier : `flutter_app/lib/providers/wallet_provider.dart`.
+### 7.F Flutter — URL de l’API
 
-- **`_fetchPricesFromCoinGecko`** : requête GET vers l’API CoinGecko, met à jour prix EUR et variation 24h.  
-- **`fetch`** : charge les wallets via l’API Laravel et fusionne l’**historique des virements** dans la liste des transactions affichées sur l’accueil et l’historique (`_mergeVirementsIntoTransactions`).
+**Fichier : `flutter_app/lib/config/api_config.dart`**
+
+- **Priorité** : 1) URL saisie dans Réglages (clé `nodex_api_base_url`) ; 2) `--dart-define=API_BASE_URL=...` à la compilation ; 3) défaut plateforme : `127.0.0.1:8000/api` (iOS, desktop, web hors hébergement), **`10.0.2.2:8000/api`** sur émulateur Android (alias de la machine hôte).  
+- **`_normalizeApiBase`** : enlève le `/` final et **force** le suffixe `/api` pour que les chemins relatifs (`/wallets`) soient corrects.
+
+---
+
+### 7.G Flutter — portefeuilles, cours, transactions
+
+**Fichier : `flutter_app/lib/providers/wallet_provider.dart`**
+
+- **Classes locales** :  
+  - `Wallet` : id, blockchain, adresse, balance, symbole, nom, icône.  
+  - `Transaction` : type (`send`, `receive`, `swap`, `buy`, `bank_send`, `bank_receive`), montant, description, date, etc.  
+- **`_chainMeta`** : pour ETH, SOL, ALGO, BTC — nom affiché, lettre d’icône, **`cgId`** CoinGecko pour l’API prix.  
+- **`_soldeDepartEur` (2000)** : valeur affichée tant que le solde serveur n’est pas chargé (UX démo).  
+- **`fetch(userId)`** (schéma) : charge `GET /wallets`, `GET /virements/me`, `GET /virements/history`, `GET /virements/balance`, appelle **`_fetchPricesFromCoinGecko`**, fusionne virements dans `_transactions` via **`_mergeVirementsIntoTransactions`**, met à jour `notifyListeners()`.  
+- **`_fetchPricesFromCoinGecko`** : `GET https://api.coingecko.com/api/v3/simple/price?ids=...&vs_currencies=eur&include_24hr_change=true` → remplit `_prices` et `_changes24h`. En cas d’erreur réseau, les maps restent vides (pas de faux cours).  
+- **`totalBalanceEur`** : somme du solde EUR + Σ (balance crypto × prix).  
+- **`testConnection()`** : diagnostic `GET /health` puis `GET /virements/me` pour l’écran Réglages.
+
+---
+
+### 7.H Flutter — assistant conversationnel
+
+**Fichier : `flutter_app/lib/services/chat_service.dart`**
+
+- Prompt système fixe : rôle « assistant NodEX », français, **ne pas inventer** les chiffres du compte.  
+- Historique `_history` limité aux **16 derniers** messages pour ne pas dépasser les limites de tokens.  
+- **Flux principal** : `POST /chat/groq` avec `messages` (system + historique).  
+- **Secours** : si 401 → Groq direct avec contexte local ; si 503 (pas de clé serveur) → Groq direct ; si erreur réseau → Groq direct si clé présente dans l’app ; sinon message invitant à configurer Laravel ou la clé dans Réglages.
+
+---
+
+### 7.I Laravel — enregistrement des middlewares API
+
+**Fichier : `backend-laravel/bootstrap/app.php`**
+
+- Les routes définies dans `routes/api.php` passent par la pile **`api`**, à laquelle sont **préfixés** (prepend) :  
+  1. **`CorsAllowLocalhost`** — réponses CORS pour Flutter **web** sur localhost ;  
+  2. **`EnsureNodexUser`** — crée un enregistrement `NodexUser` si le JWT Appwrite est valide mais l’utilisateur n’existe pas encore en base.
+
+---
+
+### 7.J Laravel — CORS localhost
+
+**Fichier : `backend-laravel/app/Http/Middleware/CorsAllowLocalhost.php`**
+
+- Si l’en-tête `Origin` est `http(s)://localhost` ou `127.0.0.1`, ajoute `Access-Control-Allow-Origin` avec cette origine exacte, `Allow-Credentials`, et gère la **requête OPTIONS** (preflight) en **204** sans corps. Sans cela, le navigateur bloquerait les requêtes avec `Authorization` depuis une autre « origine » (port différent).
+
+---
+
+### 7.K Laravel — création automatique du compte NodEX
+
+**Fichier : `backend-laravel/app/Http/Middleware/EnsureNodexUser.php`**
+
+- Lit le JWT Bearer, décode le payload (même logique que `ResolvesNodexUser`).  
+- Si **`NodexUser`** avec cet `appwriteId` **n’existe pas** : crée une ligne avec `firstOrCreate` : UUID interne, email technique `{appwriteId}@nodex-local.invalid`, nom par défaut, **pseudonyme** et **IBAN synthétiques** (méthodes du modèle), `balanceEur` initial **2000** (démonstration).  
+- Puis laisse passer la requête vers le contrôleur. Ainsi la première requête authentifiée « provisionne » le compte côté Laravel.
+
+---
+
+### 7.L Laravel — résolution utilisateur dans les contrôleurs
+
+**Fichier : `backend-laravel/app/Http/Controllers/Concerns/ResolvesNodexUser.php`**
+
+- **`appwriteIdFromJwt`** : extrait la partie centrale du JWT (base64 URL-safe), `json_decode`, lit `userId` / `sub` / `$id` ou `user.$id`.  
+- **`nodexUser`** : `NodexUser::where('appwriteId', $id)->first()` ou `null`.  
+- **Utilisé par** : `WalletController`, `CardController`, `VirementController`, `ChatController` — même règle partout.
+
+---
+
+### 7.M Laravel — `VirementController` (détail de `send`)
+
+**Fichier : `backend-laravel/app/Http/Controllers/VirementController.php`**
+
+1. Résout l’expéditeur via JWT → `NodexUser`.  
+2. Lit `toIdentifier` (ou ancien `toEmail`) et `amount`.  
+3. Valide : destinataire non vide, montant **> 0**, solde **au moins égal au** montant demandé.  
+4. **Recherche du destinataire** :  
+   - si la saisie ressemble à un IBAN FR (normalisé sans espaces), parcourt les utilisateurs avec IBAN et compare ;  
+   - sinon recherche par **`pseudonym`** (insensible à la casse, `LOWER(pseudonym)`) ;  
+   - sinon si la chaîne contient `@`, recherche par **email**.  
+5. Vérifie que le destinataire n’est pas soi-même.  
+6. **`DB::transaction`** : met à jour `balanceEur` des deux lignes `NodexUser`, insère une ligne **`VirementEur`** (`fromUserId`, `toUserId`, `amount`).  
+7. Réponse JSON : `success`, `newBalance`, `recipientNewBalance`.
+
+Les méthodes **`balance`**, **`me`**, **`history`** sont en lecture seule : solde, infos RIB, liste fusionnée des virements avec pseudonyme de la contrepartie.
+
+---
+
+### 7.N Laravel — `WalletController`
+
+**Fichier : `backend-laravel/app/Http/Controllers/WalletController.php`**
+
+- Tableau constant **`CHAINS`** : ETH, BTC, SOL, ALGO avec noms et blockchains.  
+- Pour chaque symbole : `balance` lue dans le **cache** Laravel `nodex_crypto_{userId}` ou **0** ; `address` = préfixe chaîne + tronquat de `hash('sha256', userId + symbol)` pour une adresse **reproductible** (démo, pas une vraie dérivation HD wallet).
+
+---
+
+### 7.O Laravel — `CardController` et algorithme de Luhn
+
+**Fichier : `backend-laravel/app/Http/Controllers/CardController.php`**
+
+- `index` : `UserCard` pour ce `userId` ; sinon **`createCard`**.  
+- Génère un numéro de 16 chiffres dont les 15 premiers dépendent de l’utilisateur, puis calcule le **chiffre de contrôle Luhn** (`luhnCheckDigit`) pour que le numéro soit valide au même titre qu’une carte test.  
+- Stocke `last4`, mois/année d’expiration, CVV, PIN ; renvoie JSON pour l’app (masquage côté UI sauf après action « voir »).
+
+---
+
+### 7.P Laravel — `ChatController` (Groq + contexte)
+
+**Fichier : `backend-laravel/app/Http/Controllers/ChatController.php`**
+
+- Vérifie `GROQ_API_KEY` dans la config / `.env` (sinon 503).  
+- **`buildAccountFactsBlock`** : texte structuré avec solde EUR, nom, pseudo, IBAN, lignes crypto, **8 derniers virements** avec libellés envoyé/reçu.  
+- **`injectLiveAccountContext`** : ajoute ce texte au message **`system`** (ou crée un system en tête de liste).  
+- Appel HTTP serveur à serveur vers **Groq** (`chat/completions`) ; renvoie le JSON Groq tel quel au client en 200, ou message d’erreur en 502.
+
+---
+
+### 7.Q Fichiers de configuration (sans logique métier)
+
+- **`flutter_app/lib/config/appwrite_config.dart`** : endpoint Appwrite, projet, IDs (non commités en clair dans le dépôt public — utiliser des placeholders / `.env` selon le setup).  
+- **`flutter_app/lib/config/groq_config.dart`** / **`stripe_config.dart`** : modèles et clés côté client où autorisé.  
+- **`backend-laravel/config/services.php`** : clé Groq et nom de modèle lus par `ChatController`.  
+- **`backend-laravel/routes/api.php`** : déclare toutes les routes listées en section 6.
 
 ---
 
