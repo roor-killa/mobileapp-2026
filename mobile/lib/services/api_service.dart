@@ -223,6 +223,62 @@ class ApiService {
   }
 
   // ==========================================================
+  // EMPLOI DU TEMPS
+  // ==========================================================
+
+  Future<List<Map<String, dynamic>>> getEmploiDuTemps(int classeId) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/classes/$classeId/emploi-du-temps'),
+    );
+    if (response.statusCode == 200) {
+      final List<dynamic> data = json.decode(response.body);
+      return data.map((e) => e as Map<String, dynamic>).toList();
+    }
+    throw Exception('Erreur chargement emploi du temps');
+  }
+
+  Future<List<Map<String, dynamic>>> getEmploiDuTempsProfesseur(int professeurId) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/professeurs/$professeurId/emploi-du-temps'),
+    );
+    if (response.statusCode == 200) {
+      final List<dynamic> data = json.decode(response.body);
+      return data.map((e) => e as Map<String, dynamic>).toList();
+    }
+    throw Exception('Erreur chargement emploi du temps professeur');
+  }
+
+  Future<bool> creerCreneau(Map<String, dynamic> creneau) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/emploi-du-temps'),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode(creneau),
+    );
+    return response.statusCode == 201;
+  }
+
+  Future<bool> supprimerCreneau(int id) async {
+    final response = await http.delete(
+      Uri.parse('$baseUrl/emploi-du-temps/$id'),
+    );
+    return response.statusCode == 200;
+  }
+
+  Future<bool> declarerPresence(int emploiId, int professeurId, String date, String statut, {String? motif}) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/emploi-du-temps/$emploiId/presence'),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({
+        'professeur_id': professeurId,
+        'date': date,
+        'statut': statut,
+        'motif': motif,
+      }),
+    );
+    return response.statusCode == 200;
+  }
+
+  // ==========================================================
   // MATIÈRES
   // ==========================================================
 

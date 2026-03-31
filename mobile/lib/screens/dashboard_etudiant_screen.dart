@@ -6,6 +6,7 @@ import '../models/matiere.dart';
 import '../services/api_service.dart';
 import '../services/session_service.dart';
 import 'login_screen.dart';
+import 'emploi_du_temps_screen.dart';
 
 class DashboardEtudiantScreen extends StatefulWidget {
   const DashboardEtudiantScreen({super.key});
@@ -35,7 +36,7 @@ class _DashboardEtudiantScreenState extends State<DashboardEtudiantScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _chargerDonnees();
     _messages.add({
       'role': 'assistant',
@@ -61,7 +62,6 @@ class _DashboardEtudiantScreenState extends State<DashboardEtudiantScreen>
         _apiService.getNotesEtudiant(etudiant.id!),
       ];
 
-      // Charge les moyennes de la classe si l'étudiant a une classe
       if (etudiant.classeId != null) {
         futures.add(_apiService.getMoyennesClasse(etudiant.classeId!));
       }
@@ -72,8 +72,7 @@ class _DashboardEtudiantScreenState extends State<DashboardEtudiantScreen>
         matieres = results[0] as List<Matiere>;
         notes = results[1] as List<Note>;
         if (etudiant.classeId != null) {
-          _moyennesClasse =
-              results[2] as List<Map<String, dynamic>>;
+          _moyennesClasse = results[2] as List<Map<String, dynamic>>;
         }
         _isLoading = false;
       });
@@ -90,11 +89,9 @@ class _DashboardEtudiantScreenState extends State<DashboardEtudiantScreen>
     }
   }
 
-  // Retourne la moyenne de classe pour une matière
   double? _getMoyenneClasseForMatiere(String matiereNom) {
     try {
-      final m = _moyennesClasse.firstWhere(
-          (m) => m['matiere'] == matiereNom);
+      final m = _moyennesClasse.firstWhere((m) => m['matiere'] == matiereNom);
       return (m['moyenne_classe'] as num?)?.toDouble();
     } catch (e) {
       return null;
@@ -280,6 +277,7 @@ ${_construireContexteNotes()}''',
           unselectedLabelColor: Colors.white60,
           tabs: const [
             Tab(icon: Icon(Icons.grade), text: 'Mes notes'),
+            Tab(icon: Icon(Icons.calendar_month), text: 'Emploi du temps'),
             Tab(icon: Icon(Icons.chat_bubble_outline), text: 'Assistant'),
           ],
         ),
@@ -291,8 +289,7 @@ ${_construireContexteNotes()}''',
           // ── ONGLET NOTES ──────────────────────────────────────
           _isLoading
               ? const Center(
-                  child:
-                      CircularProgressIndicator(color: Color(0xFF11998E)))
+                  child: CircularProgressIndicator(color: Color(0xFF11998E)))
               : RefreshIndicator(
                   onRefresh: _chargerDonnees,
                   color: const Color(0xFF11998E),
@@ -300,24 +297,20 @@ ${_construireContexteNotes()}''',
                     padding: const EdgeInsets.all(16),
                     children: [
 
-                      // Carte moyenne générale + moyenne classe
                       if (mg != null) ...[
                         Container(
                           padding: const EdgeInsets.all(20),
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(
-                              colors: [
-                                Color(0xFF11998E),
-                                Color(0xFF38EF7D)
-                              ],
+                              colors: [Color(0xFF11998E), Color(0xFF38EF7D)],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                             ),
                             borderRadius: BorderRadius.circular(20),
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFF11998E)
-                                    .withOpacity(0.3),
+                                color:
+                                    const Color(0xFF11998E).withOpacity(0.3),
                                 blurRadius: 15,
                                 offset: const Offset(0, 6),
                               ),
@@ -355,10 +348,8 @@ ${_construireContexteNotes()}''',
                                     padding: const EdgeInsets.symmetric(
                                         horizontal: 12, vertical: 6),
                                     decoration: BoxDecoration(
-                                      color:
-                                          Colors.white.withOpacity(0.2),
-                                      borderRadius:
-                                          BorderRadius.circular(20),
+                                      color: Colors.white.withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(20),
                                     ),
                                     child: Text(
                                       mg >= 16
@@ -379,8 +370,6 @@ ${_construireContexteNotes()}''',
                                   ),
                                 ],
                               ),
-
-                              // Moyenne de la classe
                               if (mgClasse != null) ...[
                                 const SizedBox(height: 12),
                                 Container(
@@ -388,8 +377,7 @@ ${_construireContexteNotes()}''',
                                       horizontal: 14, vertical: 8),
                                   decoration: BoxDecoration(
                                     color: Colors.white.withOpacity(0.15),
-                                    borderRadius:
-                                        BorderRadius.circular(12),
+                                    borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: Row(
                                     mainAxisAlignment:
@@ -462,8 +450,7 @@ ${_construireContexteNotes()}''',
                                             ? const Color(0xFF11998E)
                                                 .withOpacity(0.1)
                                             : Colors.red.withOpacity(0.1),
-                                    borderRadius:
-                                        BorderRadius.circular(12),
+                                    borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: Icon(
                                     Icons.book,
@@ -475,7 +462,6 @@ ${_construireContexteNotes()}''',
                                   ),
                                 ),
                                 const SizedBox(width: 14),
-
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment:
@@ -505,7 +491,6 @@ ${_construireContexteNotes()}''',
                                             fontSize: 13,
                                           ),
                                         ),
-                                      // Moyenne de la classe pour cette matière
                                       if (moyenneClasse != null) ...[
                                         const SizedBox(height: 4),
                                         Text(
@@ -519,7 +504,6 @@ ${_construireContexteNotes()}''',
                                     ],
                                   ),
                                 ),
-
                                 if (moyenne != null)
                                   Container(
                                     padding: const EdgeInsets.symmetric(
@@ -536,8 +520,7 @@ ${_construireContexteNotes()}''',
                                                 const Color(0xFFEE0979)
                                               ],
                                       ),
-                                      borderRadius:
-                                          BorderRadius.circular(20),
+                                      borderRadius: BorderRadius.circular(20),
                                     ),
                                     child: Text(
                                       '${moyenne.toStringAsFixed(1)}/20',
@@ -554,8 +537,7 @@ ${_construireContexteNotes()}''',
                                         horizontal: 12, vertical: 6),
                                     decoration: BoxDecoration(
                                       color: Colors.grey.shade200,
-                                      borderRadius:
-                                          BorderRadius.circular(20),
+                                      borderRadius: BorderRadius.circular(20),
                                     ),
                                     child: Text(
                                       '-/20',
@@ -603,6 +585,9 @@ ${_construireContexteNotes()}''',
                   ),
                 ),
 
+          // ── ONGLET EMPLOI DU TEMPS ────────────────────────────
+          const EmploiDuTempsScreen(),
+
           // ── ONGLET CHATBOT ────────────────────────────────────
           Column(
             children: [
@@ -610,8 +595,7 @@ ${_construireContexteNotes()}''',
                 child: ListView.builder(
                   controller: _scrollController,
                   padding: const EdgeInsets.all(16),
-                  itemCount:
-                      _messages.length + (_isChatLoading ? 1 : 0),
+                  itemCount: _messages.length + (_isChatLoading ? 1 : 0),
                   itemBuilder: (context, index) {
                     if (_isChatLoading && index == _messages.length) {
                       return _buildTypingIndicator();
@@ -664,8 +648,7 @@ ${_construireContexteNotes()}''',
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color:
-                                        Colors.black.withOpacity(0.06),
+                                    color: Colors.black.withOpacity(0.06),
                                     blurRadius: 8,
                                     offset: const Offset(0, 2),
                                   ),
@@ -707,8 +690,7 @@ ${_construireContexteNotes()}''',
                 ),
 
               Container(
-                padding:
-                    const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   boxShadow: [
@@ -749,10 +731,7 @@ ${_construireContexteNotes()}''',
                         height: 46,
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
-                            colors: [
-                              Color(0xFF11998E),
-                              Color(0xFF38EF7D)
-                            ],
+                            colors: [Color(0xFF11998E), Color(0xFF38EF7D)],
                           ),
                           borderRadius: BorderRadius.circular(14),
                         ),
@@ -778,8 +757,7 @@ ${_construireContexteNotes()}''',
       },
       child: Container(
         margin: const EdgeInsets.only(right: 8),
-        padding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
           color: const Color(0xFF11998E).withOpacity(0.1),
           borderRadius: BorderRadius.circular(20),
@@ -816,8 +794,8 @@ ${_construireContexteNotes()}''',
           ),
           const SizedBox(width: 8),
           Container(
-            padding: const EdgeInsets.symmetric(
-                horizontal: 14, vertical: 12),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: const BorderRadius.only(
