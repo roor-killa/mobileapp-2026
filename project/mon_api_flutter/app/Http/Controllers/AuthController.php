@@ -195,4 +195,40 @@ class AuthController extends Controller
 
         return response()->json($transactions);
     }
+
+    public function processQrPayment(Request $request) {
+        $request->validate([
+            'receiver_id' => 'required|exists:users,id',
+            'amount' => 'required|numeric|min:0.01',
+        ]);
+
+        $sender = $request->user();
+        $receiver = User::find($request->receiver_id);
+
+        if ($sender->id === $receiver->id) {
+            return response()->json(['message' => 'Opération impossible'], 400);
+        }
+
+        if ($sender->balance < $request->amount) {
+            return response()->json(['message' => 'Solde insuffisant'], 400);
+        }
+
+        // Transaction Atomique (Tout passe ou tout échoue)
+        \DB::transaction(function () use ($sender, $receiver, $request) {
+            $sender->decrement('balance', $request->amount);
+            $receiver->increment('balance', $request->amount);
+
+            // Créer l'historique pour les deux
+            Transaction::create([
+                'user_id' => $sender->id,
+                'amount' => $request->amount,
+                'type' => 'transfert_envoye',
+                'status' => 'success',
+                'description' => "Paiement QR à {$receiver->name}",
+                'reference' => 'QR-' . uniqid()
+            ]);
+        });
+
+        return response()->json(['message' => 'Paiement effectué !', 'new_balance' => $sender->balance]);
+    }
 }

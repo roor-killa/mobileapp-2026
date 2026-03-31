@@ -55,5 +55,7 @@ Route::middleware('auth:sanctum')->group(function () {
     
     // Stripe : Création de l'intention de paiement
     Route::post('/payment/intent', [StripeController::class, 'createPaymentIntent']);
+
+    Route::post('/qr-payment', [AuthController::class, 'processQrPayment']);
     
 });
