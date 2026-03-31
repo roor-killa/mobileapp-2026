@@ -50,4 +50,9 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+    // RELATION : Un utilisateur peut posséder PLUSIEURS pockets
+    public function pockets()
+    {
+        return $this->hasMany(Pocket::class);
+    }
 }

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'crypto_screen.dart';
-import 'transfer_screen.dart';
 import 'history_screen.dart';
+import 'wallet_screen.dart'; // <-- C'est bien le bon import !
 
 // --- NOS NOUVELLES COULEURS THEME (Inspirées du React) ---
 const Color bgDark = Color(0xFF09090B); // zinc-950
@@ -21,12 +21,11 @@ class _MainScreenState extends State<MainScreen> {
 
   // Liste de tes futurs écrans redesignés
   final List<Widget> _screens = [
-    const TransferScreen(), // <-- Temporairement le transfert fait office de wallet en attendant le Dashboard
-    const HistoryScreen(),  // <-- L'historique est de retour !
+    const WalletScreen(),   // <-- La bonne classe de ton wallet_screen.dart
+    const HistoryScreen(),  
     const CryptoScreen(),
     const Center(child: Text("Chat IA (À venir)", style: TextStyle(color: Colors.white))), 
   ];
-
 
   @override
   Widget build(BuildContext context) {
@@ -41,16 +40,16 @@ class _MainScreenState extends State<MainScreen> {
           children: [
             Row(
               children: [
-                CircleAvatar(
+                const CircleAvatar(
                   backgroundColor: emerald500,
-                  child: const Text('B', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                  child: Text('B', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
                 ),
                 const SizedBox(width: 10),
-                Column(
+                const Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('Compte', style: TextStyle(color: textGray, fontSize: 10, fontWeight: FontWeight.bold)),
-                    const Text('Boss', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+                    Text('Boss', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
                   ],
                 ),
               ],

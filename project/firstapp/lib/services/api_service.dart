@@ -204,4 +204,64 @@ class ApiService {
       return {'success': false, 'message': 'Erreur réseau'};
     }
   }
+  // =====================================================================
+  // GESTION DES POCKETS (SOUS-COMPTES)
+  // =====================================================================
+  
+  // 1. Récupérer la liste des pockets
+  Future<Map<String, dynamic>> getPockets() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+    if (token == null) return {'success': false, 'message': 'Non connecté'};
+
+    final url = Uri.parse('$baseUrl/pockets');
+    try {
+      final response = await http.get(url, headers: {'Authorization': 'Bearer $token'});
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {'success': false, 'message': 'Erreur réseau'};
+    }
+  }
+
+  // 2. Créer un nouveau pocket
+  Future<Map<String, dynamic>> createPocket(String nom) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+    if (token == null) return {'success': false, 'message': 'Non connecté'};
+
+    final url = Uri.parse('$baseUrl/pockets');
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
+        body: jsonEncode({'nom': nom}), // On envoie juste le nom, Laravel gère la couleur/icône par défaut
+      );
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {'success': false, 'message': 'Erreur réseau'};
+    }
+  }
+
+  // 3. Transférer de l'argent (Principal <-> Pocket)
+  Future<Map<String, dynamic>> transferPocket(int pocketId, double montant, String direction) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+    if (token == null) return {'success': false, 'message': 'Non connecté'};
+
+    final url = Uri.parse('$baseUrl/pockets/transfer');
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
+        body: jsonEncode({
+          'pocket_id': pocketId,
+          'montant': montant,
+          'direction': direction // Doit être 'to_pocket' ou 'to_main'
+        }),
+      );
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {'success': false, 'message': 'Erreur réseau'};
+    }
+  }
 }
