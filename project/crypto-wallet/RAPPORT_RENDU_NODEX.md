@@ -47,7 +47,7 @@ urlcolor: "RoyalBlue"
 - [9. Déploiement grand public (manques)](#s9)
 - [10. Difficultés rencontrées](#s10)
 - [11. Conclusion](#s11)
-- [12. Sources et hyperliens](#s12)
+- [12. Sitographie et sources (liens web)](#s12)
 
 **Fin de document**
 - [Annexes](#annexes) — [A. Glossaire](#a-glossaire) · [B. Fichiers](#a-fichiers) · [C. Commandes](#a-commandes) · [D. Liens GitHub](#a-liens)
@@ -551,9 +551,11 @@ NodEX regroupe une **application Flutter**, une **API Laravel**, **Appwrite**, *
 
 ---
 
-## 12. Sources, documentation et ressources utilisées {#s12}
+## 12. Sitographie et sources en ligne {#s12}
 
-Les tableaux ci-dessous regroupent les **sources officielles** : chaque nom est un **hyperlien** cliquable (PDF, navigateur, GitHub).
+**Sitographie** = liste des **sites web**, documentations et dépôts consultés pour réaliser le projet (équivalent à une bibliographie, mais pour Internet). C’est la même idée que sur des rapports publiés sur GitHub (ex. portfolio ou README détaillé d’un autre étudiant) : des **liens cliquables** vers chaque ressource.
+
+Les tableaux ci-dessous regroupent ces sources : chaque nom est un **hyperlien** (PDF, navigateur, GitHub).
 
 ### 12.1 Frameworks et langages
 
@@ -702,6 +704,6 @@ Guide détaillé : [README du dépôt](https://github.com/roor-killa/mobileapp-2
 
 ## 13. Déclaration d’honnêteté académique {#s13}
 
-Je déclare que ce rapport décrit mon travail et que les sources externes sont citées dans la [section 12](#s12) (hyperliens). Les **annexes** ([§Annexes](#annexes)) complètent ce document à titre de glossaire et de rappels pratiques. Les captures d’écran proviennent de **mon** exécution de l’application NodEX. Les extraits de code tiers respectent les licences des projets concernés.
+Je déclare que ce rapport décrit mon travail et que les sources externes sont citées dans la [sitographie (section 12)](#s12). Les **annexes** ([§Annexes](#annexes)) complètent ce document à titre de glossaire et de rappels pratiques. Les captures d’écran proviennent de **mon** exécution de l’application NodEX. Les extraits de code tiers respectent les licences des projets concernés.
 
 [↑ Retour au sommaire](#sommaire)
