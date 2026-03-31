@@ -22,12 +22,11 @@ class _DashboardEtudiantScreenState extends State<DashboardEtudiantScreen>
 
   List<Note> notes = [];
   List<Matiere> matieres = [];
+  List<Map<String, dynamic>> _moyennesClasse = [];
   bool _isLoading = false;
 
-  // Onglets : Notes | Chatbot
   late TabController _tabController;
 
-  // Chatbot
   final List<Map<String, String>> _messages = [];
   final TextEditingController _chatController = TextEditingController();
   bool _isChatLoading = false;
@@ -38,7 +37,6 @@ class _DashboardEtudiantScreenState extends State<DashboardEtudiantScreen>
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _chargerDonnees();
-    // Message d'accueil du chatbot au démarrage
     _messages.add({
       'role': 'assistant',
       'content':
@@ -54,18 +52,29 @@ class _DashboardEtudiantScreenState extends State<DashboardEtudiantScreen>
     super.dispose();
   }
 
-  // Charge les matières et les notes de l'étudiant connecté
   Future<void> _chargerDonnees() async {
     setState(() => _isLoading = true);
     try {
-      final etudiantId = _session.etudiantConnecte!.id!;
-      final results = await Future.wait([
+      final etudiant = _session.etudiantConnecte!;
+      final futures = [
         _apiService.getMatieres(),
-        _apiService.getNotesEtudiant(etudiantId),
-      ]);
+        _apiService.getNotesEtudiant(etudiant.id!),
+      ];
+
+      // Charge les moyennes de la classe si l'étudiant a une classe
+      if (etudiant.classeId != null) {
+        futures.add(_apiService.getMoyennesClasse(etudiant.classeId!));
+      }
+
+      final results = await Future.wait(futures);
+
       setState(() {
         matieres = results[0] as List<Matiere>;
         notes = results[1] as List<Note>;
+        if (etudiant.classeId != null) {
+          _moyennesClasse =
+              results[2] as List<Map<String, dynamic>>;
+        }
         _isLoading = false;
       });
     } catch (e) {
@@ -73,7 +82,6 @@ class _DashboardEtudiantScreenState extends State<DashboardEtudiantScreen>
     }
   }
 
-  // Retourne la note d'une matière spécifique, ou null si pas de note
   Note? _getNoteForMatiere(int matiereId) {
     try {
       return notes.firstWhere((n) => n.matiereId == matiereId);
@@ -82,21 +90,41 @@ class _DashboardEtudiantScreenState extends State<DashboardEtudiantScreen>
     }
   }
 
-  // Calcule la moyenne générale sur toutes les matières
+  // Retourne la moyenne de classe pour une matière
+  double? _getMoyenneClasseForMatiere(String matiereNom) {
+    try {
+      final m = _moyennesClasse.firstWhere(
+          (m) => m['matiere'] == matiereNom);
+      return (m['moyenne_classe'] as num?)?.toDouble();
+    } catch (e) {
+      return null;
+    }
+  }
+
   double? get _moyenneGenerale {
-    final moyennes = notes
-        .map((n) => n.moyenne)
+    final moyennes =
+        notes.map((n) => n.moyenne).whereType<double>().toList();
+    if (moyennes.isEmpty) return null;
+    return moyennes.reduce((a, b) => a + b) / moyennes.length;
+  }
+
+  double? get _moyenneGeneraleClasse {
+    if (_moyennesClasse.isEmpty) return null;
+    final moyennes = _moyennesClasse
+        .map((m) => (m['moyenne_classe'] as num?)?.toDouble())
         .whereType<double>()
         .toList();
     if (moyennes.isEmpty) return null;
     return moyennes.reduce((a, b) => a + b) / moyennes.length;
   }
 
-  // Construit le contexte des notes pour l'envoyer au chatbot
   String _construireContexteNotes() {
     final etudiant = _session.etudiantConnecte!;
     final buffer = StringBuffer();
     buffer.writeln('Étudiant : ${etudiant.prenom} ${etudiant.nom}');
+    if (etudiant.classeNom != null) {
+      buffer.writeln('Classe : ${etudiant.classeNom}');
+    }
     buffer.writeln('');
     buffer.writeln('Notes par matière :');
 
@@ -124,7 +152,6 @@ class _DashboardEtudiantScreenState extends State<DashboardEtudiantScreen>
     return buffer.toString();
   }
 
-  // Envoie un message au chatbot via l'API Anthropic
   Future<void> _envoyerMessage() async {
     final texte = _chatController.text.trim();
     if (texte.isEmpty) return;
@@ -175,7 +202,8 @@ ${_construireContexteNotes()}''',
         setState(() {
           _messages.add({
             'role': 'assistant',
-            'content': 'Désolé, je n\'arrive pas à répondre pour le moment. 😕',
+            'content':
+                'Désolé, je n\'arrive pas à répondre pour le moment. 😕',
           });
           _isChatLoading = false;
         });
@@ -209,6 +237,7 @@ ${_construireContexteNotes()}''',
   Widget build(BuildContext context) {
     final etudiant = _session.etudiantConnecte!;
     final mg = _moyenneGenerale;
+    final mgClasse = _moyenneGeneraleClasse;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF0F4FF),
@@ -225,7 +254,7 @@ ${_construireContexteNotes()}''',
                   fontSize: 16),
             ),
             Text(
-              'Espace étudiant',
+              etudiant.classeNom ?? 'Espace étudiant',
               style: TextStyle(
                   color: Colors.white.withOpacity(0.7), fontSize: 12),
             ),
@@ -262,7 +291,8 @@ ${_construireContexteNotes()}''',
           // ── ONGLET NOTES ──────────────────────────────────────
           _isLoading
               ? const Center(
-                  child: CircularProgressIndicator(color: Color(0xFF11998E)))
+                  child:
+                      CircularProgressIndicator(color: Color(0xFF11998E)))
               : RefreshIndicator(
                   onRefresh: _chargerDonnees,
                   color: const Color(0xFF11998E),
@@ -270,72 +300,119 @@ ${_construireContexteNotes()}''',
                     padding: const EdgeInsets.all(16),
                     children: [
 
+                      // Carte moyenne générale + moyenne classe
                       if (mg != null) ...[
                         Container(
                           padding: const EdgeInsets.all(20),
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(
-                              colors: [Color(0xFF11998E), Color(0xFF38EF7D)],
+                              colors: [
+                                Color(0xFF11998E),
+                                Color(0xFF38EF7D)
+                              ],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                             ),
                             borderRadius: BorderRadius.circular(20),
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFF11998E).withOpacity(0.3),
+                                color: const Color(0xFF11998E)
+                                    .withOpacity(0.3),
                                 blurRadius: 15,
                                 offset: const Offset(0, 6),
                               ),
                             ],
                           ),
-                          child: Row(
+                          child: Column(
                             children: [
-                              const Icon(Icons.emoji_events,
-                                  color: Colors.white, size: 40),
-                              const SizedBox(width: 16),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                              Row(
                                 children: [
-                                  const Text(
-                                    'Moyenne générale',
-                                    style: TextStyle(
-                                        color: Colors.white70, fontSize: 13),
+                                  const Icon(Icons.emoji_events,
+                                      color: Colors.white, size: 40),
+                                  const SizedBox(width: 16),
+                                  Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'Ma moyenne générale',
+                                        style: TextStyle(
+                                            color: Colors.white70,
+                                            fontSize: 13),
+                                      ),
+                                      Text(
+                                        '${mg.toStringAsFixed(2)}/20',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 32,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                  Text(
-                                    '${mg.toStringAsFixed(2)}/20',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 32,
-                                      fontWeight: FontWeight.bold,
+                                  const Spacer(),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 12, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color:
+                                          Colors.white.withOpacity(0.2),
+                                      borderRadius:
+                                          BorderRadius.circular(20),
+                                    ),
+                                    child: Text(
+                                      mg >= 16
+                                          ? 'Très bien'
+                                          : mg >= 14
+                                              ? 'Bien'
+                                              : mg >= 12
+                                                  ? 'Assez bien'
+                                                  : mg >= 10
+                                                      ? 'Passable'
+                                                      : 'Insuffisant',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13,
+                                      ),
                                     ),
                                   ),
                                 ],
                               ),
-                              const Spacer(),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Text(
-                                  mg >= 16
-                                      ? 'Très bien'
-                                      : mg >= 14
-                                          ? 'Bien'
-                                          : mg >= 12
-                                              ? 'Assez bien'
-                                              : mg >= 10
-                                                  ? 'Passable'
-                                                  : 'Insuffisant',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 13,
+
+                              // Moyenne de la classe
+                              if (mgClasse != null) ...[
+                                const SizedBox(height: 12),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 14, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.15),
+                                    borderRadius:
+                                        BorderRadius.circular(12),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      const Text(
+                                        'Moyenne de la classe',
+                                        style: TextStyle(
+                                            color: Colors.white70,
+                                            fontSize: 13),
+                                      ),
+                                      Text(
+                                        '${mgClasse.toStringAsFixed(2)}/20',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 15,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                              ),
+                              ],
                             ],
                           ),
                         ),
@@ -355,6 +432,8 @@ ${_construireContexteNotes()}''',
                       ...matieres.map((matiere) {
                         final note = _getNoteForMatiere(matiere.id);
                         final moyenne = note?.moyenne;
+                        final moyenneClasse =
+                            _getMoyenneClasseForMatiere(matiere.nom);
 
                         return Container(
                           margin: const EdgeInsets.only(bottom: 12),
@@ -380,9 +459,11 @@ ${_construireContexteNotes()}''',
                                     color: moyenne == null
                                         ? Colors.grey.withOpacity(0.1)
                                         : moyenne >= 10
-                                            ? const Color(0xFF11998E).withOpacity(0.1)
+                                            ? const Color(0xFF11998E)
+                                                .withOpacity(0.1)
                                             : Colors.red.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(12),
+                                    borderRadius:
+                                        BorderRadius.circular(12),
                                   ),
                                   child: Icon(
                                     Icons.book,
@@ -397,7 +478,8 @@ ${_construireContexteNotes()}''',
 
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         matiere.nom,
@@ -423,6 +505,17 @@ ${_construireContexteNotes()}''',
                                             fontSize: 13,
                                           ),
                                         ),
+                                      // Moyenne de la classe pour cette matière
+                                      if (moyenneClasse != null) ...[
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          'Classe : ${moyenneClasse.toStringAsFixed(1)}/20',
+                                          style: TextStyle(
+                                            color: Colors.grey.shade400,
+                                            fontSize: 11,
+                                          ),
+                                        ),
+                                      ],
                                     ],
                                   ),
                                 ),
@@ -434,10 +527,17 @@ ${_construireContexteNotes()}''',
                                     decoration: BoxDecoration(
                                       gradient: LinearGradient(
                                         colors: moyenne >= 10
-                                            ? [const Color(0xFF11998E), const Color(0xFF38EF7D)]
-                                            : [const Color(0xFFFF6B6B), const Color(0xFFEE0979)],
+                                            ? [
+                                                const Color(0xFF11998E),
+                                                const Color(0xFF38EF7D)
+                                              ]
+                                            : [
+                                                const Color(0xFFFF6B6B),
+                                                const Color(0xFFEE0979)
+                                              ],
                                       ),
-                                      borderRadius: BorderRadius.circular(20),
+                                      borderRadius:
+                                          BorderRadius.circular(20),
                                     ),
                                     child: Text(
                                       '${moyenne.toStringAsFixed(1)}/20',
@@ -454,7 +554,8 @@ ${_construireContexteNotes()}''',
                                         horizontal: 12, vertical: 6),
                                     decoration: BoxDecoration(
                                       color: Colors.grey.shade200,
-                                      borderRadius: BorderRadius.circular(20),
+                                      borderRadius:
+                                          BorderRadius.circular(20),
                                     ),
                                     child: Text(
                                       '-/20',
@@ -483,7 +584,8 @@ ${_construireContexteNotes()}''',
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.access_time, color: Colors.orange),
+                            const Icon(Icons.access_time,
+                                color: Colors.orange),
                             const SizedBox(width: 10),
                             Text(
                               'Gestion des absences — Bientôt disponible',
@@ -508,7 +610,8 @@ ${_construireContexteNotes()}''',
                 child: ListView.builder(
                   controller: _scrollController,
                   padding: const EdgeInsets.all(16),
-                  itemCount: _messages.length + (_isChatLoading ? 1 : 0),
+                  itemCount:
+                      _messages.length + (_isChatLoading ? 1 : 0),
                   itemBuilder: (context, index) {
                     if (_isChatLoading && index == _messages.length) {
                       return _buildTypingIndicator();
@@ -531,7 +634,10 @@ ${_construireContexteNotes()}''',
                               height: 32,
                               decoration: BoxDecoration(
                                 gradient: const LinearGradient(
-                                  colors: [Color(0xFF11998E), Color(0xFF38EF7D)],
+                                  colors: [
+                                    Color(0xFF11998E),
+                                    Color(0xFF38EF7D)
+                                  ],
                                 ),
                                 borderRadius: BorderRadius.circular(10),
                               ),
@@ -551,12 +657,15 @@ ${_construireContexteNotes()}''',
                                 borderRadius: BorderRadius.only(
                                   topLeft: const Radius.circular(16),
                                   topRight: const Radius.circular(16),
-                                  bottomLeft: Radius.circular(isUser ? 16 : 4),
-                                  bottomRight: Radius.circular(isUser ? 4 : 16),
+                                  bottomLeft:
+                                      Radius.circular(isUser ? 16 : 4),
+                                  bottomRight:
+                                      Radius.circular(isUser ? 4 : 16),
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withOpacity(0.06),
+                                    color:
+                                        Colors.black.withOpacity(0.06),
                                     blurRadius: 8,
                                     offset: const Offset(0, 2),
                                   ),
@@ -598,7 +707,8 @@ ${_construireContexteNotes()}''',
                 ),
 
               Container(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                padding:
+                    const EdgeInsets.fromLTRB(16, 8, 16, 16),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   boxShadow: [
@@ -616,7 +726,8 @@ ${_construireContexteNotes()}''',
                         controller: _chatController,
                         decoration: InputDecoration(
                           hintText: 'Pose ta question...',
-                          hintStyle: TextStyle(color: Colors.grey.shade400),
+                          hintStyle:
+                              TextStyle(color: Colors.grey.shade400),
                           filled: true,
                           fillColor: const Color(0xFFF0F4FF),
                           border: OutlineInputBorder(
@@ -638,7 +749,10 @@ ${_construireContexteNotes()}''',
                         height: 46,
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
-                            colors: [Color(0xFF11998E), Color(0xFF38EF7D)],
+                            colors: [
+                              Color(0xFF11998E),
+                              Color(0xFF38EF7D)
+                            ],
                           ),
                           borderRadius: BorderRadius.circular(14),
                         ),
@@ -664,11 +778,13 @@ ${_construireContexteNotes()}''',
       },
       child: Container(
         margin: const EdgeInsets.only(right: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        padding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
           color: const Color(0xFF11998E).withOpacity(0.1),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: const Color(0xFF11998E).withOpacity(0.3)),
+          border: Border.all(
+              color: const Color(0xFF11998E).withOpacity(0.3)),
         ),
         child: Text(
           text,
@@ -695,11 +811,13 @@ ${_construireContexteNotes()}''',
                   colors: [Color(0xFF11998E), Color(0xFF38EF7D)]),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.smart_toy, color: Colors.white, size: 18),
+            child: const Icon(Icons.smart_toy,
+                color: Colors.white, size: 18),
           ),
           const SizedBox(width: 8),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            padding: const EdgeInsets.symmetric(
+                horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: const BorderRadius.only(
