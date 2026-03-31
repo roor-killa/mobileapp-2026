@@ -1,4 +1,4 @@
-# Sécurité — MoneyTransferApp
+# Sécurité - MoneyTransferApp
 
 ## Vue d'ensemble
 
@@ -6,15 +6,15 @@ La sécurité de MoneyTransferApp repose sur **5 couches** complémentaires. Cha
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  Couche 5 — Blockchain Algorand (Immuabilité)           │
+│  Couche 5 - Blockchain Algorand (Immuabilité)           │
 │  ┌───────────────────────────────────────────────────┐  │
-│  │  Couche 4 — QR Code HMAC + TTL (Anti-replay)     │  │
+│  │  Couche 4 - QR Code HMAC + TTL (Anti-replay)     │  │
 │  │  ┌─────────────────────────────────────────────┐  │  │
-│  │  │  Couche 3 — Stripe Webhook (Anti-fraude)   │  │  │
+│  │  │  Couche 3 - Stripe Webhook (Anti-fraude)   │  │  │
 │  │  │  ┌───────────────────────────────────────┐  │  │  │
-│  │  │  │  Couche 2 — PIN bcrypt (Autorisation) │  │  │  │
+│  │  │  │  Couche 2 - PIN bcrypt (Autorisation) │  │  │  │
 │  │  │  │  ┌─────────────────────────────────┐  │  │  │  │
-│  │  │  │  │  Couche 1 — Sanctum (AuthN)    │  │  │  │  │
+│  │  │  │  │  Couche 1 - Sanctum (AuthN)    │  │  │  │  │
 │  │  │  │  └─────────────────────────────────┘  │  │  │  │
 │  │  │  └───────────────────────────────────────┘  │  │  │
 │  │  └─────────────────────────────────────────────┘  │  │
@@ -24,7 +24,7 @@ La sécurité de MoneyTransferApp repose sur **5 couches** complémentaires. Cha
 
 ---
 
-## Couche 1 — Authentification (Laravel Sanctum)
+## Couche 1 - Authentification (Laravel Sanctum)
 
 ### Comment ça fonctionne
 
@@ -78,7 +78,7 @@ $token = $user->createToken('auth_token')->plainTextToken;
 
 ---
 
-## Couche 2 — PIN de confirmation (Transferts)
+## Couche 2 - PIN de confirmation (Transferts)
 
 ### Pourquoi un PIN séparé du mot de passe ?
 
@@ -115,7 +115,7 @@ public function verifyPin(string $pin): bool
 ### Stockage sécurisé
 
 ```php
-// À l'inscription — PIN hashé avec bcrypt
+// À l'inscription - PIN hashé avec bcrypt
 'pin_hash' => Hash::make($validated['pin'])
 
 // Jamais retourné dans les réponses API
@@ -124,7 +124,7 @@ protected $hidden = ['password', 'pin_hash', 'remember_token'];
 
 ---
 
-## Couche 3 — Webhook Stripe (Anti-fraude)
+## Couche 3 - Webhook Stripe (Anti-fraude)
 
 ### Problème
 
@@ -168,7 +168,7 @@ if (Transaction::where('reference', $paymentIntent->id)->exists()) {
 
 ---
 
-## Couche 4 — QR Code HMAC + TTL (Anti-replay)
+## Couche 4 - QR Code HMAC + TTL (Anti-replay)
 
 ### Problème
 
@@ -218,7 +218,7 @@ Marquer is_used = true  ← Ne peut plus être réutilisé
 
 ---
 
-## Couche 5 — Blockchain Algorand (Immuabilité)
+## Couche 5 - Blockchain Algorand (Immuabilité)
 
 ### Problème
 
