@@ -1,19 +1,69 @@
-# Rapport de projet — NodEX (portefeuille crypto)
+---
+title: "Rapport de projet — NodEX"
+subtitle: "Application portefeuille crypto (Flutter · Laravel · Appwrite)"
+author: "meranville"
+date: "Mars 2026"
+lang: fr
+geometry: margin=2.4cm
+fontsize: 11pt
+colorlinks: true
+linkcolor: "RoyalBlue"
+urlcolor: "RoyalBlue"
+---
 
-**Auteur :** meranville  
-**Dépôt :** [mobileapp-2026](https://github.com/roor-killa/mobileapp-2026) — branche **`meranville`**  
-**Chemin du projet dans le dépôt :** `project/crypto-wallet/`  
-**Date du rapport :** mars 2026  
+# Rapport de projet — NodEX  
+### Portefeuille crypto · mobile · API · assistant IA
+
+> **Document de rendu** — Projet dans le cadre du dépôt [mobileapp-2026](https://github.com/roor-killa/mobileapp-2026) (branche **`meranville`**).
+
+| | |
+|:---|:---|
+| **Auteur** | meranville |
+| **Dépôt Git** | [github.com/roor-killa/mobileapp-2026](https://github.com/roor-killa/mobileapp-2026) |
+| **Code NodEX** | dossier `project/crypto-wallet/` |
+| **Rapport (Markdown)** | [`RAPPORT_RENDU_NODEX.md`](RAPPORT_RENDU_NODEX.md) |
+| **Captures** | dossier [`docs/rapport-captures/`](docs/rapport-captures/) |
+| **Date** | mars 2026 |
 
 ---
 
-## 1. Résumé
+## Sommaire {#sommaire}
+
+*Navigation interne : les liens ci-dessous sont **cliquables** dans le **PDF** généré (Pandoc) et, selon votre lecteur Markdown, à l’écran. Pour une mise en page soignée et un sommaire pleinement actif, privilégier le fichier **`RAPPORT_RENDU_NODEX.pdf`**.*
+
+**Introduction**
+- [1. Résumé](#s1)
+- [2. Contexte et objectifs](#s2)
+- [3. Description de la solution](#s3)
+
+**Interface et architecture**
+- [4. Captures d’écran](#s4)
+- [5. Architecture du projet](#s5)
+- [6. API REST — liste et fonctionnement](#s6)
+- [7. Explication détaillée du code](#s7)
+
+**Méthode et perspectives**
+- [8. Méthode et mise en œuvre](#s8)
+- [9. Déploiement grand public (manques)](#s9)
+- [10. Difficultés rencontrées](#s10)
+- [11. Conclusion](#s11)
+- [12. Sources et hyperliens](#s12)
+
+**Fin de document**
+- [Annexes](#annexes) — [A. Glossaire](#a-glossaire) · [B. Fichiers](#a-fichiers) · [C. Commandes](#a-commandes) · [D. Liens GitHub](#a-liens)
+- [13. Déclaration d’honnêteté](#s13)
+
+[↑ Haut de page](#sommaire)
+
+---
+
+## 1. Résumé {#s1}
 
 J’ai développé **NodEX**, une application mobile de type **portefeuille crypto** avec des fonctions financières (soldes, envoi, historique, virements en euros, carte virtuelle côté API), une **authentification** gérée par **Appwrite**, un **assistant conversationnel** via **Groq**, et des paiements intégrés avec **Stripe** (SDK Flutter). Le tout s’appuie sur une **API REST Laravel** exposée sous `/api`. Les **cours des cryptos** affichés à l’écran proviennent de l’**API publique CoinGecko** (appelée depuis l’app Flutter). Ce document présente le travail réalisé, des **captures d’écran**, l’**architecture**, le **fonctionnement des API**, des **extraits de code expliqués**, ce qui manque pour une **mise à disposition du grand public**, et les **sources** qui m’ont aidé.
 
 ---
 
-## 2. Contexte et objectifs
+## 2. Contexte et objectifs {#s2}
 
 - **Contexte :** projet mobile dans le cadre du cours / dépôt partagé L3 (application mobile 2026).  
 - **Objectif initial :** disposer d’une application utilisable en **local** (simulateur ou téléphone) connectée à un **backend** documenté.  
@@ -21,7 +71,7 @@ J’ai développé **NodEX**, une application mobile de type **portefeuille cryp
 
 ---
 
-## 3. Description de la solution
+## 3. Description de la solution {#s3}
 
 ### 3.1 Vue d’ensemble
 
@@ -47,7 +97,7 @@ J’ai développé **NodEX**, une application mobile de type **portefeuille cryp
 
 ---
 
-## 4. Captures d’écran de l’application
+## 4. Captures d’écran de l’application {#s4}
 
 Les images suivantes illustrent les principaux écrans de NodEX (simulateur iPhone, mars 2026). Elles sont stockées dans le dépôt sous `docs/rapport-captures/`.
 
@@ -95,13 +145,13 @@ Profil (initiale, pseudo, email), **Serveur & assistant (IA)**, Ondes, devise EU
 
 ### 4.8 Assistant NodEX (IA)
 
-Conversation avec l’assistant : champ de saisie, envoi vers le backend **ou** secours Groq direct selon configuration (voir section 7).
+Conversation avec l’assistant : champ de saisie, envoi vers le backend **ou** secours Groq direct selon configuration (voir [§7 Explication du code](#s7)).
 
 ![Assistant NodEX](docs/rapport-captures/08-assistant-ia.png)
 
 ---
 
-## 5. Architecture du projet
+## 5. Architecture du projet {#s5}
 
 ### 5.1 Schéma global
 
@@ -173,7 +223,7 @@ Le fichier `lib/app.dart` définit la logique d’affichage :
 
 ---
 
-## 6. API REST — liste et fonctionnement
+## 6. API REST — liste et fonctionnement {#s6}
 
 Toutes les URL ci-dessous sont relatives à la **base API** configurée dans l’app, par exemple `http://127.0.0.1:8000/api`. Les routes **protégées** attendent un en-tête :
 
@@ -211,7 +261,7 @@ Toutes les URL ci-dessous sont relatives à la **base API** configurée dans l�
 
 ---
 
-## 7. Explication détaillée du code
+## 7. Explication détaillée du code {#s7}
 
 Cette section décrit **à quoi sert chaque partie importante** du projet, dans l’ordre logique : démarrage de l’app Flutter, état global, appels réseau, puis chaîne Laravel (middleware → routes → contrôleurs).
 
@@ -428,7 +478,7 @@ Les méthodes **`balance`**, **`me`**, **`history`** sont en lecture seule : sol
 
 ---
 
-## 8. Méthode et mise en œuvre
+## 8. Méthode et mise en œuvre {#s8}
 
 1. Mise en place du backend Laravel (`.env`, Composer, migrations, `php artisan serve`).  
 2. Développement de l’app Flutter et connexion à l’API (`API_BASE_URL` via `--dart-define` ou réglages in-app).  
@@ -438,7 +488,7 @@ Les méthodes **`balance`**, **`me`**, **`history`** sont en lecture seule : sol
 
 ---
 
-## 9. Ce qui manque pour un déploiement « grand public »
+## 9. Ce qui manque pour un déploiement « grand public » {#s9}
 
 Ce projet est adapté au **développement et à la démonstration**. Pour une **publication large** (stores, utilisateurs inconnus, charge réelle), il faudrait notamment :
 
@@ -483,7 +533,7 @@ En résumé : le travail actuel constitue une **base technique solide pour un pr
 
 ---
 
-## 10. Difficultés rencontrées (exemples types)
+## 10. Difficultés rencontrées (exemples types) {#s10}
 
 - Faire coïncider l’**URL de l’API** entre simulateur, téléphone physique et machine hébergeant Laravel (adresse IP locale, pare-feu).  
 - Gérer l’**authentification** (JWT Appwrite) côté Laravel et côté Flutter de manière cohérente.  
@@ -495,81 +545,163 @@ En résumé : le travail actuel constitue une **base technique solide pour un pr
 
 ---
 
-## 11. Conclusion
+## 11. Conclusion {#s11}
 
-NodEX regroupe une **application Flutter**, une **API Laravel**, **Appwrite**, **Groq**, **CoinGecko** et **Stripe** dans une expérience de portefeuille et de services associés. Le rendu est **démontrable en local**, illustré par des **captures d’écran** dans ce rapport, et documenté dans le `README.md` du dépôt. Pour une **diffusion publique**, il reste indispensable de traiter **légal**, **sécurité**, **hébergement**, **stores** et **exploitation** comme un produit à part entière.
+NodEX regroupe une **application Flutter**, une **API Laravel**, **Appwrite**, **Groq**, **CoinGecko** et **Stripe** dans une expérience de portefeuille et de services associés. Le rendu est **démontrable en local**, illustré par des **captures d’écran** ([§4](#s4)), et documenté dans le [**README du dépôt**](https://github.com/roor-killa/mobileapp-2026/blob/meranville/README.md) (branche `meranville`). Pour une **diffusion publique**, il reste indispensable de traiter **légal**, **sécurité**, **hébergement**, **stores** et **exploitation** comme un produit à part entière — voir [§9](#s9).
 
 ---
 
-## 12. Sources, documentation et ressources utilisées
+## 12. Sources, documentation et ressources utilisées {#s12}
 
-Les liens ci-dessous sont les **sources officielles ou principales** qui m’ont aidé. Les URL sont données en entier pour faciliter la vérification.
+Les tableaux ci-dessous regroupent les **sources officielles** : chaque nom est un **hyperlien** cliquable (PDF, navigateur, GitHub).
 
 ### 12.1 Frameworks et langages
 
-| Ressource | URL |
-|-----------|-----|
-| Flutter — documentation | https://docs.flutter.dev/ |
-| Dart — langage | https://dart.dev/ |
-| Laravel — documentation | https://laravel.com/docs |
-| PHP | https://www.php.net/docs.php |
-| Composer (PHP) | https://getcomposer.org/doc/ |
+| Ressource | Lien |
+|:----------|:-----|
+| Flutter — documentation | [docs.flutter.dev](https://docs.flutter.dev/) |
+| Dart — langage | [dart.dev](https://dart.dev/) |
+| Laravel — documentation | [laravel.com/docs](https://laravel.com/docs) |
+| PHP | [php.net/docs](https://www.php.net/docs.php) |
+| Composer | [getcomposer.org/doc](https://getcomposer.org/doc/) |
 
 ### 12.2 Services et API externes du projet
 
-| Ressource | URL |
-|-----------|-----|
-| Appwrite — documentation | https://appwrite.io/docs |
-| Stripe — documentation développeurs | https://stripe.com/docs |
-| Stripe — Flutter SDK (flutter_stripe) | https://pub.dev/packages/flutter_stripe |
-| Groq — console / clés API | https://console.groq.com/ |
-| Groq — documentation modèles API | https://console.groq.com/docs/models |
-| CoinGecko — documentation API (prix crypto) | https://www.coingecko.com/en/api/documentation |
+| Ressource | Lien |
+|:----------|:-----|
+| Appwrite | [appwrite.io/docs](https://appwrite.io/docs) |
+| Stripe — développeurs | [stripe.com/docs](https://stripe.com/docs) |
+| Stripe — package Flutter | [pub.dev/flutter_stripe](https://pub.dev/packages/flutter_stripe) |
+| Groq — console | [console.groq.com](https://console.groq.com/) |
+| Groq — API modèles | [console.groq.com/docs/models](https://console.groq.com/docs/models) |
+| CoinGecko — API prix | [coingecko.com/api/documentation](https://www.coingecko.com/en/api/documentation) |
 
-### 12.3 Packages Flutter (référence pub.dev)
+### 12.3 Packages Flutter (pub.dev)
 
-| Package | URL |
-|---------|-----|
-| provider | https://pub.dev/packages/provider |
-| http | https://pub.dev/packages/http |
-| appwrite (SDK Dart) | https://pub.dev/packages/appwrite |
-| flutter_secure_storage | https://pub.dev/packages/flutter_secure_storage |
-| local_auth | https://pub.dev/packages/local_auth |
-| shared_preferences | https://pub.dev/packages/shared_preferences |
-| qr_flutter | https://pub.dev/packages/qr_flutter |
-| animations | https://pub.dev/packages/animations |
-| flutter_lints | https://pub.dev/packages/flutter_lints |
+| Package | Lien |
+|:--------|:-----|
+| provider | [pub.dev/packages/provider](https://pub.dev/packages/provider) |
+| http | [pub.dev/packages/http](https://pub.dev/packages/http) |
+| appwrite | [pub.dev/packages/appwrite](https://pub.dev/packages/appwrite) |
+| flutter_secure_storage | [pub.dev/packages/flutter_secure_storage](https://pub.dev/packages/flutter_secure_storage) |
+| local_auth | [pub.dev/packages/local_auth](https://pub.dev/packages/local_auth) |
+| shared_preferences | [pub.dev/packages/shared_preferences](https://pub.dev/packages/shared_preferences) |
+| qr_flutter | [pub.dev/packages/qr_flutter](https://pub.dev/packages/qr_flutter) |
+| animations | [pub.dev/packages/animations](https://pub.dev/packages/animations) |
+| flutter_lints | [pub.dev/packages/flutter_lints](https://pub.dev/packages/flutter_lints) |
 
 ### 12.4 UI / design
 
-| Ressource | URL |
-|-----------|-----|
-| Material Design 3 | https://m3.material.io/ |
-| Panache (thème Flutter, référence dans le code) | https://github.com/rxlabz/panache |
+| Ressource | Lien |
+|:----------|:-----|
+| Material Design 3 | [m3.material.io](https://m3.material.io/) |
+| Panache (thème Flutter) | [github.com/rxlabz/panache](https://github.com/rxlabz/panache) |
 
-### 12.5 Outils, versionnement, présentation
+### 12.5 Outils et présentation
 
-| Ressource | URL |
-|-----------|-----|
-| Git — documentation | https://git-scm.com/doc |
-| GitHub | https://github.com/ |
-| Gamma (présentations assistées par IA, si utilisé) | https://gamma.app/ |
+| Ressource | Lien |
+|:----------|:-----|
+| Git | [git-scm.com/doc](https://git-scm.com/doc) |
+| GitHub | [github.com](https://github.com/) |
+| Gamma (présentations) | [gamma.app](https://gamma.app/) |
 
-### 12.6 Sécurité et bonnes pratiques (références générales)
+### 12.6 Sécurité et réglementation (références)
 
-| Ressource | URL |
-|-----------|-----|
-| OWASP Mobile Top 10 | https://owasp.org/www-project-mobile-top-10/ |
-| CNIL — RGPD (information grand public) | https://www.cnil.fr/fr/rgpd-de-quoi-parle-t-on |
+| Ressource | Lien |
+|:----------|:-----|
+| OWASP Mobile Top 10 | [owasp.org/www-project-mobile-top-10](https://owasp.org/www-project-mobile-top-10/) |
+| CNIL — RGPD | [cnil.fr (fiche RGPD)](https://www.cnil.fr/fr/rgpd-de-quoi-parle-t-on) |
 
 ### 12.7 Dépôt du cours / du projet
 
-| Ressource | URL |
-|-----------|-----|
-| Dépôt GitHub mobileapp-2026 | https://github.com/roor-killa/mobileapp-2026 |
+| Ressource | Lien |
+|:----------|:-----|
+| Dépôt **mobileapp-2026** | [github.com/roor-killa/mobileapp-2026](https://github.com/roor-killa/mobileapp-2026) |
 
 ---
 
-## 13. Déclaration d’honnêteté académique
+## Annexes {#annexes}
 
-Je déclare que ce rapport décrit mon travail et que les sources externes sont citées dans la section 12. Les captures d’écran proviennent de **mon** exécution de l’application NodEX. Les extraits de code tiers respectent les licences des projets concernés.
+*Compléments pour lecture autonome du rapport. [↑ Retour au sommaire](#sommaire)*
+
+### Annexe A — Glossaire des termes techniques {#a-glossaire}
+
+| Terme | Signification |
+|:------|:----------------|
+| **API REST** | Interface où le client envoie des requêtes HTTP (GET, POST…) et reçoit du JSON. |
+| **Appwrite** | Backend « BaaS » : comptes, auth, stockage ; ici source du JWT pour Laravel. |
+| **Bearer** | Type d’en-tête HTTP : `Authorization: Bearer <token>` pour envoyer le JWT. |
+| **CORS** | Règles du navigateur pour autoriser un site (ex. Flutter web) à appeler une API sur un autre port. |
+| **Flutter** | Framework Google pour construire l’app mobile (langage Dart). |
+| **Groq** | Fournisseur d’API pour modèles de langage (ex. Llama) ; utilisé pour l’assistant. |
+| **JWT** | JSON Web Token : trois segments encodés ; le payload contient l’identifiant utilisateur. |
+| **Laravel** | Framework PHP ; ici sert d’API sous `/api`. |
+| **Middleware** | Couche qui s’exécute avant le contrôleur (ex. création auto `NodexUser`, CORS). |
+| **NodexUser** | Ligne en base liée à un compte Appwrite (`appwriteId`) avec solde EUR, IBAN synthétique, etc. |
+| **Provider** | Pattern Flutter (`provider`) pour partager l’état (auth, portefeuille, sécurité). |
+| **Stripe** | Service de paiement en ligne ; SDK intégré dans l’app. |
+| **Virement NodEX** | Transfert **interne** entre utilisateurs du prototype (pas un virement bancaire SEPA réel). |
+
+### Annexe B — Fichiers et dossiers clés {#a-fichiers}
+
+**Racine :** `project/crypto-wallet/`
+
+| Chemin | Contenu principal |
+|:-------|:------------------|
+| `flutter_app/` | App Flutter (`pubspec.yaml`, dossier `lib/`) |
+| `flutter_app/lib/main.dart` | Point d’entrée de l’application |
+| `flutter_app/lib/app.dart` | Navigation et onglets |
+| `flutter_app/lib/providers/` | État global (auth, wallets, sécurité) |
+| `flutter_app/lib/services/` | Client API, Appwrite, chat |
+| `flutter_app/lib/screens/` | Écrans utilisateur |
+| `backend-laravel/` | API PHP Laravel |
+| `backend-laravel/routes/api.php` | Déclaration des routes HTTP |
+| `backend-laravel/app/Http/Controllers/` | Logique métier |
+| `backend-laravel/app/Http/Middleware/` | CORS, `EnsureNodexUser` |
+| `docs/rapport-captures/` | Captures PNG de ce rapport |
+| `RAPPORT_RENDU_NODEX.md` | Source Markdown |
+| `RAPPORT_RENDU_NODEX.pdf` | Version PDF (générée) |
+
+Documentation racine du dépôt : [`README.md`](../../README.md) (relatif : remonter à la racine du clone).
+
+### Annexe C — Commandes de lancement (rappel) {#a-commandes}
+
+**Backend** (terminal 1) :
+
+```bash
+cd project/crypto-wallet/backend-laravel
+composer install
+cp .env.example .env   # puis éditer .env
+php artisan key:generate
+php artisan migrate
+php artisan serve --host=0.0.0.0 --port=8000
+```
+
+**Simulateur iOS** (terminal 2) :
+
+```bash
+cd project/crypto-wallet/flutter_app
+flutter pub get
+./run_ios_sim.sh --dart-define=API_BASE_URL=http://127.0.0.1:8000/api
+```
+
+Guide détaillé : [README du dépôt](https://github.com/roor-killa/mobileapp-2026/blob/meranville/README.md) (branche `meranville`).
+
+### Annexe D — Liens directs (GitHub, branche meranville) {#a-liens}
+
+| Ressource | Lien |
+|:----------|:-----|
+| Dépôt | [github.com/roor-killa/mobileapp-2026](https://github.com/roor-killa/mobileapp-2026) |
+| Dossier crypto-wallet | […/tree/meranville/project/crypto-wallet](https://github.com/roor-killa/mobileapp-2026/tree/meranville/project/crypto-wallet) |
+| Ce rapport (.md) | […/RAPPORT_RENDU_NODEX.md](https://github.com/roor-killa/mobileapp-2026/blob/meranville/project/crypto-wallet/RAPPORT_RENDU_NODEX.md) |
+| Captures PNG | […/docs/rapport-captures](https://github.com/roor-killa/mobileapp-2026/tree/meranville/project/crypto-wallet/docs/rapport-captures) |
+
+*Fin des annexes. [↑ Sommaire](#sommaire)*
+
+---
+
+## 13. Déclaration d’honnêteté académique {#s13}
+
+Je déclare que ce rapport décrit mon travail et que les sources externes sont citées dans la [section 12](#s12) (hyperliens). Les **annexes** ([§Annexes](#annexes)) complètent ce document à titre de glossaire et de rappels pratiques. Les captures d’écran proviennent de **mon** exécution de l’application NodEX. Les extraits de code tiers respectent les licences des projets concernés.
+
+[↑ Retour au sommaire](#sommaire)
