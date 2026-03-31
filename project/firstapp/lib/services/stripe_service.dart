@@ -19,8 +19,8 @@ class StripeService {
 
       // 2. Demander le Secret à ton Laravel
       final response = await http.post(
-        // Uri.parse('http://192.168.1.12/api/create-payment-intent'),
-        Uri.parse('http://172.26.131.224/api/create-payment-intent'), 
+        Uri.parse('http://192.168.1.12/api/create-payment-intent'),
+        // Uri.parse('http://172.26.131.224/api/create-payment-intent'), 
         body: {'amount': montant},
         headers: {
           'Authorization': 'Bearer $token',

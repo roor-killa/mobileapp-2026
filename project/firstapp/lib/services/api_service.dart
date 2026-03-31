@@ -10,8 +10,8 @@ class ApiService {
   factory ApiService() => _instance;
   ApiService._internal();
   
-  static const String baseUrl = 'http://172.26.131.224/api';
-  // static const String baseUrl = 'http://192.168.1.12/api';
+  // static const String baseUrl = 'http://172.26.131.224/api';
+  static const String baseUrl = 'http://192.168.1.12/api';
   
   // Données de session conservées en mémoire
   String? token; 
@@ -199,6 +199,25 @@ class ApiService {
       // Log l'erreur pour débugger plus facilement
       print("Erreur API Payment: ${response.body}");
       throw Exception("Échec de la création du paiement");
+    }
+  }
+
+  Future<bool> payViaQr(int receiverId, double amount) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/qr-payment'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'receiver_id': receiverId,
+          'amount': amount,
+        }),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      return false;
     }
   }
 }

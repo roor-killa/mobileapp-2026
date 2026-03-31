@@ -5,6 +5,9 @@ import '../models/transaction.dart';
 import '../services/api_service.dart';
 import '../login_screen.dart';
 import 'package:flutter_stripe/flutter_stripe.dart' hide Card;
+import 'dart:convert'; 
+import 'receive_money_screen.dart'; 
+import 'scanner_screen.dart';       
 
 class TransferScreen extends StatefulWidget {
   const TransferScreen({super.key});
@@ -47,15 +50,11 @@ class _TransferScreenState extends State<TransferScreen> {
       (route) => false,
     );
   }
+
   Future<void> _rechargerViaStripe(double montant) async {
     setState(() => _isLoading = true);
-
     try {
-      // 1. Appeler ton API Laravel pour créer un PaymentIntent
-      // Tu devras créer cette méthode dans ton ApiService
       final paymentData = await _apiService.creerPaymentIntent(montant);
-
-      // 2. Initialiser le Payment Sheet
       await Stripe.instance.initPaymentSheet(
         paymentSheetParameters: SetupPaymentSheetParameters(
           paymentIntentClientSecret: paymentData['clientSecret'],
@@ -63,14 +62,9 @@ class _TransferScreenState extends State<TransferScreen> {
           style: ThemeMode.light,
         ),
       );
-
-      // 3. Afficher l'interface de saisie de carte
       await Stripe.instance.presentPaymentSheet();
-
-      // 4. Si on arrive ici, le paiement a réussi !
-      _afficherErreur("Recharge réussie !"); // Ou un dialogue de succès
-      _chargerDonneesInitiales(); // Rafraîchir le solde
-
+      _afficherErreur("Recharge réussie !"); 
+      _chargerDonneesInitiales(); 
     } catch (e) {
       if (e is StripeException) {
         _afficherErreur("Paiement annulé ou échoué");
@@ -107,26 +101,21 @@ class _TransferScreenState extends State<TransferScreen> {
     }
   }
 
-  /// ÉTAPE 1 : Vérification des champs et ouverture du PIN
   void _preparerTransfert() {
     final email = _emailDestinataireController.text.trim();
     final montantText = _montantController.text.trim();
-
     if (email.isEmpty || montantText.isEmpty) {
       _afficherErreur('Veuillez remplir tous les champs');
       return;
     }
-
     final montant = double.tryParse(montantText);
     if (montant == null || montant <= 0) {
       _afficherErreur('Montant invalide');
       return;
     }
-
     _afficherSaisiePIN(email, montant);
   }
 
-  /// ÉTAPE 2 : Fenêtre de saisie du code PIN
   void _afficherSaisiePIN(String email, double montant) {
     String pinSaisi = "";
     showModalBottomSheet(
@@ -172,30 +161,24 @@ class _TransferScreenState extends State<TransferScreen> {
     );
   }
 
-  /// ÉTAPE 3 : Envoi final à l'API
   Future<void> _executerTransfertFinal(String email, double montant, String pin) async {
-    setState(() => _isLoading = true); // Le chargement commence ici
-
+    setState(() => _isLoading = true);
     try {
       final response = await _apiService.transfererMontant(
         email: email,
         montant: montant,
         pin: pin,
       );
-
       if (!mounted) return;
-
-      setState(() => _isLoading = false); // ARRÊT du chargement en cas de succès
-
+      setState(() => _isLoading = false);
       if (response.success) {
         _showSuccessDialog(response);
         _chargerHistorique();
       } else {
-        // Si le PIN est faux, le serveur répond success: false
         _afficherErreur(response.message);
       }
     } catch (e) {
-      if (mounted) setState(() => _isLoading = false); // ARRÊT du chargement en cas d'erreur
+      if (mounted) setState(() => _isLoading = false);
       _afficherErreur("Erreur de connexion : $e");
     }
   }
@@ -258,15 +241,59 @@ class _TransferScreenState extends State<TransferScreen> {
               _soldeActuel != null ? '${_soldeActuel!.toStringAsFixed(2)} €' : '--- €',
               style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.blue),
             ),
-            const SizedBox(height: 15),
+            const SizedBox(height: 20),
+
+            // --- NOUVELLE LIGNE DE BOUTONS QR ---
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildQuickActionButton(
+                  icon: Icons.qr_code_scanner,
+                  label: "Scanner",
+                  color: Colors.orange,
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ScannerScreen())),
+                ),
+                _buildQuickActionButton(
+                  icon: Icons.qr_code,
+                  label: "Mon Code",
+                  color: Colors.purple,
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => ReceiveMoneyScreen(
+                    user: {
+                      'id': _apiService.currentUserId,
+                      'name': _apiService.userName
+                    }
+                  ))),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 20),
             ElevatedButton.icon(
-              onPressed: () => _rechargerViaStripe(20.0), // Exemple avec 20€
+              onPressed: () => _rechargerViaStripe(20.0), 
               icon: const Icon(Icons.add),
               label: const Text("Recharger mon compte"),
               style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  // Widget utilitaire pour les boutons QR
+  Widget _buildQuickActionButton({required IconData icon, required String label, required Color color, required VoidCallback onTap}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Column(
+        children: [
+          CircleAvatar(
+            backgroundColor: color.withOpacity(0.2),
+            child: Icon(icon, color: color),
+          ),
+          const SizedBox(height: 5),
+          Text(label, style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.bold)),
+        ],
       ),
     );
   }
