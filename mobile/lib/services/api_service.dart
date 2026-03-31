@@ -9,15 +9,12 @@ import 'session_service.dart';
 
 class ApiService {
 
-  // URL de base de l'API Laravel
-  // 10.0.2.2 = localhost depuis l'émulateur Android Studio
   static const String baseUrl = 'http://10.0.2.2/backend-api/public/api';
 
   // ==========================================================
   // AUTHENTIFICATION PROFESSEUR
   // ==========================================================
 
-  // Connecte un professeur avec email + password
   Future<bool> login(String email, String password) async {
     final response = await http.post(
       Uri.parse('$baseUrl/login'),
@@ -34,17 +31,16 @@ class ApiService {
     }
     return false;
   }
-  // Réinitialise le mot de passe d'un professeur
-Future<Map<String, dynamic>> resetPasswordProfesseur(String email) async {
-  final response = await http.post(
-    Uri.parse('$baseUrl/professeur/reset-password'),
-    headers: {'Content-Type': 'application/json'},
-    body: json.encode({'email': email}),
-  );
-  return json.decode(response.body);
-}
 
-  // Inscrit un nouveau professeur
+  Future<Map<String, dynamic>> resetPasswordProfesseur(String email) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/professeur/reset-password'),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({'email': email}),
+    );
+    return json.decode(response.body);
+  }
+
   Future<bool> register(
       String nom, String prenom, String email, String password) async {
     final response = await http.post(
@@ -72,7 +68,6 @@ Future<Map<String, dynamic>> resetPasswordProfesseur(String email) async {
   // AUTHENTIFICATION ÉTUDIANT
   // ==========================================================
 
-  // Connecte un étudiant avec email + password
   Future<bool> loginEtudiant(String email, String password) async {
     final response = await http.post(
       Uri.parse('$baseUrl/etudiant/login'),
@@ -94,7 +89,6 @@ Future<Map<String, dynamic>> resetPasswordProfesseur(String email) async {
   // AUTHENTIFICATION ADMIN
   // ==========================================================
 
-  // Connecte un administrateur avec email + password
   Future<bool> loginAdmin(String email, String password) async {
     final response = await http.post(
       Uri.parse('$baseUrl/admin/login'),
@@ -116,7 +110,6 @@ Future<Map<String, dynamic>> resetPasswordProfesseur(String email) async {
   // GESTION PROFESSEURS (admin seulement)
   // ==========================================================
 
-  // Récupère la liste de tous les professeurs avec leurs matières
   Future<List<Professeur>> getProfesseurs() async {
     final response = await http.get(
       Uri.parse('$baseUrl/admin/professeurs'),
@@ -128,7 +121,6 @@ Future<Map<String, dynamic>> resetPasswordProfesseur(String email) async {
     throw Exception('Erreur chargement professeurs');
   }
 
-  // Crée un nouveau professeur avec ses matières assignées
   Future<bool> creerProfesseur(String nom, String prenom, String email,
       String password, List<int> matiereIds) async {
     final response = await http.post(
@@ -145,7 +137,6 @@ Future<Map<String, dynamic>> resetPasswordProfesseur(String email) async {
     return response.statusCode == 201;
   }
 
-  // Modifie les matières assignées à un professeur
   Future<bool> modifierMatieresProfesseur(
       int professeurId, List<int> matiereIds) async {
     final response = await http.put(
@@ -156,7 +147,6 @@ Future<Map<String, dynamic>> resetPasswordProfesseur(String email) async {
     return response.statusCode == 200;
   }
 
-  // Supprime un professeur par son id
   Future<bool> supprimerProfesseur(int professeurId) async {
     final response = await http.delete(
       Uri.parse('$baseUrl/admin/professeurs/$professeurId'),
@@ -168,7 +158,6 @@ Future<Map<String, dynamic>> resetPasswordProfesseur(String email) async {
   // ÉTUDIANTS
   // ==========================================================
 
-  // Récupère la liste de tous les étudiants
   Future<List<Etudiant>> getEtudiants() async {
     final response = await http.get(Uri.parse('$baseUrl/etudiants'));
     if (response.statusCode == 200) {
@@ -178,7 +167,6 @@ Future<Map<String, dynamic>> resetPasswordProfesseur(String email) async {
     throw Exception('Erreur chargement étudiants');
   }
 
-  // Ajoute un nouvel étudiant
   Future<Etudiant> addEtudiant(Etudiant etudiant) async {
     final response = await http.post(
       Uri.parse('$baseUrl/etudiants'),
@@ -191,7 +179,6 @@ Future<Map<String, dynamic>> resetPasswordProfesseur(String email) async {
     throw Exception('Erreur ajout étudiant');
   }
 
-  // Modifie un étudiant existant
   Future<Etudiant> updateEtudiant(Etudiant etudiant) async {
     final response = await http.put(
       Uri.parse('$baseUrl/etudiants/${etudiant.id}'),
@@ -204,7 +191,6 @@ Future<Map<String, dynamic>> resetPasswordProfesseur(String email) async {
     throw Exception('Erreur modification étudiant');
   }
 
-  // Supprime un étudiant par son id
   Future<void> deleteEtudiant(int id) async {
     final response = await http.delete(Uri.parse('$baseUrl/etudiants/$id'));
     if (response.statusCode != 200) {
@@ -213,10 +199,33 @@ Future<Map<String, dynamic>> resetPasswordProfesseur(String email) async {
   }
 
   // ==========================================================
+  // CLASSES
+  // ==========================================================
+
+  Future<List<Map<String, dynamic>>> getClasses() async {
+    final response = await http.get(Uri.parse('$baseUrl/classes'));
+    if (response.statusCode == 200) {
+      final List<dynamic> data = json.decode(response.body);
+      return data.map((e) => e as Map<String, dynamic>).toList();
+    }
+    throw Exception('Erreur chargement classes');
+  }
+
+  Future<List<Map<String, dynamic>>> getMoyennesClasse(int classeId) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/classes/$classeId/moyennes'),
+    );
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      return List<Map<String, dynamic>>.from(data['moyennes']);
+    }
+    throw Exception('Erreur chargement moyennes classe');
+  }
+
+  // ==========================================================
   // MATIÈRES
   // ==========================================================
 
-  // Récupère la liste de toutes les matières disponibles
   Future<List<Matiere>> getMatieres() async {
     final response = await http.get(Uri.parse('$baseUrl/matieres'));
     if (response.statusCode == 200) {
@@ -226,7 +235,6 @@ Future<Map<String, dynamic>> resetPasswordProfesseur(String email) async {
     throw Exception('Erreur chargement matières');
   }
 
-  // Récupère les matières assignées à un professeur
   Future<List<Matiere>> getMatieresProf(int professeurId) async {
     final response = await http.get(
       Uri.parse('$baseUrl/professeurs/$professeurId/matieres'),
@@ -238,7 +246,6 @@ Future<Map<String, dynamic>> resetPasswordProfesseur(String email) async {
     throw Exception('Erreur chargement matières du professeur');
   }
 
-  // Assigne des matières à un professeur (max 2)
   Future<bool> assignerMatieres(
       int professeurId, List<int> matiereIds) async {
     final response = await http.post(
@@ -253,7 +260,6 @@ Future<Map<String, dynamic>> resetPasswordProfesseur(String email) async {
   // NOTES
   // ==========================================================
 
-  // Récupère toutes les notes d'un étudiant (toutes matières)
   Future<List<Note>> getNotesEtudiant(int etudiantId) async {
     final response = await http.get(
       Uri.parse('$baseUrl/etudiants/$etudiantId/notes'),
@@ -265,7 +271,6 @@ Future<Map<String, dynamic>> resetPasswordProfesseur(String email) async {
     throw Exception('Erreur chargement notes');
   }
 
-  // Ajoute ou met à jour les notes d'un étudiant pour une matière
   Future<bool> sauvegarderNotes(Note note) async {
     final response = await http.post(
       Uri.parse('$baseUrl/notes'),

@@ -6,6 +6,7 @@ import 'modifier_etudiant_screen.dart';
 import 'login_screen.dart';
 import 'notes_screen.dart';
 import 'mes_matieres_screen.dart';
+import 'moyennes_classe_screen.dart';
 
 class EtudiantsScreen extends StatefulWidget {
   const EtudiantsScreen({super.key});
@@ -25,7 +26,6 @@ class _EtudiantsScreenState extends State<EtudiantsScreen> {
     _chargerEtudiants();
   }
 
-  // Récupère tous les étudiants depuis l'API Laravel
   Future<void> _chargerEtudiants() async {
     setState(() => _isLoading = true);
     try {
@@ -61,6 +61,19 @@ class _EtudiantsScreenState extends State<EtudiantsScreen> {
                 style: const TextStyle(color: Colors.white70),
               ),
             ),
+          ),
+          // Bouton moyennes de classe
+          IconButton(
+            icon: const Icon(Icons.bar_chart, color: Colors.white),
+            tooltip: 'Moyennes par classe',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const MoyennesClasseScreen(),
+                ),
+              );
+            },
           ),
           IconButton(
             icon: const Icon(Icons.book, color: Colors.white),
@@ -176,7 +189,28 @@ class _EtudiantsScreenState extends State<EtudiantsScreen> {
                                       fontSize: 13,
                                     ),
                                   ),
-                                  const SizedBox(height: 8),
+                                  const SizedBox(height: 4),
+                                  // Affichage de la classe
+                                  if (etudiant.classeNom != null)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF6C63FF)
+                                            .withOpacity(0.1),
+                                        borderRadius:
+                                            BorderRadius.circular(10),
+                                      ),
+                                      child: Text(
+                                        etudiant.classeNom!,
+                                        style: const TextStyle(
+                                          color: Color(0xFF6C63FF),
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  const SizedBox(height: 4),
                                   GestureDetector(
                                     onTap: () {
                                       Navigator.push(
@@ -286,7 +320,6 @@ class _EtudiantsScreenState extends State<EtudiantsScreen> {
                   },
                 ),
 
-      // Bouton + pour ajouter un étudiant
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
           final nouvelEtudiant = await Navigator.push(

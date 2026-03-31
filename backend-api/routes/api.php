@@ -6,6 +6,7 @@ use App\Http\Controllers\ProfesseurController;
 use App\Http\Controllers\MatiereController;
 use App\Http\Controllers\NoteController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\ClasseController;
 
 // ==========================================================
 // AUTHENTIFICATION PROFESSEUR
@@ -46,6 +47,14 @@ Route::get('/etudiants',         [EtudiantController::class, 'index']);
 Route::post('/etudiants',        [EtudiantController::class, 'store']);
 Route::put('/etudiants/{id}',    [EtudiantController::class, 'update']);
 Route::delete('/etudiants/{id}', [EtudiantController::class, 'destroy']);
+
+// ==========================================================
+// CLASSES
+// ==========================================================
+
+Route::get('/classes',                    [ClasseController::class, 'index']);
+Route::get('/classes/{id}/etudiants',     [ClasseController::class, 'etudiants']);
+Route::get('/classes/{id}/moyennes',      [ClasseController::class, 'moyennes']);
 
 // ==========================================================
 // MATIÈRES

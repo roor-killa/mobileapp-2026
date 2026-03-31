@@ -4,14 +4,16 @@ class Etudiant {
   final String nom;
   final String prenom;
   final String email;
-  // La note globale n'existe plus, les notes sont maintenant
-  // gérées par matière dans la table "notes"
+  final int? classeId;
+  final String? classeNom;
 
   Etudiant({
     this.id,
     required this.nom,
     required this.prenom,
     required this.email,
+    this.classeId,
+    this.classeNom,
   });
 
   // Crée un objet Etudiant depuis le JSON reçu de l'API
@@ -21,6 +23,8 @@ class Etudiant {
       nom: json['nom'],
       prenom: json['prenom'],
       email: json['email'],
+      classeId: json['classe_id'],
+      classeNom: json['classe'] != null ? json['classe']['nom'] : null,
     );
   }
 
@@ -30,6 +34,7 @@ class Etudiant {
       'nom': nom,
       'prenom': prenom,
       'email': email,
+      if (classeId != null) 'classe_id': classeId,
     };
   }
 }

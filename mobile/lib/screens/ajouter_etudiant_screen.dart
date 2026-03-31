@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/etudiant.dart';
+import '../services/api_service.dart';
 
-// Écran pour ajouter un nouvel étudiant
-// Les notes sont maintenant gérées séparément par matière
 class AjouterEtudiantScreen extends StatefulWidget {
   const AjouterEtudiantScreen({super.key});
 
@@ -11,12 +10,33 @@ class AjouterEtudiantScreen extends StatefulWidget {
 }
 
 class _AjouterEtudiantScreenState extends State<AjouterEtudiantScreen> {
-  // Contrôleurs pour chaque champ du formulaire
   final _nomController = TextEditingController();
   final _prenomController = TextEditingController();
   final _emailController = TextEditingController();
+  final ApiService _apiService = ApiService();
 
-  // Vérifie les champs et retourne l'étudiant à l'écran précédent
+  List<Map<String, dynamic>> _classes = [];
+  int? _classeSelectionnee;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _chargerClasses();
+  }
+
+  Future<void> _chargerClasses() async {
+    try {
+      final classes = await _apiService.getClasses();
+      setState(() {
+        _classes = classes;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
+    }
+  }
+
   void _sauvegarder() {
     if (_nomController.text.isEmpty ||
         _prenomController.text.isEmpty ||
@@ -30,17 +50,16 @@ class _AjouterEtudiantScreenState extends State<AjouterEtudiantScreen> {
       return;
     }
 
-    // Crée l'étudiant sans note (les notes sont gérées par matière)
     final etudiant = Etudiant(
       nom: _nomController.text,
       prenom: _prenomController.text,
       email: _emailController.text,
+      classeId: _classeSelectionnee,
     );
 
     Navigator.pop(context, etudiant);
   }
 
-  // Widget réutilisable pour créer un champ stylisé
   Widget _buildChamp({
     required TextEditingController controller,
     required String label,
@@ -94,73 +113,114 @@ class _AjouterEtudiantScreenState extends State<AjouterEtudiantScreen> {
         ),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            const SizedBox(height: 10),
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(color: Color(0xFF6C63FF)))
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  const SizedBox(height: 10),
 
-            // Icône décorative
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF6C63FF), Color(0xFF3B82F6)],
-                ),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: const Icon(Icons.person_add, color: Colors.white, size: 40),
-            ),
-
-            const SizedBox(height: 30),
-
-            // Champs du formulaire (sans le champ note)
-            _buildChamp(
-              controller: _prenomController,
-              label: 'Prénom',
-              icon: Icons.person_outline,
-            ),
-            _buildChamp(
-              controller: _nomController,
-              label: 'Nom',
-              icon: Icons.person,
-            ),
-            _buildChamp(
-              controller: _emailController,
-              label: 'Email',
-              icon: Icons.email_outlined,
-              type: TextInputType.emailAddress,
-            ),
-
-            const SizedBox(height: 10),
-
-            // Bouton sauvegarder
-            SizedBox(
-              width: double.infinity,
-              height: 55,
-              child: ElevatedButton(
-                onPressed: _sauvegarder,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF6C63FF),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+                  Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF6C63FF), Color(0xFF3B82F6)],
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Icon(Icons.person_add,
+                        color: Colors.white, size: 40),
                   ),
-                  elevation: 3,
-                ),
-                child: const Text(
-                  'Sauvegarder',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+
+                  const SizedBox(height: 30),
+
+                  _buildChamp(
+                    controller: _prenomController,
+                    label: 'Prénom',
+                    icon: Icons.person_outline,
                   ),
-                ),
+                  _buildChamp(
+                    controller: _nomController,
+                    label: 'Nom',
+                    icon: Icons.person,
+                  ),
+                  _buildChamp(
+                    controller: _emailController,
+                    label: 'Email',
+                    icon: Icons.email_outlined,
+                    type: TextInputType.emailAddress,
+                  ),
+
+                  // Sélection de la classe
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: DropdownButtonFormField<int>(
+                      value: _classeSelectionnee,
+                      decoration: InputDecoration(
+                        labelText: 'Classe',
+                        prefixIcon: const Icon(Icons.class_,
+                            color: Color(0xFF6C63FF)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide.none,
+                        ),
+                        filled: true,
+                        fillColor: Colors.white,
+                        labelStyle: const TextStyle(color: Colors.grey),
+                      ),
+                      items: _classes.map((classe) {
+                        return DropdownMenuItem<int>(
+                          value: classe['id'],
+                          child: Text(classe['nom']),
+                        );
+                      }).toList(),
+                      onChanged: (val) =>
+                          setState(() => _classeSelectionnee = val),
+                      hint: const Text('Sélectionner une classe'),
+                    ),
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  SizedBox(
+                    width: double.infinity,
+                    height: 55,
+                    child: ElevatedButton(
+                      onPressed: _sauvegarder,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF6C63FF),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        elevation: 3,
+                      ),
+                      child: const Text(
+                        'Sauvegarder',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
-      ),
     );
   }
 }

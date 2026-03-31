@@ -4,24 +4,27 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-// Modèle représentant un étudiant dans la base de données
-// Laravel fait automatiquement le lien avec la table "etudiants"
 class Etudiant extends Model
 {
-    // Colonnes autorisées à être remplies via l'API
     protected $fillable = [
         'nom',
         'prenom',
         'email',
         'password',
+        'classe_id',
     ];
 
-    // Cache le password dans toutes les réponses JSON (sécurité)
     protected $hidden = [
         'password',
     ];
 
-    // Un étudiant a plusieurs notes (une par matière)
+    // Un étudiant appartient à une classe
+    public function classe()
+    {
+        return $this->belongsTo(Classe::class);
+    }
+
+    // Un étudiant a plusieurs notes
     public function notes()
     {
         return $this->hasMany(Note::class);
