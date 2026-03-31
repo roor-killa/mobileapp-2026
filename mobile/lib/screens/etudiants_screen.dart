@@ -7,6 +7,7 @@ import 'login_screen.dart';
 import 'notes_screen.dart';
 import 'mes_matieres_screen.dart';
 import 'moyennes_classe_screen.dart';
+import 'emploi_du_temps_prof_screen.dart';
 
 class EtudiantsScreen extends StatefulWidget {
   const EtudiantsScreen({super.key});
@@ -61,6 +62,19 @@ class _EtudiantsScreenState extends State<EtudiantsScreen> {
                 style: const TextStyle(color: Colors.white70),
               ),
             ),
+          ),
+          // Bouton emploi du temps professeur
+          IconButton(
+            icon: const Icon(Icons.calendar_month, color: Colors.white),
+            tooltip: 'Mon emploi du temps',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const EmploiDuTempsProfScreen(),
+                ),
+              );
+            },
           ),
           // Bouton moyennes de classe
           IconButton(
@@ -144,7 +158,6 @@ class _EtudiantsScreenState extends State<EtudiantsScreen> {
                         padding: const EdgeInsets.all(16),
                         child: Row(
                           children: [
-                            // Avatar avec les initiales
                             Container(
                               width: 55,
                               height: 55,
@@ -190,7 +203,6 @@ class _EtudiantsScreenState extends State<EtudiantsScreen> {
                                     ),
                                   ),
                                   const SizedBox(height: 4),
-                                  // Affichage de la classe
                                   if (etudiant.classeNom != null)
                                     Container(
                                       padding: const EdgeInsets.symmetric(
