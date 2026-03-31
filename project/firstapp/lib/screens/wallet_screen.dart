@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 
 // --- COULEURS DU THEME ---
 const Color bgDark = Color(0xFF09090B);
@@ -9,7 +11,6 @@ const Color emerald500 = Color(0xFF10B981);
 const Color emerald700 = Color(0xFF047857);
 const Color textGray = Color(0xFF71717A);
 
-// 1. CORRECTION ICI : La classe s'appelle bien WalletScreen maintenant !
 class WalletScreen extends StatefulWidget {
   const WalletScreen({super.key});
 
@@ -24,6 +25,7 @@ class _WalletScreenState extends State<WalletScreen> {
   double _soldeBkn = 0.0;
   List<dynamic> _pockets = []; 
   bool _isLoading = true;
+  String _userEmail = "utilisateur@mail.com"; 
 
   @override
   void initState() {
@@ -36,6 +38,7 @@ class _WalletScreenState extends State<WalletScreen> {
     if (mounted) {
       setState(() {
         _soldeActuel = prefs.getDouble('solde') ?? 0.00;
+        _userEmail = prefs.getString('email') ?? "boss@mail.com"; 
       });
     }
 
@@ -150,8 +153,8 @@ class _WalletScreenState extends State<WalletScreen> {
   // =========================================================
   // MODAL : TRANSFERT
   // =========================================================
-  void _afficherBottomSheetTransfert() {
-    final TextEditingController emailController = TextEditingController();
+  void _afficherBottomSheetTransfert({String? emailPreRempli}) {
+    final TextEditingController emailController = TextEditingController(text: emailPreRempli ?? "");
     final TextEditingController montantController = TextEditingController();
     bool isTransferring = false;
 
@@ -224,7 +227,7 @@ class _WalletScreenState extends State<WalletScreen> {
                           },
                           icon: const Icon(Icons.send, color: Colors.black),
                           label: const Text('CONFIRMER L\'ENVOI', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, letterSpacing: 1)),
-                          style: ElevatedButton.styleFrom(backgroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 20), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
+                          style: ElevatedButton.styleFrom(backgroundColor: emerald500, padding: const EdgeInsets.symmetric(vertical: 20), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
                         ),
                   const SizedBox(height: 30),
                 ],
@@ -235,12 +238,14 @@ class _WalletScreenState extends State<WalletScreen> {
       }
     );
   }
+
   // =========================================================
   // MODAL : PAYER
   // =========================================================
-  void _afficherBottomSheetPaiement() {
-    final TextEditingController montantController = TextEditingController();
-    
+  // =========================================================
+  // MODAL : PAYER
+  // =========================================================
+  void _afficherBottomSheetPaiement({String? pocketPreRempli}) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -255,7 +260,7 @@ class _WalletScreenState extends State<WalletScreen> {
             children: [
               Center(child: Container(width: 40, height: 5, decoration: BoxDecoration(color: Colors.grey.shade800, borderRadius: BorderRadius.circular(10)))),
               const SizedBox(height: 30),
-              const Text('Simuler un Paiement', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+              Text('Paiement : ${pocketPreRempli ?? "Solde Principal"}', style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
               const SizedBox(height: 20),
               const Text('Cette fonctionnalité nécessitera une mise à jour de l\'API pour déduire l\'argent d\'un pocket ou du solde principal lors d\'un achat physique.', style: TextStyle(color: textGray, fontSize: 12)),
               const SizedBox(height: 30),
@@ -270,6 +275,7 @@ class _WalletScreenState extends State<WalletScreen> {
       }
     );
   }
+
   // =========================================================
   // MODAL : CRÉER UN SOUS-COMPTE
   // =========================================================
@@ -318,7 +324,7 @@ class _WalletScreenState extends State<WalletScreen> {
                             
                             final result = await _apiService.createPocket(nomController.text.trim());
                             if (result['success'] == true) {
-                              Navigator.pop(context); // Ferme la popup de création
+                              Navigator.pop(context); // Ferme la popup
                               _chargerSoldeInitial(); // Recharge les pockets
                               _afficherSucces("Sous-compte créé !");
                             } else {
@@ -337,88 +343,267 @@ class _WalletScreenState extends State<WalletScreen> {
       }
     );
   }
+// =========================================================
+  // MODAL : TRANSFERT VERS/DEPUIS UN POCKET
   // =========================================================
-  // MODAL : GÉRER LES SOUS-COMPTES (Pockets)
-  // =========================================================
-  void _showPocketsModal() {
+  void _afficherBottomSheetTransfertPocket(dynamic pocket) {
+    final TextEditingController montantController = TextEditingController();
+    bool isTransferring = false;
+    String direction = 'to_pocket'; // Par défaut, on envoie vers le pocket
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        return Container(
-          height: MediaQuery.of(context).size.height * 0.85,
-          decoration: const BoxDecoration(
-            color: bgDark,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(40)),
-            border: Border(top: BorderSide(color: Color(0xFF27272A))),
-          ),
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('Sous-comptes', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
-                    GestureDetector(
-                      onTap: () => Navigator.pop(context),
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: const BoxDecoration(color: cardDark, shape: BoxShape.circle),
-                        child: const Icon(Icons.close, color: Colors.white, size: 20),
+        return StatefulBuilder(
+          builder: (context, setStateSheet) {
+            return Container(
+              padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom + 30, left: 30, right: 30, top: 30),
+              decoration: const BoxDecoration(color: cardDark, borderRadius: BorderRadius.vertical(top: Radius.circular(40))),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(child: Container(width: 50, height: 5, decoration: BoxDecoration(color: Colors.grey.shade800, borderRadius: BorderRadius.circular(10)))),
+                  const SizedBox(height: 30),
+                  Text('Gérer : ${pocket['nom']}', style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 25),
+                  
+                  const Text('DIRECTION DU TRANSFERT', style: TextStyle(color: textGray, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+                  const SizedBox(height: 10),
+                  // Menu déroulant pour choisir le sens
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    decoration: BoxDecoration(color: bgDark, borderRadius: BorderRadius.circular(16)),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: direction,
+                        dropdownColor: cardDark,
+                        icon: const Icon(Icons.keyboard_arrow_down, color: textGray),
+                        isExpanded: true,
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                        items: const [
+                          DropdownMenuItem(value: 'to_pocket', child: Text('Depuis Solde Principal ➡️ Vers ce Pocket')),
+                          DropdownMenuItem(value: 'to_main', child: Text('Depuis ce Pocket ➡️ Vers Solde Principal')),
+                        ],
+                        onChanged: (val) {
+                          if (val != null) setStateSheet(() => direction = val);
+                        },
                       ),
-                    )
-                  ],
-                ),
-              ),
-              
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('Gérer mes sous-comptes', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                    GestureDetector(
-                      onTap: () {
-                         // TODO: Ouvrir popup création pocket
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: const BoxDecoration(color: emerald500, shape: BoxShape.circle),
-                        child: const Icon(Icons.add, color: Colors.black, size: 24),
-                      ),
-                    )
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
 
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                  children: [
-                    _buildPocketCard('SOLDE PRINCIPAL', _soldeActuel),
-                    const SizedBox(height: 15),
-                    
-                    ..._pockets.map((pocket) {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 15.0),
-                        child: _buildPocketCard(
-                          pocket['nom'].toString().toUpperCase(), 
-                          double.parse(pocket['solde'].toString())
+                  const Text('MONTANT (EUR)', style: TextStyle(color: textGray, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: montantController,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
+                    decoration: InputDecoration(
+                      hintText: "0.00", hintStyle: TextStyle(color: Colors.grey.shade800),
+                      filled: true, fillColor: bgDark,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                    ),
+                  ),
+                  const SizedBox(height: 30),
+
+                  isTransferring
+                      ? const Center(child: CircularProgressIndicator(color: emerald500))
+                      : ElevatedButton.icon(
+                          onPressed: () async {
+                            final montant = double.tryParse(montantController.text.trim());
+                            if (montant == null || montant <= 0) {
+                              _afficherErreur("Montant invalide."); return;
+                            }
+                            
+                            // SÉCURITÉ FRONTEND : On vérifie les soldes avant même de demander au serveur
+                            if (direction == 'to_pocket' && montant > _soldeActuel) {
+                              _afficherErreur("Fonds insuffisants sur le Solde Principal."); return;
+                            }
+                            if (direction == 'to_main' && montant > double.parse(pocket['solde'].toString())) {
+                              _afficherErreur("Fonds insuffisants dans ce sous-compte."); return;
+                            }
+
+                            setStateSheet(() => isTransferring = true);
+                            
+                            // Appel à l'API qu'on a codée précédemment
+                            final result = await _apiService.transferPocket(pocket['id'], montant, direction);
+
+                            if (result['success'] == true) {
+                              Navigator.pop(context);
+                              _chargerSoldeInitial(); // Met à jour tous les affichages
+                              _afficherSucces(result['message'] ?? 'Transfert réussi !');
+                              _showPocketsModal(); // Réouvre la liste des pockets pour voir le changement !
+                            } else {
+                              setStateSheet(() => isTransferring = false);
+                              _afficherErreur(result['message'] ?? 'Erreur');
+                            }
+                          },
+                          icon: const Icon(Icons.check, color: Colors.black),
+                          label: const Text('CONFIRMER', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, letterSpacing: 1)),
+                          style: ElevatedButton.styleFrom(backgroundColor: emerald500, padding: const EdgeInsets.symmetric(vertical: 20), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
                         ),
-                      );
-                    }).toList(),
-                  ],
-                ),
-              )
-            ],
-          ),
+                ],
+              ),
+            );
+          }
         );
       }
     );
   }
+  // =========================================================
+  // MODAL : GÉRER LES SOUS-COMPTES (Pockets)
+  // =========================================================
+  void _showPocketsModal() {
+    int? expandedPocketId; // Permet de savoir quel pocket est déplié
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setStateSheet) {
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.85,
+              decoration: const BoxDecoration(
+                color: bgDark,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(40)),
+                border: Border(top: BorderSide(color: Color(0xFF27272A))),
+              ),
+              child: Column(
+                children: [
+                  // En-tête (inchangé)
+                  Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Sous-comptes', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+                        GestureDetector(
+                          onTap: () => Navigator.pop(context),
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: const BoxDecoration(color: cardDark, shape: BoxShape.circle),
+                            child: const Icon(Icons.close, color: Colors.white, size: 20),
+                          ),
+                        )
+                      ],
+                    ),
+                  ),
+                  
+                  // Bouton Créer (inchangé)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Gérer mes sous-comptes', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 5),
+                            // Petit rappel du solde disponible pour l'utilisateur
+                            Text('Solde principal dispo : ${_soldeActuel.toStringAsFixed(2)} €', style: const TextStyle(color: emerald500, fontSize: 12, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                        GestureDetector(
+                          onTap: () {
+                             Navigator.pop(context); 
+                             _afficherBottomSheetCreationPocket(); 
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: const BoxDecoration(color: emerald500, shape: BoxShape.circle),
+                            child: const Icon(Icons.add, color: Colors.black, size: 24),
+                          ),
+                        )
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // LISTE DES POCKETS (Avec l'accordéon)
+                  Expanded(
+                    child: ListView(
+                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                      children: _pockets.map((pocket) {
+                        final isExpanded = expandedPocketId == pocket['id'];
+
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 15.0),
+                          child: GestureDetector(
+                            onTap: () {
+                              setStateSheet(() {
+                                // Si on clique sur celui déjà ouvert, ça le ferme. Sinon, ça l'ouvre.
+                                expandedPocketId = isExpanded ? null : pocket['id'];
+                              });
+                            },
+                            child: Column(
+                              children: [
+                                _buildPocketCard(pocket['nom'].toString().toUpperCase(), double.parse(pocket['solde'].toString())),
+                                
+                                // LES DEUX BOUTONS QUI APPARAISSENT SI DÉPLIÉ
+                                if (isExpanded) ...[
+                                  const SizedBox(height: 10),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: ElevatedButton.icon(
+                                          onPressed: () {
+                                            Navigator.pop(context);
+                                            _afficherBottomSheetTransfertPocket(pocket); // Nouvelle fonction !
+                                          },
+                                          icon: const Icon(Icons.swap_horiz, color: emerald500, size: 18),
+                                          label: const Text('Transférer', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: cardDark,
+                                            side: const BorderSide(color: Color(0xFF27272A)),
+                                            padding: const EdgeInsets.symmetric(vertical: 12),
+                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: ElevatedButton.icon(
+                                          onPressed: () {
+                                            Navigator.pop(context);
+                                            _afficherBottomSheetPaiement(pocketPreRempli: pocket['nom']);
+                                          },
+                                          icon: const Icon(Icons.credit_card, color: Colors.black, size: 18),
+                                          label: const Text('Payer', style: TextStyle(color: Colors.black, fontSize: 12, fontWeight: FontWeight.bold)),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: emerald500,
+                                            padding: const EdgeInsets.symmetric(vertical: 12),
+                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  )
+                                ]
+                              ],
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  )
+                ],
+              ),
+            );
+          }
+        );
+      }
+    );
+  }
+
+  // =========================================================
+  // MODAL : RECEVOIR (Génère le QR Code de l'utilisateur)
+  // =========================================================
   void _afficherCodeQR() {
     showModalBottomSheet(
       context: context,
@@ -429,15 +614,26 @@ class _WalletScreenState extends State<WalletScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            Center(child: Container(width: 40, height: 5, decoration: BoxDecoration(color: Colors.grey.shade800, borderRadius: BorderRadius.circular(10)))),
+            const SizedBox(height: 30),
             const Text('Recevoir des fonds', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
             const SizedBox(height: 30),
+            
             Container(
-              width: 200, height: 200,
+              padding: const EdgeInsets.all(15),
               decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
-              child: const Center(child: Icon(Icons.qr_code, size: 100, color: Colors.black)),
+              child: QrImageView(
+                data: _userEmail, // Les données cachées dans le QR Code
+                version: QrVersions.auto,
+                size: 200.0,
+                backgroundColor: Colors.white,
+              ),
             ),
             const SizedBox(height: 20),
-            const Text('Faites scanner ce code pour recevoir de l\'argent', textAlign: TextAlign.center, style: TextStyle(color: textGray)),
+            
+            Text(_userEmail, style: const TextStyle(color: emerald500, fontSize: 16, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            const Text('Faites scanner ce code pour recevoir de l\'argent directement sur votre compte.', textAlign: TextAlign.center, style: TextStyle(color: textGray)),
             const SizedBox(height: 20),
           ],
         ),
@@ -445,29 +641,51 @@ class _WalletScreenState extends State<WalletScreen> {
     );
   }
 
+  // =========================================================
+  // MODAL : ENVOYER (Allume la caméra et scanne)
+  // =========================================================
   void _afficherScannerQR() {
-    // Même chose, on affiche une belle popup d'attente
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
-        padding: const EdgeInsets.all(30),
+        height: MediaQuery.of(context).size.height * 0.7, // Prend 70% de l'écran
+        padding: const EdgeInsets.only(top: 30, left: 20, right: 20, bottom: 20),
         decoration: const BoxDecoration(color: cardDark, borderRadius: BorderRadius.vertical(top: Radius.circular(40))),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.camera_alt, size: 50, color: emerald500),
+            Center(child: Container(width: 40, height: 5, decoration: BoxDecoration(color: Colors.grey.shade800, borderRadius: BorderRadius.circular(10)))),
             const SizedBox(height: 20),
             const Text('Scanner un QR Code', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 10),
-            const Text('L\'intégration de l\'appareil photo sera ajoutée via le package mobile_scanner.', textAlign: TextAlign.center, style: TextStyle(color: textGray)),
+            const SizedBox(height: 20),
+            const Text('Placez le QR Code dans le cadre pour envoyer de l\'argent.', textAlign: TextAlign.center, style: TextStyle(color: textGray, fontSize: 12)),
             const SizedBox(height: 30),
+            
+            Expanded(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(24),
+                child: MobileScanner(
+                  onDetect: (capture) {
+                    final List<Barcode> barcodes = capture.barcodes;
+                    for (final barcode in barcodes) {
+                      final String? emailScanne = barcode.rawValue;
+                      if (emailScanne != null && emailScanne.contains('@')) {
+                        Navigator.pop(context); 
+                        _afficherBottomSheetTransfert(emailPreRempli: emailScanne);
+                        break;
+                      }
+                    }
+                  },
+                ),
+              ),
+            ),
           ],
         ),
       )
     );
   }
-  
+
   Widget _buildPocketCard(String title, double amount) {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -522,8 +740,7 @@ class _WalletScreenState extends State<WalletScreen> {
                   children: [
                     Expanded(
                       child: ElevatedButton.icon(
-                        // 2. CORRECTION ICI : Bouton relié à la fonction !
-                        onPressed: _afficherBottomSheetRechargement, 
+                        onPressed: () => _afficherBottomSheetRechargement(), 
                         icon: const Icon(Icons.add, color: Colors.white, size: 18),
                         label: const Text('Recharger', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                         style: ElevatedButton.styleFrom(backgroundColor: Colors.black, padding: const EdgeInsets.symmetric(vertical: 15), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
@@ -532,8 +749,7 @@ class _WalletScreenState extends State<WalletScreen> {
                     const SizedBox(width: 15),
                     Expanded(
                       child: ElevatedButton.icon(
-                        // 3. CORRECTION ICI : Bouton relié à la fonction !
-                        onPressed: _afficherBottomSheetTransfert, 
+                        onPressed: () => _afficherBottomSheetTransfert(), 
                         icon: const Icon(Icons.send, color: Colors.black, size: 18),
                         label: const Text('Envoyer', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
                         style: ElevatedButton.styleFrom(backgroundColor: Colors.white.withOpacity(0.3), elevation: 0, padding: const EdgeInsets.symmetric(vertical: 15), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
@@ -546,7 +762,6 @@ class _WalletScreenState extends State<WalletScreen> {
           ),
           const SizedBox(height: 25),
 
-          // ACTIONS RAPIDES
           // ACTIONS RAPIDES
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -637,7 +852,7 @@ class _WalletScreenState extends State<WalletScreen> {
   }
 
   Widget _buildQuickAction(IconData icon, String label, Color iconColor, VoidCallback onTap) {
-    return GestureDetector( // <-- On ajoute le GestureDetector ici !
+    return GestureDetector(
       onTap: onTap,
       child: Container(
         width: 100,
