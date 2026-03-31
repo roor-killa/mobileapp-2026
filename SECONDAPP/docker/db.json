@@ -1,0 +1,79 @@
+{
+  "dashboard": {
+    "balanceData": [
+      { "month": "Jan", "value": 45000 },
+      { "month": "Feb", "value": 52000 },
+      { "month": "Mar", "value": 49000 },
+      { "month": "Apr", "value": 61000 },
+      { "month": "May", "value": 58000 },
+      { "month": "Jun", "value": 73500 }
+    ],
+    "transactions": [
+      {
+        "id": 1,
+        "name": "Netflix Subscription",
+        "category": "Entertainment",
+        "amount": -15.99,
+        "icon": "zap",
+        "color": "from-red-500 to-pink-500",
+        "time": "2h ago"
+      },
+      {
+        "id": 2,
+        "name": "Salary Deposit",
+        "category": "Income",
+        "amount": 5420,
+        "icon": "arrow-down-right",
+        "color": "from-emerald-500 to-green-500",
+        "time": "1d ago"
+      },
+      {
+        "id": 3,
+        "name": "Amazon Purchase",
+        "category": "Shopping",
+        "amount": -89.99,
+        "icon": "shopping-bag",
+        "color": "from-orange-500 to-yellow-500",
+        "time": "2d ago"
+      },
+      {
+        "id": 4,
+        "name": "Rent Payment",
+        "category": "Housing",
+        "amount": -1500,
+        "icon": "home",
+        "color": "from-blue-500 to-cyan-500",
+        "time": "3d ago"
+      },
+      {
+        "id": 5,
+        "name": "Starbucks",
+        "category": "Food & Drink",
+        "amount": -8.5,
+        "icon": "coffee",
+        "color": "from-purple-500 to-pink-500",
+        "time": "4d ago"
+      }
+    ],
+    "insights": [
+      {
+        "title": "Monthly Savings",
+        "value": "+18%",
+        "description": "Great job! You saved $780 more than last month",
+        "trend": "up"
+      },
+      {
+        "title": "Spending Alert",
+        "value": "82%",
+        "description": "You've used 82% of your monthly budget",
+        "trend": "warning"
+      },
+      {
+        "title": "Investment Growth",
+        "value": "+12.4%",
+        "description": "Your portfolio gained $3,420 this month",
+        "trend": "up"
+      }
+    ]
+  }
+}

@@ -3,7 +3,7 @@ import {
   Eye, EyeOff, Send, Download, TrendingUp, Wallet, 
   Zap, ArrowDownRight, ShoppingBag, Home as HomeIcon, Coffee 
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
 import SendMoneyModal from "./modals/SendMoneyModal";
 import { useNavigate } from "react-router";
@@ -12,35 +12,50 @@ import HolographicCard from "./effects/HolographicCard";
 import AnimatedBorder from "./effects/AnimatedBorder";
 import LEDIndicator from "./effects/LEDIndicator";
 import { useTheme } from "../contexts/ThemeContext";
+import { getDashboardData, type DashboardInsight, type DashboardTransaction, type DashboardBalancePoint } from "../services/dashboardApi";
 
-const balanceData = [
-  { month: "Jan", value: 45000 },
-  { month: "Feb", value: 52000 },
-  { month: "Mar", value: 49000 },
-  { month: "Apr", value: 61000 },
-  { month: "May", value: 58000 },
-  { month: "Jun", value: 73500 },
-];
-
-const transactions = [
-  { id: 1, name: "Netflix Subscription", category: "Entertainment", amount: -15.99, icon: Zap, color: "from-red-500 to-pink-500", time: "2h ago" },
-  { id: 2, name: "Salary Deposit", category: "Income", amount: 5420.00, icon: ArrowDownRight, color: "from-emerald-500 to-green-500", time: "1d ago" },
-  { id: 3, name: "Amazon Purchase", category: "Shopping", amount: -89.99, icon: ShoppingBag, color: "from-orange-500 to-yellow-500", time: "2d ago" },
-  { id: 4, name: "Rent Payment", category: "Housing", amount: -1500.00, icon: HomeIcon, color: "from-blue-500 to-cyan-500", time: "3d ago" },
-  { id: 5, name: "Starbucks", category: "Food & Drink", amount: -8.50, icon: Coffee, color: "from-purple-500 to-pink-500", time: "4d ago" },
-];
-
-const insights = [
-  { title: "Monthly Savings", value: "+18%", description: "Great job! You saved $780 more than last month", trend: "up" },
-  { title: "Spending Alert", value: "82%", description: "You've used 82% of your monthly budget", trend: "warning" },
-  { title: "Investment Growth", value: "+12.4%", description: "Your portfolio gained $3,420 this month", trend: "up" },
-];
+const iconMap = {
+  zap: Zap,
+  "arrow-down-right": ArrowDownRight,
+  "shopping-bag": ShoppingBag,
+  home: HomeIcon,
+  coffee: Coffee,
+};
 
 export default function Dashboard() {
   const [showBalance, setShowBalance] = useState(true);
   const [isSendMoneyModalOpen, setIsSendMoneyModalOpen] = useState(false);
+  const [balanceData, setBalanceData] = useState<DashboardBalancePoint[]>([]);
+  const [transactions, setTransactions] = useState<DashboardTransaction[]>([]);
+  const [insights, setInsights] = useState<DashboardInsight[]>([]);
+  const [isDataAvailable, setIsDataAvailable] = useState(false);
   const navigate = useNavigate();
   const { theme } = useTheme();
+
+  useEffect(() => {
+    let isMounted = true;
+
+    getDashboardData().then((data) => {
+      if (!isMounted) return;
+
+      if (!data) {
+        setIsDataAvailable(false);
+        setBalanceData([]);
+        setTransactions([]);
+        setInsights([]);
+        return;
+      }
+
+      setIsDataAvailable(true);
+      setBalanceData(data.balanceData);
+      setTransactions(data.transactions);
+      setInsights(data.insights);
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   return (
     <div className="p-6 space-y-6">
@@ -111,6 +126,12 @@ export default function Dashboard() {
           </div>
         </motion.div>
       </HolographicCard>
+
+      {!isDataAvailable && (
+        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-sm">
+          Donnees indisponibles : demarre Docker pour charger la base.
+        </div>
+      )}
 
       {/* Quick Actions */}
       <motion.div
@@ -219,6 +240,11 @@ export default function Dashboard() {
             <p className="text-sm text-white/80">{insight.description}</p>
           </motion.div>
         ))}
+        {insights.length === 0 && (
+          <div className="p-4 rounded-2xl bg-white/10 border border-white/20 text-sm text-gray-300">
+            Aucune donnee disponible.
+          </div>
+        )}
       </motion.div>
 
       {/* Recent Transactions */}
@@ -241,7 +267,7 @@ export default function Dashboard() {
           </button>
         </div>
         {transactions.map((transaction, idx) => {
-          const Icon = transaction.icon;
+          const Icon = iconMap[transaction.icon as keyof typeof iconMap] ?? Wallet;
           return (
             <motion.div
               key={transaction.id}
@@ -263,6 +289,11 @@ export default function Dashboard() {
             </motion.div>
           );
         })}
+        {transactions.length === 0 && (
+          <div className="p-4 rounded-2xl bg-white/10 border border-white/20 text-sm text-gray-300">
+            Aucune transaction a afficher.
+          </div>
+        )}
       </motion.div>
 
       {/* Send Money Modal */}

@@ -1,0 +1,9 @@
+services:
+  secondapp-db:
+    image: clue/json-server:latest
+    container_name: secondapp-db
+    ports:
+      - "3001:80"
+    volumes:
+      - ./docker/db.json:/data/db.json:ro
+    restart: unless-stopped
