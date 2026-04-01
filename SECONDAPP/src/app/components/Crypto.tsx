@@ -1,12 +1,14 @@
 import { motion } from "motion/react";
 import { TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, Plus, Repeat, Activity } from "lucide-react";
 import { useState, useEffect } from "react";
+import { Link } from "react-router";
 import BuyCryptoModal from "./modals/BuyCryptoModal";
 import { toast } from "sonner";
 import LEDIndicator from "./effects/LEDIndicator";
 import RealTimeCryptoChart from "./charts/RealTimeCryptoChart";
 import MiniSparkline from "./charts/MiniSparkline";
 import { useTheme } from "../contexts/ThemeContext";
+import { queueCryptoPurchase } from "../services/nexbank-chain/walletSync";
 
 // Market prices (current prices)
 const marketPrices: { [key: string]: number } = {
@@ -69,6 +71,7 @@ export default function Crypto() {
         return [...prev, newCrypto];
       }
     });
+    queueCryptoPurchase(newCrypto.symbol, newCrypto.name, newCrypto.amount);
   };
 
   const calculateCryptoMetrics = (crypto: CryptoAsset) => {
@@ -126,6 +129,12 @@ export default function Crypto() {
       >
         <h1 className="text-2xl font-bold">Crypto Wallet</h1>
         <p className="text-gray-400 mt-1">Manage your digital assets</p>
+        <Link
+          to="/blockchain"
+          className="inline-flex mt-3 text-sm text-cyan-300 hover:text-cyan-200 underline-offset-2 hover:underline"
+        >
+          NexBank Chain — journal blockchain interne
+        </Link>
       </motion.div>
 
       {/* Total Portfolio Value */}

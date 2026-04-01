@@ -11,6 +11,13 @@ Deuxième version du projet, refaite **depuis zéro** après une première moutu
 | Front | `npm run dev` → souvent **http://localhost:5173** |
 | Sans Docker | L’app démarre ; **dashboard** et **clients** viennent du JSON : affichage vide côté données si le conteneur est arrêté |
 | Facturation | Route `/invoices` ; brouillons **éditables** + **création** ; sauvegarde **localStorage** (le fichier JSON Docker est en lecture seule) |
+| **NexBank Chain** (blockchain démo) | Route **`/blockchain`** ; chaîne locale (pas de réseau public), **SHA-256**, **preuve de travail** (difficulté configurable), **mempool**, bloc **genèse**, validation d’intégrité ; persistance **`localStorage`** (`secondapp-nexbank-chain-v1`) ; les **achats crypto** enregistrent une transaction `wallet` dans le mempool |
+
+### NexBank Chain — détail technique
+
+- **Code** : `src/app/services/nexbank-chain/` (`types`, `engine`, `storage`, `walletSync`) ; UI : `src/app/components/Blockchain.tsx`.
+- **Flux** : ajouter des transactions → elles vont dans la file d’attente → **Miner un bloc** calcule un nonce jusqu’à ce que le hash commence par *N* zéros hex (défaut *N* = 2) → **Vérifier la chaîne** contrôle genèse, enchaînement `previousHash`, hash des blocs et PoW.
+- **Intégration** : navigation **Blocks** dans la barre du bas ; depuis **Crypto**, un lien vers la chaîne ; après un achat, le mempool se met à jour (y compris si l’onglet Blockchain est déjà ouvert).
 
 ## Démarrage rapide
 
@@ -30,10 +37,12 @@ Le **rapport d’utilisation** complet est dans **`docs/RAPPORT-UTILISATION-DETA
 **Obtenir un PDF** (sur ta machine) :
 
 ```bash
-npm run report:html
+npm run report:pdf
 ```
 
-Puis ouvre **`docs/RAPPORT-UTILISATION-DETAILLE.html`** dans le navigateur → **Ctrl+P** (Imprimer) → **Enregistrer au format PDF**.
+Cela régénère le **HTML** depuis le Markdown puis produit **`docs/RAPPORT-UTILISATION-DETAILLE.pdf`** via Chrome ou Edge (headless). Sans navigateur détecté, définis `CHROME_PATH` ou `EDGE_PATH`.
+
+Alternative manuelle : `npm run report:html`, puis ouvre **`docs/RAPPORT-UTILISATION-DETAILLE.html`** → **Ctrl+P** → **Enregistrer au format PDF**.
 
 ## Liens utiles
 

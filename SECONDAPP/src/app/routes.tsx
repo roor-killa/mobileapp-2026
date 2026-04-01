@@ -10,6 +10,7 @@ import Analytics from "./components/Analytics";
 import Security from "./components/Security";
 import Profile from "./components/Profile";
 import Invoicing from "./components/Invoicing";
+import Blockchain from "./components/Blockchain";
 import Login from "./components/Login";
 import SignUp from "./components/SignUp";
 
@@ -38,6 +39,7 @@ export const router = createBrowserRouter([
           { path: "security", Component: Security },
           { path: "profile", Component: Profile },
           { path: "invoices", Component: Invoicing },
+          { path: "blockchain", Component: Blockchain },
         ],
       },
     ],

@@ -11,7 +11,7 @@ Le projet a évolué dans le temps : une **première version** a pu être **pré
 | Tu veux… | Chemin important | Doc débutant |
 |----------|------------------|--------------|
 | **MyBank** (Flutter + API Laravel, virements réels côté API) | `project\firstapp` + `infrastructure\back-laravel` | [docs/guides/01-MyBank-Flutter-et-Laravel.md](docs/guides/01-MyBank-Flutter-et-Laravel.md) |
-| **App web** bancaire + **facturation** (React, json-server) | `SECONDAPP` | [docs/guides/02-SECONDAPP-Web-bancaire-et-facturation.md](docs/guides/02-SECONDAPP-Web-bancaire-et-facturation.md) |
+| **App web** bancaire + **facturation** + **blockchain démo** (React, json-server) | `SECONDAPP` (route `/blockchain` : NexBank Chain) | [docs/guides/02-SECONDAPP-Web-bancaire-et-facturation.md](docs/guides/02-SECONDAPP-Web-bancaire-et-facturation.md) |
 | **Flutter** + même JSON que le web (port 3001) | `project\secondapp` + Docker lancé depuis `SECONDAPP` | [docs/guides/03-SecondApp-Flutter-json-server.md](docs/guides/03-SecondApp-Flutter-json-server.md) |
 | **Voir l’arborescence** du dépôt (arbre des dossiers) | [docs/ARBRE-DU-DEPOT.md](docs/ARBRE-DU-DEPOT.md) | — |
 | **Index des guides** débutants | [docs/guides/LIRE-MOI-GUIDES.md](docs/guides/LIRE-MOI-GUIDES.md) | — |
@@ -61,6 +61,7 @@ mobileapp-2026/
 - **React + Vite** : interface type banque « premium » (base Figma/Make).
 - **Docker** : `clue/json-server` sur le port **3001**, données dans `SECONDAPP\docker\db.json`.
 - **Facturation** : écran dédié, brouillons éditables, création de factures, persistance **localStorage** pour les brouillons (fichier JSON monté en lecture seule).
+- **NexBank Chain** : blockchain de **démonstration** propre à l’app (`/blockchain`) — chaîne liée par hash, **SHA-256**, preuve de travail légère, mempool, stockage navigateur ; les achats **Crypto** peuvent alimenter le mempool (transaction `wallet`). Voir **`SECONDAPP\README.md`** pour le détail.
 
 ### 3. SecondApp Flutter — `project\secondapp`
 

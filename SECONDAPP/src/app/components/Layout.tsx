@@ -1,5 +1,5 @@
 import { Outlet, useLocation, Link } from "react-router";
-import { Home, ArrowLeftRight, Bitcoin, TrendingUp, CreditCard, PieChart, Shield, User, Receipt } from "lucide-react";
+import { Home, ArrowLeftRight, Bitcoin, TrendingUp, CreditCard, PieChart, Shield, User, Receipt, Blocks } from "lucide-react";
 import FuturisticBackground from "./effects/FuturisticBackground";
 import LEDIndicator from "./effects/LEDIndicator";
 import { useTheme } from "../contexts/ThemeContext";
@@ -79,6 +79,17 @@ export default function Layout() {
             title="Facturation (Odoo)"
           >
             <Receipt className={`w-5 h-5 ${isActive("/invoices") ? "text-amber-500" : "text-white"}`} />
+          </Link>
+          <Link
+            to="/blockchain"
+            className={`p-3 rounded-2xl backdrop-blur-xl transition-all hover:scale-110 shadow-lg ${
+              isActive("/blockchain")
+                ? "bg-white shadow-2xl"
+                : "bg-white/20 border-2 border-white/40 hover:border-white/60 hover:bg-white/30"
+            }`}
+            title="NexBank Chain"
+          >
+            <Blocks className={`w-5 h-5 ${isActive("/blockchain") ? "text-cyan-500" : "text-white"}`} />
           </Link>
           <Link
             to="/analytics"

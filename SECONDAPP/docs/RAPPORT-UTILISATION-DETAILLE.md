@@ -1,7 +1,7 @@
 # Rapport d'utilisation — SECONDAPP
 
 **Application web bancaire « premium » et module de facturation type Odoo**  
-**Auteur du projet** : (à compléter)  
+**Auteur du projet** : CLAPIER Titouan 
 **Date du rapport** : avril 2026  
 **Emplacement du code** : dossier `SECONDAPP` du dépôt `mobileapp-2026`
 
