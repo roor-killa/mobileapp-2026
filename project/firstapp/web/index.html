@@ -16,13 +16,13 @@
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>Mon Compte</title>
+  <title>VLT Bank</title>
   <link rel="manifest" href="manifest.json">
 
   <style>
     body {
       margin: 0;
-      background-color: #e3f2fd;
+      background-color: #082983;
       display: flex;
       justify-content: center;
       align-items: center;
@@ -34,15 +34,30 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 20px;
-      color: #1976d2;
+      gap: 16px;
+      color: white;
+    }
+
+    #loading h1 {
+      margin: 0;
+      font-size: 32px;
+      font-weight: bold;
+      letter-spacing: 3px;
+      color: white;
+    }
+
+    #loading p {
+      margin: 0;
+      font-size: 14px;
+      color: rgba(255,255,255,0.6);
+      letter-spacing: 1px;
     }
 
     .spinner {
       width: 48px;
       height: 48px;
-      border: 5px solid #bbdefb;
-      border-top-color: #1976d2;
+      border: 4px solid rgba(255,255,255,0.3);
+      border-top-color: white;
       border-radius: 50%;
       animation: spin 0.9s linear infinite;
     }
@@ -55,7 +70,8 @@
 <body>
   <div id="loading">
     <div class="spinner"></div>
-    <span>Chargement...</span>
+    <h1>VLT Bank</h1>
+    <p>Votre banque de confiance</p>
   </div>
 
   <script src="flutter_bootstrap.js" async></script>

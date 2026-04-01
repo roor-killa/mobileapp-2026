@@ -6,13 +6,13 @@ class AppColors {
   AppColors._();
 
   // ── Couleur principale ──────────────────────────────────────────────────────
-  static const Color primary        = Color(0xFF1976D2); // bleu principal
+  static const Color primary        = Color.fromARGB(255, 8, 41, 131); // bleu principal
   static const Color primaryLight   = Color(0xFFE3F2FD); // fond très clair
-  static const Color primaryMedium  = Color(0xFF42A5F5); // bleu moyen
+  static const Color primaryMedium  = Color.fromARGB(255, 76, 147, 204); // bleu moyen
 
   // ── Dégradé de l'écran d'accueil ───────────────────────────────────────────
   static const Color gradientStart  = Color(0xFF1565C0); // bleu foncé (gauche)
-  static const Color gradientEnd    = Color(0xFF42A5F5); // bleu clair (droite)
+  static const Color gradientEnd    = Color.fromARGB(255, 81, 205, 243); // bleu clair (droite)
 
   // ── Couleurs sémantiques (ne pas changer) ──────────────────────────────────
   static const Color success        = Color(0xFF43A047); // vert succès
@@ -28,6 +28,6 @@ class AppColors {
   static const Color textHint       = Color(0xFFBDBDBD);
 
   // ── Fonds ──────────────────────────────────────────────────────────────────
-  static const Color background     = Color(0xFFF5F5F5);
-  static const Color cardBackground = Colors.white;
+  static const Color background     = Color.fromARGB(255, 10, 224, 189);
+  static const Color cardBackground = Color.fromARGB(255, 29, 211, 172);
 }

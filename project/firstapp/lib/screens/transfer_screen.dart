@@ -40,24 +40,39 @@ class _TransferTabState extends State<TransferTab> {
   bool _loadingUsers = true;
   TransferResponse? _lastResponse;
   List<Utilisateur> _utilisateurs = [];
+  List<int> _favorisIds = [];
   Utilisateur? _destinataire;
+  bool _showFavorisOnly = false;
 
   Utilisateur get _user => AuthService.utilisateurConnecte!;
 
   @override
   void initState() {
     super.initState();
-    _chargerUtilisateurs();
+    _chargerDonnees();
   }
 
-  Future<void> _chargerUtilisateurs() async {
+  Future<void> _chargerDonnees() async {
     final users = await DatabaseService.instance.getTousLesUtilisateurs(_user.id!);
+    final favoris = await DatabaseService.instance.getFavoris(_user.id!);
     if (mounted) {
       setState(() {
         _utilisateurs = users;
+        _favorisIds = favoris;
         _loadingUsers = false;
       });
     }
+  }
+
+  List<Utilisateur> get _utilisateursFiltres {
+    if (!_showFavorisOnly) return _utilisateurs;
+    return _utilisateurs.where((u) => _favorisIds.contains(u.id)).toList();
+  }
+
+  Future<void> _toggleFavori(Utilisateur u) async {
+    await DatabaseService.instance.toggleFavori(_user.id!, u.id!);
+    final favoris = await DatabaseService.instance.getFavoris(_user.id!);
+    if (mounted) setState(() => _favorisIds = favoris);
   }
 
   Future<bool?> _afficherConfirmation(double montant) {
@@ -122,8 +137,7 @@ class _TransferTabState extends State<TransferTab> {
       if (response.success) {
         _montantController.clear();
         setState(() => _destinataire = null);
-        // Recharge la liste pour avoir les soldes à jour
-        _chargerUtilisateurs();
+        _chargerDonnees();
       }
     } catch (e) {
       if (!mounted) return;
@@ -146,8 +160,8 @@ class _TransferTabState extends State<TransferTab> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _buildSoldeCard(),
-          const SizedBox(height: 30),
-          _buildDestinataireSelector(),
+          const SizedBox(height: 24),
+          _buildDestinataireSection(),
           const SizedBox(height: 16),
           _buildMontantInput(),
           const SizedBox(height: 20),
@@ -184,7 +198,7 @@ class _TransferTabState extends State<TransferTab> {
     );
   }
 
-  Widget _buildDestinataireSelector() {
+  Widget _buildDestinataireSection() {
     if (_loadingUsers) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -212,43 +226,156 @@ class _TransferTabState extends State<TransferTab> {
       );
     }
 
-    return DropdownButtonFormField<Utilisateur>(
-      value: _destinataire,
-      decoration: InputDecoration(
-        labelText: 'Destinataire',
-        prefixIcon: const Icon(Icons.person),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-        filled: true,
-        fillColor: Colors.grey.shade100,
-      ),
-      hint: const Text('Choisir un destinataire'),
-      items: _utilisateurs
-          .map((u) => DropdownMenuItem<Utilisateur>(
-                value: u,
-                child: Text('${u.nom} — ${u.email}'),
-              ))
-          .toList(),
-      onChanged: (u) => setState(() => _destinataire = u),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Bouton favoris
+        if (_favorisIds.isNotEmpty)
+          Row(
+            children: [
+              const Text(
+                'Destinataire',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+              ),
+              const Spacer(),
+              TextButton.icon(
+                onPressed: () => setState(() => _showFavorisOnly = !_showFavorisOnly),
+                icon: Icon(
+                  _showFavorisOnly ? Icons.star : Icons.star_border,
+                  size: 18,
+                  color: _showFavorisOnly ? Colors.amber : Colors.grey,
+                ),
+                label: Text(
+                  _showFavorisOnly ? 'Tous' : 'Favoris',
+                  style: TextStyle(
+                    color: _showFavorisOnly ? Colors.amber : Colors.grey,
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+        // Liste des destinataires
+        ..._utilisateursFiltres.map((u) {
+          final isSelected = _destinataire?.id == u.id;
+          final isFavori = _favorisIds.contains(u.id);
+          return Card(
+            margin: const EdgeInsets.only(bottom: 8),
+            elevation: isSelected ? 3 : 1,
+            color: isSelected ? AppColors.primary.withValues(alpha: 0.08) : null,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+              side: BorderSide(
+                color: isSelected ? AppColors.primary : Colors.transparent,
+                width: 1.5,
+              ),
+            ),
+            child: ListTile(
+              onTap: () => setState(() => _destinataire = isSelected ? null : u),
+              leading: CircleAvatar(
+                backgroundColor:
+                    isSelected ? AppColors.primary : Colors.grey.shade200,
+                child: Text(
+                  u.nom.isNotEmpty ? u.nom[0].toUpperCase() : '?',
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : Colors.black54,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              title: Text(
+                u.nom,
+                style: TextStyle(
+                  fontWeight:
+                      isSelected ? FontWeight.bold : FontWeight.normal,
+                  color: isSelected ? AppColors.primary : null,
+                ),
+              ),
+              subtitle: Text(
+                u.email,
+                style: const TextStyle(fontSize: 12),
+              ),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (isSelected)
+                    const Icon(Icons.check_circle, color: AppColors.primary, size: 20),
+                  IconButton(
+                    icon: Icon(
+                      isFavori ? Icons.star : Icons.star_border,
+                      color: isFavori ? Colors.amber : Colors.grey,
+                      size: 20,
+                    ),
+                    onPressed: () => _toggleFavori(u),
+                    tooltip: isFavori ? 'Retirer des favoris' : 'Ajouter aux favoris',
+                  ),
+                ],
+              ),
+            ),
+          );
+        }),
+
+        if (_utilisateursFiltres.isEmpty && _showFavorisOnly)
+          const Padding(
+            padding: EdgeInsets.all(16),
+            child: Center(
+              child: Text(
+                'Aucun favori — appuyez sur ⭐ pour en ajouter',
+                style: TextStyle(color: Colors.black45),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+      ],
     );
   }
 
   Widget _buildMontantInput() {
-    return TextField(
-      controller: _montantController,
-      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      inputFormatters: [
-        FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextField(
+          controller: _montantController,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          inputFormatters: [
+            FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+          ],
+          decoration: InputDecoration(
+            labelText: 'Montant à transférer',
+            hintText: 'Ex: 50.00',
+            prefixIcon: const Icon(Icons.euro),
+            suffixText: '€',
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+            filled: true,
+            fillColor: Colors.grey.shade100,
+          ),
+          style: const TextStyle(fontSize: 20),
+        ),
+        const SizedBox(height: 10),
+        // Boutons montants rapides
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [10, 20, 50, 100, 200, 500].map((montant) {
+            return OutlinedButton(
+              onPressed: () {
+                _montantController.text = montant.toString();
+              },
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                side: const BorderSide(color: AppColors.primary),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: Text(
+                '$montant €',
+                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+              ),
+            );
+          }).toList(),
+        ),
       ],
-      decoration: InputDecoration(
-        labelText: 'Montant à transférer',
-        hintText: 'Ex: 50.00',
-        prefixIcon: const Icon(Icons.euro),
-        suffixText: '€',
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-        filled: true,
-        fillColor: Colors.grey.shade100,
-      ),
-      style: const TextStyle(fontSize: 20),
     );
   }
 

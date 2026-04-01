@@ -4,6 +4,7 @@ import '../theme/app_colors.dart';
 import 'home_tab.dart';
 import 'transfer_screen.dart';
 import 'releve_compte_screen.dart';
+import 'statistics_screen.dart';
 import 'profile_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -16,7 +17,13 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   int _currentIndex = 0;
 
-  static const _titles = ['Accueil', 'Virement', 'Historique', 'Mon profil'];
+  static const _titles = [
+    'Accueil',
+    'Virement',
+    'Historique',
+    'Statistiques',
+    'Mon profil',
+  ];
 
   Widget _buildTab() {
     switch (_currentIndex) {
@@ -31,7 +38,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
       case 2:
         return const HistoryTab(key: ValueKey('history'));
       case 3:
-        return const ProfileTab(key: ValueKey('profile'));
+        return const StatisticsTab(key: ValueKey('stats'));
+      case 4:
+        return ProfileTab(
+          key: const ValueKey('profile'),
+          onTabChange: (i) => setState(() => _currentIndex = i),
+        );
       default:
         return const SizedBox.shrink();
     }
@@ -55,7 +67,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         foregroundColor: Colors.white,
         actions: [
           GestureDetector(
-            onTap: () => setState(() => _currentIndex = 3),
+            onTap: () => setState(() => _currentIndex = 4),
             child: Padding(
               padding: const EdgeInsets.only(right: 16),
               child: CircleAvatar(
@@ -99,6 +111,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
             icon: Icon(Icons.history_outlined),
             activeIcon: Icon(Icons.history),
             label: 'Historique',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.bar_chart_outlined),
+            activeIcon: Icon(Icons.bar_chart),
+            label: 'Stats',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person_outline),
