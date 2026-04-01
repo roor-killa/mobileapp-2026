@@ -1,0 +1,41 @@
+version: '3.9'
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: icebank_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: icebank2026
+      MYSQL_DATABASE: icebank
+      MYSQL_USER: icebank_user
+      MYSQL_PASSWORD: icebank2026
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+
+  backend:
+    build: ../projet/backend
+    container_name: icebank_backend
+    restart: always
+    ports:
+      - "8000:80"
+    environment:
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_DATABASE: icebank
+      DB_USERNAME: icebank_user
+      DB_PASSWORD: icebank2026
+      APP_KEY: base64:icebankSecretKey2026==
+    depends_on:
+      - db
+
+  redis:
+    image: redis:alpine
+    container_name: icebank_redis
+    ports:
+      - "6379:6379"
+
+volumes:
+  db_data:
