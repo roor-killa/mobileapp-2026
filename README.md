@@ -1,4 +1,4 @@
-# mobileapp-2026 — Monorepo applications bancaires
+# mobileapp-2026 — Applications bancaires
 
 Ce dépôt regroupe **plusieurs applications** autour d’un thème **banque / finance** : une app mobile **MyBank** (Flutter + Laravel), une **application web** refaite (**SECONDAPP**), une app Flutter légère branchée sur des **données mock Docker**, ainsi que des dossiers **infrastructure** (API, Docker, front Next.js).
 
