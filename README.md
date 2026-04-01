@@ -51,7 +51,7 @@ cd flutter_bank_app
 cp .env.example .env
 ```
 
-Ouvrez ensuite le fichier `.env` et ajoutez votre clé API Google à la fin :
+Ouvrez ensuite le fichier `.env` et ajoutez votre clé API Google à la fin(mon fichier .env est disponible dans ma branche dans "C:\Users\Ordi\Documents\Prog_mobile\mobileapp-2026\project\flutter_bank_app"): 
 
 ```env
 GEMINI_API_KEY=votre_cle_api_google_ici
@@ -99,8 +99,8 @@ Pour évaluer l'ensemble des fonctionnalités dans l'ordre :
 1. **Inscription** — Créez un compte (ex : *prof@bkn.com* / *password123*).
 2. **Dashboard** — Vérifiez l'affichage du solde. Un solde initial peut être injecté directement en base de données si besoin.
 3. **Pockets** — Créez un sous-compte "Épargne" et transférez-y une somme depuis le solde principal.
-4. **Marché** — Achetez des jetons BKN et constatez la déduction immédiate sur votre solde en euros.
-5. **Assistant IA** — Posez la question : *"Combien me reste-t-il sur mon compte Épargne ?"*. L'IA répondra précisément grâce à l'injection dynamique du contexte utilisateur.
+4. **Marché** — Achetez des jetons BKN et constatez la déduction immédiate sur votre solde en euros(vous pouvez aussi cliquer sur le solde BKN dans l'onglet wallet et vous serez redirigé vers le marché BKN)
+5. **Assistant IA** — Posez la question : *"Combien me reste-t-il sur mon compte Épargne ?"*. L'IA répondra précisément grâce à l'injection dynamique du contexte utilisateur(devait fonctionner mais ne fonctionne pas parce qu'il est bloqué par rapport à la région, si vous mettez un VPN ça devrait fonctionner)
 6. **Paramètres** — Ouvrez le menu via l'avatar en haut à gauche et testez la modification du mot de passe.
 
 ---
