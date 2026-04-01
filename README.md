@@ -1,8 +1,6 @@
 # mobileapp-2026
 Création application mobile L3 2026
 
-Oui — voici la version **en français**, courte et prête à copier-coller.
-
 # MiniBank App
 
 MiniBank App est une mini application bancaire fictive réalisée dans le cadre d’un projet étudiant, avec **Flutter** pour l’application mobile et **Laravel + MySQL** pour l’API backend.
@@ -11,8 +9,11 @@ MiniBank App est une mini application bancaire fictive réalisée dans le cadre 
 
 mobileapp-2026/
 ├─ project/              # application Flutter
+
 ├─ backend/              # API Laravel
+
 ├─ docker-compose.yml    # MySQL avec Docker
+
 └─ README.md
 
 ## Fonctionnalités principales
