@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../services/session_service.dart';
+import '../services/notification_service.dart';
 
 class DevoirsEtudiantScreen extends StatefulWidget {
   const DevoirsEtudiantScreen({super.key});
@@ -13,8 +14,10 @@ class DevoirsEtudiantScreen extends StatefulWidget {
 class _DevoirsEtudiantScreenState extends State<DevoirsEtudiantScreen> {
   final ApiService _apiService = ApiService();
   final SessionService _session = SessionService();
+  final NotificationService _notificationService = NotificationService();
 
   List<Map<String, dynamic>> _devoirs = [];
+  List<Map<String, dynamic>> _anciensDevoirs = [];
   bool _isLoading = true;
 
   @override
@@ -32,7 +35,23 @@ class _DevoirsEtudiantScreenState extends State<DevoirsEtudiantScreen> {
     try {
       final devoirs =
           await _apiService.getDevoirsClasse(etudiant.classeId!);
+
+      // Vérifie si de nouveaux devoirs ont été ajoutés
+      if (_anciensDevoirs.isNotEmpty) {
+        for (final devoir in devoirs) {
+          final estNouveau = !_anciensDevoirs
+              .any((d) => d['id'] == devoir['id']);
+          if (estNouveau) {
+            await _notificationService.notifierNouveauDevoir(
+              devoir['matiere']['nom'],
+              devoir['titre'],
+            );
+          }
+        }
+      }
+
       setState(() {
+        _anciensDevoirs = List.from(_devoirs);
         _devoirs = devoirs;
         _isLoading = false;
       });
@@ -112,7 +131,6 @@ class _DevoirsEtudiantScreenState extends State<DevoirsEtudiantScreen> {
                             padding: const EdgeInsets.all(16),
                             child: Row(
                               children: [
-                                // Icône
                                 Container(
                                   width: 50,
                                   height: 50,
@@ -174,7 +192,8 @@ class _DevoirsEtudiantScreenState extends State<DevoirsEtudiantScreen> {
                                           null) ...[
                                         const SizedBox(height: 6),
                                         Container(
-                                          padding: const EdgeInsets.all(8),
+                                          padding:
+                                              const EdgeInsets.all(8),
                                           decoration: BoxDecoration(
                                             color: Colors.grey.shade50,
                                             borderRadius:
@@ -194,7 +213,8 @@ class _DevoirsEtudiantScreenState extends State<DevoirsEtudiantScreen> {
                                         padding: const EdgeInsets.symmetric(
                                             horizontal: 10, vertical: 4),
                                         decoration: BoxDecoration(
-                                          color: couleur.withOpacity(0.1),
+                                          color:
+                                              couleur.withOpacity(0.1),
                                           borderRadius:
                                               BorderRadius.circular(10),
                                         ),
@@ -215,7 +235,8 @@ class _DevoirsEtudiantScreenState extends State<DevoirsEtudiantScreen> {
                                               style: TextStyle(
                                                 color: couleur,
                                                 fontSize: 11,
-                                                fontWeight: FontWeight.bold,
+                                                fontWeight:
+                                                    FontWeight.bold,
                                               ),
                                             ),
                                           ],
