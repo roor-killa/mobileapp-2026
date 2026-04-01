@@ -1,48 +1,56 @@
-# **ScolarApp — Application Mobile de Gestion Scolaire**
+# ScolarApp — Application Mobile de Gestion Scolaire
 
-Projet réalisé dans le cadre du cours de L3 Informatique.  
-Application Flutter connectée à une API Laravel avec base de données MySQL, inspirée de Pronote.
-
----
-
-## **Structure du projet**
-
-```
-mobileapp-2026/
-├── mobile/          → Application Flutter (frontend)
-└── backend-api/     → API Laravel (backend) — dossier Laragon : C:\laragon\www\backend-api
-```
+> Application mobile inspirée de Pronote, développée en Flutter (frontend) et Laravel (backend).  
+> Projet réalisé dans le cadre du cours de L3 Informatique — ALIBO CORENTIN — 2026
 
 ---
 
-## **Prérequis**
+## Table des matières
 
-Avant de lancer le projet, assurez-vous d'avoir installé :
-
-* [Laragon](https://laragon.org/download/) (Apache + MySQL)
-* [Composer](https://getcomposer.org/) (gestionnaire de dépendances PHP)
-* Flutter SDK ✅ (déjà installé)
-* Android Studio ✅ (déjà installé)
-
-> ⚠️ **Important** : Le backend Laravel doit être placé dans `C:\laragon\www\backend-api` pour que Laragon le serve correctement sur `http://localhost/backend-api/public/api`
+1. [Présentation](#présentation)
+2. [Installation et lancement](#installation-et-lancement)
+3. [Guide d'utilisation — Espace Professeur](#espace-professeur)
+4. [Guide d'utilisation — Espace Administrateur](#espace-administrateur)
+5. [Guide d'utilisation — Espace Étudiant](#espace-étudiant)
+6. [Comptes de test](#comptes-de-test)
+7. [Architecture technique](#architecture-technique)
+8. [Sécurité](#sécurité)
 
 ---
 
-## **Lancement du projet (dans l'ordre)**
+## Présentation
 
-### **1. Démarrer Laragon**
+ScolarApp est une application mobile Android qui centralise la gestion scolaire en trois espaces distincts :
 
-* Ouvrir **Laragon**
-* Cliquer sur **"Start All"** pour démarrer Apache et MySQL
+- **Espace Professeur** (violet) — gérer les étudiants, les notes, l'emploi du temps et les devoirs
+- **Espace Administrateur** (rouge/sombre) — gérer les professeurs et l'emploi du temps
+- **Espace Étudiant** (vert) — consulter ses notes, son emploi du temps et ses devoirs
 
-### **2. Configurer la base de données**
+---
 
-* Ouvrir **HeidiSQL** (inclus dans Laragon) ou **phpMyAdmin**
-* Créer une base de données nommée : `backend_api`
+## Installation et lancement
 
-### **3. Configurer le backend Laravel**
+### Prérequis
 
-Ouvrir un terminal dans le dossier `C:\laragon\www\backend-api` :
+Assurez-vous d'avoir installé :
+
+- [Laragon](https://laragon.org/download/) — serveur Apache + MySQL local
+- [Composer](https://getcomposer.org/) — gestionnaire de dépendances PHP
+- Flutter SDK
+- Android Studio avec un émulateur Android (API 21 minimum)
+
+> ⚠️ **Important** : Le dossier backend doit être placé dans `C:\laragon\www\backend-api`.  
+> Laragon ne sert que les fichiers depuis son propre dossier `www`, pas depuis le bureau ou OneDrive.
+
+### Étape 1 — Démarrer Laragon
+
+Ouvrir Laragon et cliquer sur **Start All** pour démarrer Apache et MySQL.
+
+### Étape 2 — Créer la base de données
+
+Ouvrir HeidiSQL (inclus dans Laragon) et créer une base de données nommée `backend_api`.
+
+### Étape 3 — Configurer le backend
 
 ```bash
 cd C:\laragon\www\backend-api
@@ -52,7 +60,7 @@ cp .env.example .env
 
 Ouvrir le fichier `.env` et vérifier ces lignes :
 
-```
+```env
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
 DB_PORT=3306
@@ -61,7 +69,7 @@ DB_USERNAME=root
 DB_PASSWORD=
 ```
 
-Générer la clé et migrer la base de données :
+Puis exécuter :
 
 ```bash
 php artisan key:generate
@@ -69,106 +77,188 @@ php artisan migrate
 php artisan db:seed
 ```
 
-### **4. Lancer l'émulateur Android**
+### Étape 4 — Lancer l'émulateur Android
 
-* Ouvrir **Android Studio**
-* Aller dans **Device Manager**
-* Démarrer un émulateur Android (API 21 ou supérieur recommandé)
+Ouvrir Android Studio, aller dans **Device Manager** et démarrer un émulateur Android.
 
-### **5. Lancer l'application Flutter**
+### Étape 5 — Lancer l'application Flutter
 
 ```bash
 cd mobile
 flutter pub get
-flutter run -d emulator-5554
+flutter run
 ```
-
-Si l'émulateur a un ID différent, utilisez `flutter devices` pour trouver le bon ID.
 
 ---
 
-## **Comptes de test**
+## Espace Professeur
+
+L'espace professeur est accessible depuis l'écran d'accueil. Il utilise une identité visuelle violette.
+
+### Connexion
+
+Saisir l'email et le mot de passe du compte professeur puis appuyer sur **Se connecter**.  
+En cas d'oubli du mot de passe, appuyer sur **Mot de passe oublié ?** et saisir l'email — un mot de passe temporaire sera généré et affiché à l'écran.
+
+### Gérer les étudiants
+
+Après connexion, la liste des étudiants s'affiche avec leur classe, email et initiales.
+
+- **Ajouter un étudiant** : appuyer sur **+ Ajouter** en bas à droite, remplir le formulaire et sélectionner une classe. Le mot de passe par défaut de l'étudiant sera `prénomminuscule123` (ex: `lucas123`).
+- **Modifier un étudiant** : appuyer sur l'icône crayon orange.
+- **Supprimer un étudiant** : appuyer sur l'icône poubelle rouge.
+- **Voir les notes** : appuyer sur **Voir les notes** sous le nom de l'étudiant.
+
+### Gérer les notes
+
+L'écran des notes affiche toutes les matières. Pour les matières enseignées par le professeur connecté, un bouton crayon permet de saisir ou modifier jusqu'à 3 notes. La moyenne est calculée automatiquement et affichée en vert si supérieure ou égale à 10, en rouge sinon.
+
+### Emploi du temps
+
+Appuyer sur l'icône **calendrier** dans la barre du haut. Les cours sont organisés par jour. Pour chaque cours, un bouton **Présence** permet de déclarer sa présence ou son absence avec un motif optionnel.
+
+### Devoirs
+
+Appuyer sur l'icône **presse-papiers** dans la barre du haut.
+
+- **Créer un devoir** : appuyer sur **+ Nouveau devoir**, remplir le titre, la description, la matière, la classe et la date limite.
+- **Supprimer un devoir** : appuyer sur l'icône poubelle rouge.
+
+Les étudiants reçoivent une notification automatique lors de l'ajout d'un nouveau devoir.
+
+### Moyennes de classe
+
+Appuyer sur l'icône **graphique** dans la barre du haut pour consulter les moyennes par matière pour chaque classe.
+
+---
+
+## Espace Administrateur
+
+L'espace administrateur est accessible depuis l'écran d'accueil en appuyant sur **Accès administrateur** en bas de page. Il utilise un thème sombre avec une identité rouge.
+
+### Connexion
+
+Saisir les identifiants administrateur. La fonctionnalité de mot de passe oublié est également disponible.
+
+### Gérer les professeurs
+
+Le tableau de bord affiche la liste des professeurs avec leurs matières assignées.
+
+- **Créer un professeur** : appuyer sur **+ Nouveau professeur**, remplir le formulaire et sélectionner jusqu'à 2 matières.
+- **Modifier les matières** : appuyer sur l'icône livre orange pour modifier les matières assignées.
+- **Supprimer un professeur** : appuyer sur l'icône poubelle rouge et confirmer.
+
+### Gérer l'emploi du temps
+
+Appuyer sur l'icône **calendrier** dans la barre du haut.
+
+- Sélectionner une classe dans le menu déroulant.
+- Naviguer entre les jours de la semaine.
+- **Ajouter un créneau** : appuyer sur **+ Ajouter un créneau**, choisir le jour, la matière, le professeur, les horaires et la salle.
+- **Supprimer un créneau** : appuyer sur l'icône poubelle rouge du créneau concerné.
+
+---
+
+## Espace Étudiant
+
+L'espace étudiant est accessible depuis l'écran d'accueil en appuyant sur **Espace étudiant**. Il utilise une identité visuelle verte.
+
+### Connexion
+
+Saisir l'email et le mot de passe du compte étudiant. La fonctionnalité de mot de passe oublié est disponible.
+
+### Onglet Notes
+
+Le tableau de bord affiche la moyenne générale avec la mention et la moyenne de la classe pour comparaison. Chaque matière affiche les trois notes, la moyenne individuelle et la moyenne de la classe.
+
+| Moyenne | Mention |
+|---------|---------|
+| 16 et plus | Très bien |
+| 14 à 15.99 | Bien |
+| 12 à 13.99 | Assez bien |
+| 10 à 11.99 | Passable |
+| Moins de 10 | Insuffisant |
+
+### Onglet Emploi du temps
+
+L'emploi du temps de la classe est affiché par jour avec les horaires, le nom du professeur et la salle.
+
+### Onglet Devoirs
+
+La liste des devoirs à rendre est affichée avec la matière, le professeur, la description et la date limite. Code couleur d'urgence :
+
+| Couleur | Signification |
+|---------|--------------|
+| Rouge | Moins de 2 jours restants |
+| Orange | Moins de 5 jours restants |
+| Vert | Plus de 5 jours restants |
+
+Tirer vers le bas pour rafraîchir. Une notification s'affiche automatiquement lors de l'ajout d'un nouveau devoir.
+
+### Onglet Assistant
+
+Le chatbot IA permet de poser des questions sur ses notes, ses résultats ou le règlement scolaire. Des suggestions rapides sont disponibles au démarrage.
+
+---
+
+## Comptes de test
 
 ### Professeurs
-| Nom | Email | Mot de passe |
-|-----|-------|--------------|
-| Pierre Dupont | prof@gmail.com | password |
-| Sophie Durand | sophie@school.com | sophie123 |
-| Emmanuel Macron | macron@gmail.com | test123 |
+
+| Nom | Email | Mot de passe | Matières |
+|-----|-------|--------------|---------|
+| Pierre Dupont | prof@gmail.com | password | Histoire, Anglais |
+| Sophie Durand | sophie@school.com | sophie123 | Mathématiques, Français |
+| Emmanuel Macron | macron@gmail.com | test123 | Mathématiques, Informatique |
+| Poutine Vladimir | poutine@gmail.com | *(réinitialiser)* | Histoire, Sciences |
+| Corentin Alibo | corentin@gmail.com | *(réinitialiser)* | Français, Histoire |
 
 ### Administrateur
+
 | Email | Mot de passe |
 |-------|--------------|
 | admin@gmail.com | admin123 |
 
-### Étudiants (mot de passe = prénom en minuscule + 123)
-| Nom | Email | Mot de passe |
-|-----|-------|--------------|
-| Lucas Martin | lucas@school.com | lucas123 |
-| Emma Bernard | emma@school.com | emma123 |
-| Noah Dubois | noah@school.com | noah123 |
-| Léa Thomas | lea@school.com | lea123 |
-| Hugo Petit | hugo@school.com | hugo123 |
-| Chloé Robert | chloe@school.com | chloe123 |
-| Antoine Richard | antoine@school.com | antoine123 |
+### Étudiants
+
+| Nom | Email | Mot de passe | Classe |
+|-----|-------|--------------|--------|
+| Lucas Martin | lucas@school.com | lucas123 | L3 Informatique |
+| Emma Bernard | emma@school.com | emma123 | L3 Informatique |
+| Noah Dubois | noah@school.com | noah123 | L3 Informatique |
+| Léa Thomas | lea@school.com | lea123 | L3 Informatique |
+| Hugo Petit | hugo@school.com | hugo123 | L3 Informatique |
+| Chloé Robert | chloe@school.com | chloe123 | L3 Informatique |
+| Antoine Richard | antoine@school.com | antoine123 | L3 Informatique |
 
 ---
 
-## **Fonctionnalités**
+## Architecture technique
 
-### Espace Professeur (violet)
-* Connexion / Inscription avec mot de passe oublié
-* Liste des étudiants avec classe (ajout, modification, suppression)
-* Gestion des notes par matière (max 3 notes par matière)
-* Affichage de la moyenne par matière (vert ≥ 10, rouge < 10)
-* Un professeur peut enseigner max 2 matières
-* Emploi du temps personnel avec déclaration présence/absence
-* Création et gestion des devoirs par classe
-* Moyennes de classe par matière
+| Composant | Technologie | Rôle |
+|-----------|-------------|------|
+| Frontend | Flutter (Dart) | Interface mobile Android |
+| Backend | Laravel 11 (PHP 8.4) | API REST — Architecture MVC |
+| Base de données | MySQL 8.4 | Stockage des données |
+| Serveur local | Laragon (Apache) | Hébergement du backend |
+| Notifications | flutter_local_notifications | Alertes nouveaux devoirs |
+| Chatbot | API Anthropic (Claude) | Assistant IA |
+| Sécurité | Bcrypt (Laravel Hash) | Hashage des mots de passe |
 
-### Espace Admin (rouge/sombre)
-* Connexion administrateur avec mot de passe oublié
-* Gestion des professeurs (ajout, suppression)
-* Assignation des matières aux professeurs
-* Gestion de l'emploi du temps par classe (ajout, suppression de créneaux)
-
-### Espace Étudiant (vert)
-* Connexion étudiant avec mot de passe oublié
-* Tableau de bord avec notes par matière et moyenne générale
-* Comparaison avec la moyenne de la classe
-* Mention automatique (Très bien / Bien / Assez bien / Passable / Insuffisant)
-* Emploi du temps de la classe par jour
-* Devoirs à rendre avec date limite et code couleur (rouge = urgent)
-* Notifications locales pour les nouveaux devoirs
-* Chatbot IA (Assistant) pour poser des questions sur les notes
-
-### Système de classes
-* 3 classes disponibles : L1 Informatique, L2 Informatique, L3 Informatique
-* Chaque étudiant est assigné à une classe
-* Moyennes calculées par classe et par matière
+L'émulateur Android communique avec le backend via `http://10.0.2.2/backend-api/public/api`.
 
 ---
 
-## **Architecture technique**
+## Sécurité
 
-* **Frontend** : Flutter (Dart) — `http://10.0.2.2/backend-api/public/api`
-* **Backend** : Laravel 11 (PHP 8.4) — Architecture MVC
-* **Base de données** : MySQL 8.4 (via Laragon)
-* **Notifications** : flutter_local_notifications
-* **Chatbot** : API Anthropic (claude-sonnet)
-* **Sécurité** : Mots de passe hashés avec bcrypt
+- Les mots de passe sont hashés avec bcrypt et ne sont jamais stockés en clair
+- Le champ `password` est masqué dans toutes les réponses JSON de l'API
+- Chaque rôle possède ses propres routes API distinctes
+- La réinitialisation de mot de passe génère un code temporaire affiché une seule fois
 
 ---
 
-## **Sécurité**
+## Auteur
 
-* Mots de passe hashés avec bcrypt — jamais stockés en clair
-* Le champ password est caché dans toutes les réponses JSON
-* Séparation des rôles : admin / professeur / étudiant
-* Réinitialisation de mot de passe avec génération d'un mot de passe temporaire
-
----
-
-## **Auteur**
-
-Projet développé par **ALIBO CORENTIN** — L3 Informatique 2026
+Projet développé par **ALIBO CORENTIN** — L3 Informatique 2026  
+Dépôt GitHub : [roor-killa/mobileapp-2026](https://github.com/roor-killa/mobileapp-2026) — branche `alibo`
