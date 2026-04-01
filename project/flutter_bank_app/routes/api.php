@@ -29,4 +29,5 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/pockets', [PocketController::class, 'index']); // Voir ses pockets
     Route::post('/pockets', [PocketController::class, 'store']); // Créer un pocket
     Route::post('/pockets/transfer', [PocketController::class, 'transfer']); // Mettre de l'argent dedans
+    Route::post('/chat', [App\Http\Controllers\ChatController::class, 'askGemini']);
 });

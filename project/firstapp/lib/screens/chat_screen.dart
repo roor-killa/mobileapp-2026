@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-// import '../services/api_service.dart'; // On l'activera à la prochaine étape
+import 'package:flutter/material.dart';
+import '../services/api_service.dart'; 
 
 // --- COULEURS DU THEME ---
 const Color bgDark = Color(0xFF09090B);
@@ -16,7 +17,7 @@ class ChatScreen extends StatefulWidget {
 }
 
 class _ChatScreenState extends State<ChatScreen> {
-  // final ApiService _apiService = ApiService(); // Pour la connexion Laravel
+  final ApiService _apiService = ApiService(); // <--- Enlève les // devant cette ligne
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   
@@ -31,6 +32,7 @@ class _ChatScreenState extends State<ChatScreen> {
   ];
 
   // Fonction pour envoyer un message
+  // Fonction pour envoyer un message
   Future<void> _sendMessage() async {
     final text = _messageController.text.trim();
     if (text.isEmpty) return;
@@ -44,18 +46,27 @@ class _ChatScreenState extends State<ChatScreen> {
     
     _scrollToBottom();
 
-    // TODO: 2. APPEL À TON API LARAVEL ICI (On le fera à la prochaine étape)
-    // Pour l'instant, on simule un temps d'attente de 2 secondes
-    await Future.delayed(const Duration(seconds: 2));
+    // 2. APPEL RÉEL À TON API LARAVEL
+    final response = await _apiService.askAgentIA(text);
 
-    // 3. Réponse (fictive pour l'instant) de l'IA
+    // 3. Traitement de la réponse de Gemini
     if (mounted) {
       setState(() {
         _isTyping = false;
-        _messages.add({
-          'isUser': false,
-          'text': "C'est noté ! Dès que nous aurons configuré la route API Laravel, je pourrai vous donner la réponse exacte générée par Gemini concernant cette demande."
-        });
+        
+        if (response['success'] == true && response['reply'] != null) {
+          // On ajoute la vraie réponse de Gemini
+          _messages.add({
+            'isUser': false,
+            'text': response['reply']
+          });
+        } else {
+          // En cas de problème de connexion ou de clé API invalide
+          _messages.add({
+            'isUser': false,
+            'text': "Désolé, je rencontre des difficultés à me connecter à mon réseau neuronal. (${response['message'] ?? 'Erreur inconnue'})"
+          });
+        }
       });
       _scrollToBottom();
     }

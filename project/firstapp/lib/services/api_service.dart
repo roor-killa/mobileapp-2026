@@ -264,4 +264,33 @@ class ApiService {
       return {'success': false, 'message': 'Erreur réseau'};
     }
   }
+  // --- CHAT IA ---
+  Future<Map<String, dynamic>> askAgentIA(String message) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+
+    // On vérifie que l'utilisateur est bien connecté
+    if (token == null) return {'success': false, 'message': 'Non connecté'};
+
+    final url = Uri.parse('$baseUrl/chat');
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token', // On ajoute le token de sécurité ici
+        },
+        body: jsonEncode({'message': message}),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        return {'success': false, 'message': 'Erreur serveur (${response.statusCode})'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Erreur de connexion au serveur.'};
+    }
+  }
 }
