@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| MoneyTransferApp - API Routes
+| Payflow - API Routes
 |--------------------------------------------------------------------------
 |
 | Version : /api/v1/...

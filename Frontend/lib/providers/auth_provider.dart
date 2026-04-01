@@ -8,15 +8,15 @@ class AuthProvider extends ChangeNotifier {
   final ApiService _api = ApiService();
 
   AuthStatus _status = AuthStatus.unknown;
-  UserModel?  _user;
-  String?     _errorMessage;
-  bool        _loading = false;
+  UserModel? _user;
+  String? _errorMessage;
+  bool _loading = false;
 
-  AuthStatus get status       => _status;
-  UserModel? get user         => _user;
-  String?    get errorMessage => _errorMessage;
-  bool       get loading      => _loading;
-  bool       get isAuth       => _status == AuthStatus.authenticated;
+  AuthStatus get status => _status;
+  UserModel? get user => _user;
+  String? get errorMessage => _errorMessage;
+  bool get loading => _loading;
+  bool get isAuth => _status == AuthStatus.authenticated;
 
   // ─── Initialisation au démarrage ─────────────────────────────────────────
 
@@ -28,7 +28,7 @@ class AuthProvider extends ChangeNotifier {
       return;
     }
     try {
-      _user   = await _api.getMe();
+      _user = await _api.getMe();
       _status = AuthStatus.authenticated;
     } catch (_) {
       await _api.clearToken();
@@ -51,19 +51,23 @@ class AuthProvider extends ChangeNotifier {
     try {
       final data = await _api.register(
         firstName: firstName,
-        lastName:  lastName,
-        email:     email,
-        password:  password,
-        pin:       pin,
-        phone:     phone,
+        lastName: lastName,
+        email: email,
+        password: password,
+        pin: pin,
+        phone: phone,
       );
-      _user   = UserModel.fromJson(data['user']);
+      _user = UserModel.fromJson(data['user']);
       _status = AuthStatus.authenticated;
       _errorMessage = null;
       notifyListeners();
       return true;
     } on ApiException catch (e) {
       _errorMessage = e.message;
+      notifyListeners();
+      return false;
+    } catch (e) {
+      _errorMessage = 'Impossible de contacter le serveur.';
       notifyListeners();
       return false;
     } finally {
@@ -80,13 +84,17 @@ class AuthProvider extends ChangeNotifier {
     _setLoading(true);
     try {
       final data = await _api.login(email: email, password: password);
-      _user   = UserModel.fromJson(data['user']);
+      _user = UserModel.fromJson(data['user']);
       _status = AuthStatus.authenticated;
       _errorMessage = null;
       notifyListeners();
       return true;
     } on ApiException catch (e) {
       _errorMessage = e.message;
+      notifyListeners();
+      return false;
+    } catch (e) {
+      _errorMessage = 'Impossible de contacter le serveur.';
       notifyListeners();
       return false;
     } finally {
@@ -98,7 +106,7 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> logout() async {
     await _api.logout();
-    _user   = null;
+    _user = null;
     _status = AuthStatus.unauthenticated;
     notifyListeners();
   }
@@ -122,4 +130,3 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 }
-

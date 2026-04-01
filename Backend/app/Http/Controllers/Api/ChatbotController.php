@@ -92,7 +92,7 @@ class ChatbotController extends Controller
             ->join("\n");
 
         return <<<PROMPT
-Tu es un assistant financier personnel pour l'application MoneyTransferApp.
+Tu es un assistant financier personnel pour l'application Payflow.
 Tu réponds UNIQUEMENT en français, de manière concise et professionnelle.
 
 === INFORMATIONS DU COMPTE ===

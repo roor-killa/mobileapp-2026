@@ -4,7 +4,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: moneytransfer_app
+    container_name: payflow_app
     restart: unless-stopped
     working_dir: /var/www
     volumes:
@@ -13,7 +13,7 @@ services:
     env_file:
       - .env
     networks:
-      - moneytransfer_network
+      - payflow_network
     depends_on:
       postgres:
         condition: service_healthy
@@ -23,7 +23,7 @@ services:
   # ─── Nginx Web Server ─────────────────────────────────────────────────────────
   nginx:
     image: nginx:1.25-alpine
-    container_name: moneytransfer_nginx
+    container_name: payflow_nginx
     restart: unless-stopped
     ports:
       - "8000:80"
@@ -31,35 +31,35 @@ services:
       - .:/var/www
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
     networks:
-      - moneytransfer_network
+      - payflow_network
     depends_on:
       - app
 
   # ─── PostgreSQL Database ──────────────────────────────────────────────────────
   postgres:
     image: postgres:16-alpine
-    container_name: moneytransfer_postgres
+    container_name: payflow_postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${DB_DATABASE:-moneytransfer}
-      POSTGRES_USER: ${DB_USERNAME:-moneytransfer_user}
+      POSTGRES_DB: ${DB_DATABASE:-payflow}
+      POSTGRES_USER: ${DB_USERNAME:-payflow_user}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-secret}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-moneytransfer_user} -d ${DB_DATABASE:-moneytransfer}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-payflow_user} -d ${DB_DATABASE:-payflow}"]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
-      - moneytransfer_network
+      - payflow_network
 
   # ─── Redis (Sessions, Cache, Queue) ──────────────────────────────────────────
   redis:
     image: redis:7-alpine
-    container_name: moneytransfer_redis
+    container_name: payflow_redis
     restart: unless-stopped
     ports:
       - "6379:6379"
@@ -69,19 +69,19 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - moneytransfer_network
+      - payflow_network
 
   # ─── Ollama (Chatbot IA local) ────────────────────────────────────────────────
   ollama:
     image: ollama/ollama:latest
-    container_name: moneytransfer_ollama
+    container_name: payflow_ollama
     restart: unless-stopped
     ports:
       - "11434:11434"
     volumes:
       - ollama_data:/root/.ollama
     networks:
-      - moneytransfer_network
+      - payflow_network
     # Décommenter si vous avez un GPU NVIDIA
     # deploy:
     #   resources:
@@ -94,7 +94,7 @@ services:
   # ─── PgAdmin (Interface graphique PostgreSQL) ──────────────────────────────────
   pgadmin:
     image: dpage/pgadmin4:latest
-    container_name: moneytransfer_pgadmin
+    container_name: payflow_pgadmin
     restart: unless-stopped
     environment:
       PGADMIN_DEFAULT_EMAIL: admin@admin.com
@@ -103,7 +103,7 @@ services:
     ports:
       - "5050:80"
     networks:
-      - moneytransfer_network
+      - payflow_network
     depends_on:
       - postgres
 
@@ -112,5 +112,5 @@ volumes:
   ollama_data:
 
 networks:
-  moneytransfer_network:
+  payflow_network:
     driver: bridge

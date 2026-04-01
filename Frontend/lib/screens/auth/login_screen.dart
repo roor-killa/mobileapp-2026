@@ -73,7 +73,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 24),
                 Center(
                   child: Text(
-                    'MoneyTransfer',
+                    'PayFlow',
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                           color: AppColors.textPrimary,
                           fontWeight: FontWeight.bold,

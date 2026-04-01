@@ -50,7 +50,7 @@ class AlgorandService
     // ─── Méthode principale ────────────────────────────────────────────────────
 
     /**
-     * Enregistre une transaction MoneyTransfer sur Algorand
+     * Enregistre une transaction Payflow sur Algorand
      * Retourne le TX ID Algorand ou null en cas d'échec
      */
     public function recordTransaction(array $data): ?string
@@ -65,7 +65,7 @@ class AlgorandService
             $params = $this->getSuggestedParams();
             if (!$params) return null;
 
-            // 2. Construire la note (données de la transaction MoneyTransfer)
+            // 2. Construire la note (données de la transaction Payflow)
             $note = json_encode([
                 'app'       => 'MoneyTransferApp',
                 'type'      => $data['type'],

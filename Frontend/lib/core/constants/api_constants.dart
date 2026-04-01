@@ -1,34 +1,40 @@
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
+
 class ApiConstants {
-  // Android émulateur → 10.0.2.2 | iOS simulateur / physique → IP de ta machine
-  // Pour émulateur: static const String baseUrl = 'http://10.0.2.2:8000/api/v1';
-  // Pour le téléphone (IP Wi-Fi de l'ordinateur)
-  static const String baseUrl = 'http://172.26.143.160:8000/api/v1';
+  // Pour le debug local / emulator. Adapte automatiquement selon la plateforme.
+  static String get baseUrl {
+    if (kIsWeb) return 'http://localhost:8000/api/v1';
+    if (Platform.isAndroid)
+      return 'http://172.26.143.160:8000/api/v1'; // IP de l'hôte Windows
+    if (Platform.isIOS) return 'http://localhost:8000/api/v1';
+    return 'http://localhost:8000/api/v1';
+  }
 
   // Auth
-  static const String register = '$baseUrl/auth/register';
-  static const String login    = '$baseUrl/auth/login';
-  static const String logout   = '$baseUrl/auth/logout';
-  static const String me       = '$baseUrl/auth/me';
+  static String get register => '$baseUrl/auth/register';
+  static String get login => '$baseUrl/auth/login';
+  static String get logout => '$baseUrl/auth/logout';
+  static String get me => '$baseUrl/auth/me';
 
   // Transfert
-  static const String transfer = '$baseUrl/transfer';
+  static String get transfer => '$baseUrl/transfer';
 
   // Recharge
-  static const String createIntent = '$baseUrl/recharge/create-intent';
+  static String get createIntent => '$baseUrl/recharge/create-intent';
 
   // Historique
-  static const String history = '$baseUrl/history';
+  static String get history => '$baseUrl/history';
 
   // Profil
-  static const String profile         = '$baseUrl/profile';
-  static const String changePassword  = '$baseUrl/profile/password';
-  static const String changePin       = '$baseUrl/profile/pin';
+  static String get profile => '$baseUrl/profile';
+  static String get changePassword => '$baseUrl/profile/password';
+  static String get changePin => '$baseUrl/profile/pin';
 
   // QR Code
-  static const String qrGenerate = '$baseUrl/qr/generate';
-  static const String qrScan     = '$baseUrl/qr/scan';
+  static String get qrGenerate => '$baseUrl/qr/generate';
+  static String get qrScan => '$baseUrl/qr/scan';
 
   // Chatbot
-  static const String chatbot = '$baseUrl/chatbot/message';
+  static String get chatbot => '$baseUrl/chatbot/message';
 }
-

@@ -43,7 +43,7 @@ class QrCodeController extends Controller
         $signature   = hash_hmac('sha256', $payloadJson, config('app.qr_hmac_secret'));
         $token       = base64_encode($payloadJson . '.' . $signature);
 
-        $expiresAt = now()->addSeconds(config('app.qr_token_ttl', 10));
+        $expiresAt = now()->addSeconds(config('app.qr_token_ttl', 30));
 
         $qrToken = QrToken::create([
             'user_id'    => $user->id,
@@ -55,7 +55,7 @@ class QrCodeController extends Controller
         return response()->json([
             'token'             => $token,
             'expires_at'        => $expiresAt->toIso8601String(),
-            'expires_in_seconds' => 10,
+            'expires_in_seconds' => config('app.qr_token_ttl', 30),
             'amount'            => $validated['amount'],
             'amount_formatted'  => number_format($validated['amount'] / 100, 2, ',', ' ') . ' €',
             'receiver'          => [

@@ -24,9 +24,9 @@ class ApiService {
   }
 
   Map<String, String> get _jsonHeaders => {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-  };
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      };
 
   Future<Map<String, String>> _authHeaders() async {
     final token = await getToken();
@@ -47,34 +47,44 @@ class ApiService {
     required String pin,
     String? phone,
   }) async {
-    final response = await http.post(
-      Uri.parse(ApiConstants.register),
-      headers: _jsonHeaders,
-      body: jsonEncode({
-        'first_name': firstName,
-        'last_name': lastName,
-        'email': email,
-        'password': password,
-        'password_confirmation': password,
-        'pin': pin,
-        if (phone != null) 'phone': phone,
-      }),
-    );
-    return _handleResponse(response);
+    final client = http.Client();
+    try {
+      final response = await client.post(
+        Uri.parse(ApiConstants.register),
+        headers: _jsonHeaders,
+        body: jsonEncode({
+          'first_name': firstName,
+          'last_name': lastName,
+          'email': email,
+          'password': password,
+          'password_confirmation': password,
+          'pin': pin,
+          if (phone != null) 'phone': phone,
+        }),
+      ).timeout(const Duration(seconds: 30));
+      return _handleResponse(response);
+    } finally {
+      client.close();
+    }
   }
 
   Future<Map<String, dynamic>> login({
     required String email,
     required String password,
   }) async {
-    final response = await http.post(
-      Uri.parse(ApiConstants.login),
-      headers: _jsonHeaders,
-      body: jsonEncode({'email': email, 'password': password}),
-    );
-    final data = _handleResponse(response);
-    if (data['token'] != null) await saveToken(data['token']);
-    return data;
+    final client = http.Client();
+    try {
+      final response = await client.post(
+        Uri.parse(ApiConstants.login),
+        headers: _jsonHeaders,
+        body: jsonEncode({'email': email, 'password': password}),
+      ).timeout(const Duration(seconds: 30));
+      final data = _handleResponse(response);
+      if (data['token'] != null) await saveToken(data['token']);
+      return data;
+    } finally {
+      client.close();
+    }
   }
 
   Future<void> logout() async {
@@ -85,7 +95,8 @@ class ApiService {
 
   Future<UserModel> getMe() async {
     final headers = await _authHeaders();
-    final response = await http.get(Uri.parse(ApiConstants.me), headers: headers);
+    final response =
+        await http.get(Uri.parse(ApiConstants.me), headers: headers);
     final data = _handleResponse(response);
     return UserModel.fromJson(data['user']);
   }
@@ -224,12 +235,43 @@ class ApiService {
   // ─── Handler ──────────────────────────────────────────────────────────────
 
   Map<String, dynamic> _handleResponse(http.Response response) {
-    final body = jsonDecode(utf8.decode(response.bodyBytes));
     if (response.statusCode >= 200 && response.statusCode < 300) {
-      return body;
+      try {
+        final body = jsonDecode(utf8.decode(response.bodyBytes));
+        return body;
+      } catch (e) {
+        throw ApiException(
+            'Réponse invalide du serveur', response.statusCode, null);
+      }
+    } else {
+      try {
+        final body = jsonDecode(utf8.decode(response.bodyBytes));
+
+        String message = 'Erreur inconnue';
+        if (body is Map<String, dynamic>) {
+          if (body['message'] != null &&
+              body['message'].toString().isNotEmpty) {
+            message = body['message'].toString();
+          }
+          if (body['errors'] is Map<String, dynamic>) {
+            final errorsMap = body['errors'] as Map<String, dynamic>;
+            if (errorsMap.isNotEmpty) {
+              final first = errorsMap.entries.first.value;
+              if (first is List && first.isNotEmpty) {
+                message = first.first.toString();
+              } else if (first is String) {
+                message = first;
+              }
+            }
+          }
+        }
+
+        throw ApiException(message, response.statusCode, body['errors']);
+      } catch (e) {
+        throw ApiException('Erreur serveur (${response.statusCode})',
+            response.statusCode, null);
+      }
     }
-    final message = body['message'] ?? 'Erreur inconnue';
-    throw ApiException(message, response.statusCode, body['errors']);
   }
 }
 
@@ -243,4 +285,3 @@ class ApiException implements Exception {
   @override
   String toString() => message;
 }
-

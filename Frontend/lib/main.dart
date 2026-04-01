@@ -21,18 +21,18 @@ void main() async {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => TransactionProvider()),
       ],
-      child: const MoneyTransferApp(),
+      child: const PayFlowApp(),
     ),
   );
 }
 
-class MoneyTransferApp extends StatelessWidget {
-  const MoneyTransferApp({super.key});
+class PayFlowApp extends StatelessWidget {
+  const PayFlowApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'MoneyTransfer',
+      title: 'PayFlow',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       home: const _AppRoot(),
