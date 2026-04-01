@@ -4,9 +4,8 @@ import '../models/matiere.dart';
 import '../services/api_service.dart';
 import '../services/session_service.dart';
 import 'login_screen.dart';
+import 'emploi_du_temps_admin_screen.dart';
 
-// Tableau de bord de l'administrateur
-// Permet de créer, modifier et supprimer des professeurs
 class DashboardAdminScreen extends StatefulWidget {
   const DashboardAdminScreen({super.key});
 
@@ -18,12 +17,8 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen> {
   final ApiService _apiService = ApiService();
   final SessionService _session = SessionService();
 
-  // Liste des professeurs
   List<Professeur> professeurs = [];
-
-  // Toutes les matières disponibles
   List<Matiere> matieres = [];
-
   bool _isLoading = false;
 
   @override
@@ -32,7 +27,6 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen> {
     _chargerDonnees();
   }
 
-  /// Charge les professeurs et les matières
   Future<void> _chargerDonnees() async {
     setState(() => _isLoading = true);
     try {
@@ -50,7 +44,6 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen> {
     }
   }
 
-  /// Ouvre le dialogue pour créer un nouveau professeur
   void _ouvrirDialogCreerProfesseur() {
     final nomController = TextEditingController();
     final prenomController = TextEditingController();
@@ -73,27 +66,21 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Champ prénom
                 _buildDialogField(
                     controller: prenomController, label: 'Prénom'),
                 const SizedBox(height: 10),
-                // Champ nom
                 _buildDialogField(controller: nomController, label: 'Nom'),
                 const SizedBox(height: 10),
-                // Champ email
                 _buildDialogField(
                     controller: emailController,
                     label: 'Email',
                     type: TextInputType.emailAddress),
                 const SizedBox(height: 10),
-                // Champ mot de passe
                 _buildDialogField(
                     controller: passwordController,
                     label: 'Mot de passe',
                     obscure: true),
                 const SizedBox(height: 16),
-
-                // Sélection des matières (max 2)
                 const Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
@@ -193,9 +180,7 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen> {
     );
   }
 
-  /// Ouvre le dialogue pour modifier les matières d'un professeur
   void _ouvrirDialogModifierMatieres(Professeur professeur) {
-    // Pré-sélectionne les matières actuelles du professeur
     List<int> matieresSelectionnees =
         professeur.matieres.map((m) => m.id).toList();
 
@@ -284,7 +269,6 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen> {
     );
   }
 
-  /// Confirme et supprime un professeur
   void _confirmerSuppression(Professeur professeur) {
     showDialog(
       context: context,
@@ -326,7 +310,6 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen> {
     );
   }
 
-  // Widget réutilisable pour les champs du dialogue
   Widget _buildDialogField({
     required TextEditingController controller,
     required String label,
@@ -364,7 +347,6 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen> {
                   fontWeight: FontWeight.bold,
                   fontSize: 18),
             ),
-            // Affiche le nom de l'admin connecté
             Text(
               'Admin : ${_session.adminConnecte?.prenom} ${_session.adminConnecte?.nom}',
               style: TextStyle(
@@ -373,7 +355,20 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen> {
           ],
         ),
         actions: [
-          // Bouton déconnexion
+          // Bouton emploi du temps
+          IconButton(
+            icon: const Icon(Icons.calendar_month, color: Colors.white),
+            tooltip: 'Emploi du temps',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) =>
+                      const EmploiDuTempsAdminScreen(),
+                ),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.white),
             tooltip: 'Se déconnecter',
@@ -431,7 +426,6 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen> {
                         padding: const EdgeInsets.all(16),
                         child: Row(
                           children: [
-                            // Avatar
                             Container(
                               width: 55,
                               height: 55,
@@ -457,7 +451,6 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen> {
                             ),
                             const SizedBox(width: 14),
 
-                            // Infos professeur
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -478,7 +471,6 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen> {
                                     ),
                                   ),
                                   const SizedBox(height: 6),
-                                  // Matières du professeur
                                   professeur.matieres.isEmpty
                                       ? Text(
                                           'Aucune matière assignée',
@@ -520,10 +512,8 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen> {
                               ),
                             ),
 
-                            // Boutons modifier matières et supprimer
                             Column(
                               children: [
-                                // Bouton modifier matières
                                 GestureDetector(
                                   onTap: () =>
                                       _ouvrirDialogModifierMatieres(professeur),
@@ -538,7 +528,6 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 8),
-                                // Bouton supprimer
                                 GestureDetector(
                                   onTap: () =>
                                       _confirmerSuppression(professeur),
@@ -561,7 +550,6 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen> {
                   },
                 ),
 
-      // Bouton + pour créer un professeur
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _ouvrirDialogCreerProfesseur,
         backgroundColor: const Color(0xFFE94560),
