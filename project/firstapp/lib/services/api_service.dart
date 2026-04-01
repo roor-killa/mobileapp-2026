@@ -220,4 +220,27 @@ class ApiService {
       return false;
     }
   }
+  /// INFO COMPTE : Récupère l'objet utilisateur complet (Nom, Email, ID, Solde)
+  Future<Map<String, dynamic>> getUserInfo() async {
+    final url = Uri.parse('$baseUrl/user'); 
+    
+    try {
+      final response = await http.get(
+        url,
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body); // Renvoie le JSON complet de l'utilisateur
+      } else {
+        throw Exception('Erreur de récupération des infos utilisateur');
+      }
+    } catch (e) {
+      print('❌ Erreur getUserInfo : $e');
+      rethrow;
+    }
+  }
 }

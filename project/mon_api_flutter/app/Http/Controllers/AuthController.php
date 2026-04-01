@@ -206,29 +206,38 @@ class AuthController extends Controller
         $receiver = User::find($request->receiver_id);
 
         if ($sender->id === $receiver->id) {
-            return response()->json(['message' => 'Opération impossible'], 400);
+            return response()->json(['message' => 'Opération impossible : vous ne pouvez pas vous payer vous-même'], 400);
         }
 
         if ($sender->balance < $request->amount) {
             return response()->json(['message' => 'Solde insuffisant'], 400);
         }
 
-        // Transaction Atomique (Tout passe ou tout échoue)
-        \DB::transaction(function () use ($sender, $receiver, $request) {
-            $sender->decrement('balance', $request->amount);
-            $receiver->increment('balance', $request->amount);
+        // Transaction Atomique
+        try {
+            DB::transaction(function () use ($sender, $receiver, $request) {
+                $sender->decrement('balance', $request->amount);
+                $receiver->increment('balance', $request->amount);
 
-            // Créer l'historique pour les deux
-            Transaction::create([
-                'user_id' => $sender->id,
-                'amount' => $request->amount,
-                'type' => 'transfert_envoye',
-                'status' => 'success',
-                'description' => "Paiement QR à {$receiver->name}",
-                'reference' => 'QR-' . uniqid()
+                // --- CORRECTION ICI : Utilise 'Transfer' au lieu de 'Transaction' ---
+                Transfer::create([
+                    'sender_id' => $sender->id,
+                    'receiver_id' => $receiver->id,
+                    'amount' => $request->amount,
+                ]);
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Paiement effectué !', 
+                'new_balance' => $sender->balance
             ]);
-        });
 
-        return response()->json(['message' => 'Paiement effectué !', 'new_balance' => $sender->balance]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur technique : ' . $e->getMessage()
+            ], 500);
+        }
     }
 }
