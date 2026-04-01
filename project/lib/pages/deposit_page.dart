@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/api_service.dart';
 
 class DepositPage extends StatefulWidget {
   const DepositPage({super.key});
@@ -10,8 +11,9 @@ class DepositPage extends StatefulWidget {
 class _DepositPageState extends State<DepositPage> {
   final TextEditingController amountController = TextEditingController();
   String errorMessage = '';
+  bool isLoading = false;
 
-  void validateDeposit() {
+  Future<void> validateDeposit() async {
     final double? amount = double.tryParse(
       amountController.text.replaceAll(',', '.'),
     );
@@ -23,7 +25,36 @@ class _DepositPageState extends State<DepositPage> {
       return;
     }
 
-    Navigator.pop(context, amount);
+    try {
+      setState(() {
+        isLoading = true;
+        errorMessage = '';
+      });
+
+      await ApiService.deposit(
+        amount: amount,
+        description: 'Dépôt depuis l’application mobile',
+      );
+
+      if (!mounted) return;
+      Navigator.pop(context, true);
+    } catch (e) {
+      setState(() {
+        errorMessage = e.toString().replaceFirst('Exception: ', '');
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    amountController.dispose();
+    super.dispose();
   }
 
   @override
@@ -71,8 +102,9 @@ class _DepositPageState extends State<DepositPage> {
                   const SizedBox(height: 20),
                   TextField(
                     controller: amountController,
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     decoration: const InputDecoration(
                       labelText: 'Montant',
                       border: OutlineInputBorder(),
@@ -89,8 +121,10 @@ class _DepositPageState extends State<DepositPage> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: validateDeposit,
-                      child: const Text('Valider le dépôt'),
+                      onPressed: isLoading ? null : validateDeposit,
+                      child: Text(
+                        isLoading ? 'Validation...' : 'Valider le dépôt',
+                      ),
                     ),
                   ),
                 ],

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/api_service.dart';
 
 class WithdrawPage extends StatefulWidget {
   final double currentBalance;
@@ -15,8 +16,9 @@ class WithdrawPage extends StatefulWidget {
 class _WithdrawPageState extends State<WithdrawPage> {
   final TextEditingController amountController = TextEditingController();
   String errorMessage = '';
+  bool isLoading = false;
 
-  void validateWithdraw() {
+  Future<void> validateWithdraw() async {
     final double? amount = double.tryParse(
       amountController.text.replaceAll(',', '.'),
     );
@@ -35,7 +37,36 @@ class _WithdrawPageState extends State<WithdrawPage> {
       return;
     }
 
-    Navigator.pop(context, amount);
+    try {
+      setState(() {
+        isLoading = true;
+        errorMessage = '';
+      });
+
+      await ApiService.withdraw(
+        amount: amount,
+        description: 'Retrait depuis l’application mobile',
+      );
+
+      if (!mounted) return;
+      Navigator.pop(context, true);
+    } catch (e) {
+      setState(() {
+        errorMessage = e.toString().replaceFirst('Exception: ', '');
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    amountController.dispose();
+    super.dispose();
   }
 
   @override
@@ -90,8 +121,9 @@ class _WithdrawPageState extends State<WithdrawPage> {
                   const SizedBox(height: 20),
                   TextField(
                     controller: amountController,
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     decoration: const InputDecoration(
                       labelText: 'Montant',
                       border: OutlineInputBorder(),
@@ -108,8 +140,10 @@ class _WithdrawPageState extends State<WithdrawPage> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: validateWithdraw,
-                      child: const Text('Valider le retrait'),
+                      onPressed: isLoading ? null : validateWithdraw,
+                      child: Text(
+                        isLoading ? 'Validation...' : 'Valider le retrait',
+                      ),
                     ),
                   ),
                 ],

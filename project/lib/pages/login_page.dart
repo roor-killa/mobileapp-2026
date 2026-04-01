@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../data/fake_users.dart';
-import '../models/user.dart';
+import '../services/api_service.dart';
 import 'home_page.dart';
+import 'signup_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -15,40 +15,67 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController passwordController = TextEditingController();
 
   String errorMessage = '';
+  bool isLoading = false;
 
-  void login() {
+  Future<void> login() async {
     final email = emailController.text.trim();
-    final password = passwordController.text;
+    final password = passwordController.text.trim();
 
-    User? foundUser;
-
-    for (var user in fakeUsers) {
-      if (user.email == email && user.password == password) {
-        foundUser = user;
-        break;
-      }
+    if (email.isEmpty || password.isEmpty) {
+      setState(() {
+        errorMessage = 'Veuillez remplir tous les champs.';
+      });
+      return;
     }
 
-    if (foundUser != null) {
+    try {
       setState(() {
+        isLoading = true;
         errorMessage = '';
       });
+
+      final response = await ApiService.login(
+        email: email,
+        password: password,
+      );
+
+      final user = response['user'];
+
+      if (!mounted) return;
 
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => HomePage(
-            userName: foundUser!.name,
-            userEmail: foundUser.email,
-            initialBalance: foundUser.balance,
-          ),
+          builder: (context) => const HomePage(),
         ),
       );
-    } else {
+    } catch (e) {
       setState(() {
-        errorMessage = 'Email ou mot de passe incorrect.';
+        errorMessage = e.toString().replaceFirst('Exception: ', '');
       });
+    } finally {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
     }
+  }
+
+  Future<void> goToSignupPage() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const SignupPage(),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    emailController.dispose();
+    passwordController.dispose();
+    super.dispose();
   }
 
   @override
@@ -122,9 +149,20 @@ class _LoginPageState extends State<LoginPage> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
-                    onPressed: login,
+                    onPressed: isLoading ? null : login,
                     icon: const Icon(Icons.login),
-                    label: const Text('Se connecter'),
+                    label: Text(
+                      isLoading ? 'Connexion...' : 'Se connecter',
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: goToSignupPage,
+                    icon: const Icon(Icons.person_add),
+                    label: const Text('Créer un compte'),
                   ),
                 ),
               ],
