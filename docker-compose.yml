@@ -1,0 +1,12 @@
+name: uapay
+
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "4000:4000"
+    env_file:
+      # For testing we ship a safe template.
+      # Copy backend/.env.example -> backend/.env and change this to ./backend/.env when you add real keys.
+      - ./backend/.env.example
+    restart: unless-stopped

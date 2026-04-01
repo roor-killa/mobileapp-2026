@@ -1,0 +1,24 @@
+services:
+  db:
+    image: postgres:15
+    container_name: uapay_db
+    environment:
+      POSTGRES_DB: uapay
+      POSTGRES_USER: uapay
+      POSTGRES_PASSWORD: uapay
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./initdb:/docker-entrypoint-initdb.d:ro
+
+  adminer:
+    image: adminer:latest
+    container_name: uapay_adminer
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+
+volumes:
+  db_data:
