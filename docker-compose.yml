@@ -1,0 +1,48 @@
+services:
+  # API Backend Node.js
+  api:
+    build: ./backend
+    container_name: ecobank_api
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=ecobank_db
+      - DB_USER=ecobank_user
+      - DB_PASSWORD=ecobank_password
+      - JWT_SECRET=your_jwt_secret_key_here
+      - API_PORT=3000
+    depends_on:
+      - db
+    volumes:
+      - ./backend/src:/app/src
+    networks:
+      - ecobank_network
+    restart: unless-stopped
+
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    container_name: ecobank_db
+    environment:
+      - POSTGRES_DB=ecobank_db
+      - POSTGRES_USER=ecobank_user
+      - POSTGRES_PASSWORD=ecobank_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - ecobank_network
+    restart: unless-stopped
+
+networks:
+  ecobank_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
