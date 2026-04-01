@@ -1,5 +1,6 @@
 import { createBrowserRouter } from "react-router";
 import Layout from "./components/Layout";
+import ProtectedRoute from "./components/ProtectedRoute";
 import Dashboard from "./components/Dashboard";
 import Transfers from "./components/Transfers";
 import Crypto from "./components/Crypto";
@@ -22,18 +23,23 @@ export const router = createBrowserRouter([
     Component: SignUp,
   },
   {
-    path: "/",
-    Component: Layout,
+    Component: ProtectedRoute,
     children: [
-      { index: true, Component: Dashboard },
-      { path: "transfers", Component: Transfers },
-      { path: "crypto", Component: Crypto },
-      { path: "investments", Component: Investments },
-      { path: "cards", Component: Cards },
-      { path: "analytics", Component: Analytics },
-      { path: "security", Component: Security },
-      { path: "profile", Component: Profile },
-      { path: "invoices", Component: Invoicing },
+      {
+        path: "/",
+        Component: Layout,
+        children: [
+          { index: true, Component: Dashboard },
+          { path: "transfers", Component: Transfers },
+          { path: "crypto", Component: Crypto },
+          { path: "investments", Component: Investments },
+          { path: "cards", Component: Cards },
+          { path: "analytics", Component: Analytics },
+          { path: "security", Component: Security },
+          { path: "profile", Component: Profile },
+          { path: "invoices", Component: Invoicing },
+        ],
+      },
     ],
   },
 ]);

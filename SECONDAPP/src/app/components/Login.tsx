@@ -1,8 +1,9 @@
 import { motion } from "motion/react";
 import { Fingerprint, Eye, EyeOff, Lock, Shield, Scan, Key, Mail, ArrowLeft, CheckCircle2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { useTheme } from "../contexts/ThemeContext";
+import { useAuth } from "../contexts/AuthContext";
 
 type AuthMode = "biometric" | "email" | "key";
 
@@ -19,12 +20,24 @@ export default function Login() {
   const [faceScanning, setFaceScanning] = useState(false);
   const navigate = useNavigate();
   const { theme } = useTheme();
+  const { isAuthenticated, login } = useAuth();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate("/", { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
+
+  const completeLogin = () => {
+    login();
+    navigate("/", { replace: true });
+  };
 
   // Handle biometric login (Face ID / Touch ID)
   const handleBiometricLogin = () => {
     setAuthenticating(true);
     setTimeout(() => {
-      navigate("/");
+      completeLogin();
     }, 1500);
   };
 
@@ -34,7 +47,7 @@ export default function Login() {
     setTimeout(() => {
       setAuthenticating(true);
       setTimeout(() => {
-        navigate("/");
+        completeLogin();
       }, 1000);
     }, 2000);
   };
@@ -44,7 +57,7 @@ export default function Login() {
     e.preventDefault();
     setAuthenticating(true);
     setTimeout(() => {
-      navigate("/");
+      completeLogin();
     }, 1000);
   };
 
@@ -53,7 +66,7 @@ export default function Login() {
     e.preventDefault();
     setAuthenticating(true);
     setTimeout(() => {
-      navigate("/");
+      completeLogin();
     }, 1000);
   };
 

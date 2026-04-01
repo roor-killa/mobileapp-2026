@@ -4,6 +4,7 @@ import { useNavigate } from "react-router";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useTheme } from "../contexts/ThemeContext";
+import { useAuth } from "../contexts/AuthContext";
 import AppearanceModal from "./AppearanceModal";
 
 const profileInfo = {
@@ -49,6 +50,7 @@ const stats = [
 
 export default function Profile() {
   const navigate = useNavigate();
+  const { logout } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [isAppearanceModalOpen, setIsAppearanceModalOpen] = useState(false);
   const { theme } = useTheme();
@@ -208,7 +210,11 @@ export default function Profile() {
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
         className="w-full p-4 rounded-2xl bg-red-500/20 border border-red-500/50 hover:bg-red-500/30 transition-all flex items-center justify-center gap-2 font-semibold text-red-400"
-        onClick={() => navigate('/login')}
+        onClick={() => {
+          logout();
+          navigate("/login", { replace: true });
+          toast.message("Vous êtes déconnecté.");
+        }}
       >
         <LogOut className="w-5 h-5" />
         <span>Logout</span>
