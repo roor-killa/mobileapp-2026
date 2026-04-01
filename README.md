@@ -9,11 +9,8 @@ MiniBank App est une mini application bancaire fictive réalisée dans le cadre 
 
 mobileapp-2026/
 ├─ project/              # application Flutter
-
 ├─ backend/              # API Laravel
-
 ├─ docker-compose.yml    # MySQL avec Docker
-
 └─ README.md
 
 ## Fonctionnalités principales
