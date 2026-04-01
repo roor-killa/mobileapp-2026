@@ -3,6 +3,7 @@ import 'crypto_screen.dart';
 import 'history_screen.dart';
 import 'wallet_screen.dart'; // <-- C'est bien le bon import !
 import 'chat_screen.dart';
+import 'settings_modal.dart';
 
 // --- NOS NOUVELLES COULEURS THEME (Inspirées du React) ---
 const Color bgDark = Color(0xFF09090B); // zinc-950
@@ -52,9 +53,19 @@ class _MainScreenState extends State<MainScreen> {
           children: [
             Row(
               children: [
-                const CircleAvatar(
-                  backgroundColor: emerald500,
-                  child: Text('B', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                GestureDetector(
+                  onTap: () {
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true, 
+                      backgroundColor: Colors.transparent, 
+                      builder: (context) => const SettingsModal(),
+                    );
+                  },
+                  child: const CircleAvatar(
+                    backgroundColor: emerald500,
+                    child: Text('B', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                  ),
                 ),
                 const SizedBox(width: 10),
                 const Column(
