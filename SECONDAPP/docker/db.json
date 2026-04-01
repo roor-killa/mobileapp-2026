@@ -74,6 +74,164 @@
         "description": "Your portfolio gained $3,420 this month",
         "trend": "up"
       }
-    ]
+    ],
+    "invoicing": {
+      "partners": [
+        {
+          "id": 1,
+          "name": "Acme Corp SA",
+          "ref": "CUST001",
+          "vat": "FR12345678901",
+          "email": "compta@acme.example",
+          "phone": "+33 1 23 45 67 89",
+          "street": "42 Avenue des Champs",
+          "zip": "75008",
+          "city": "Paris",
+          "country": "France"
+        },
+        {
+          "id": 2,
+          "name": "Studio Lumière SARL",
+          "ref": "CUST002",
+          "vat": "FR98765432109",
+          "email": "facturation@studio-lumiere.fr",
+          "phone": "+33 4 56 78 90 12",
+          "street": "15 Rue du Cinéma",
+          "zip": "69001",
+          "city": "Lyon",
+          "country": "France"
+        },
+        {
+          "id": 3,
+          "name": "Global Trade Inc.",
+          "ref": "CUST003",
+          "vat": "EU556677889",
+          "email": "ap@globaltrade.io",
+          "phone": "+32 2 111 22 33",
+          "street": "100 Boulevard International",
+          "zip": "1000",
+          "city": "Bruxelles",
+          "country": "Belgique"
+        }
+      ],
+      "invoices": [
+    {
+      "id": 1,
+      "name": "INV/2025/00042",
+      "move_type": "out_invoice",
+      "partner_id": 1,
+      "invoice_date": "2025-03-01",
+      "invoice_date_due": "2025-03-31",
+      "state": "posted",
+      "payment_state": "paid",
+      "currency": "EUR",
+      "amount_untaxed": 2500,
+      "amount_tax": 500,
+      "amount_total": 3000,
+      "narration": "Prestations développement — mars 2025",
+      "invoice_line_ids": [
+        {
+          "id": 1,
+          "name": "Développement application mobile",
+          "quantity": 20,
+          "price_unit": 100,
+          "tax_percent": 20,
+          "price_subtotal": 2000
+        },
+        {
+          "id": 2,
+          "name": "Hébergement & maintenance",
+          "quantity": 1,
+          "price_unit": 500,
+          "tax_percent": 20,
+          "price_subtotal": 500
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "INV/2025/00043",
+      "move_type": "out_invoice",
+      "partner_id": 2,
+      "invoice_date": "2025-03-10",
+      "invoice_date_due": "2025-04-09",
+      "state": "draft",
+      "payment_state": "not_paid",
+      "currency": "EUR",
+      "amount_untaxed": 1200,
+      "amount_tax": 240,
+      "amount_total": 1440,
+      "narration": "",
+      "invoice_line_ids": [
+        {
+          "id": 3,
+          "name": "Shooting photo produit",
+          "quantity": 8,
+          "price_unit": 150,
+          "tax_percent": 20,
+          "price_subtotal": 1200
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "INV/2025/00039",
+      "move_type": "out_invoice",
+      "partner_id": 3,
+      "invoice_date": "2025-02-15",
+      "invoice_date_due": "2025-03-17",
+      "state": "posted",
+      "payment_state": "not_paid",
+      "currency": "EUR",
+      "amount_untaxed": 8800,
+      "amount_tax": 1760,
+      "amount_total": 10560,
+      "narration": "Lot logistique Q1",
+      "invoice_line_ids": [
+        {
+          "id": 4,
+          "name": "Frais de manutention",
+          "quantity": 40,
+          "price_unit": 200,
+          "tax_percent": 20,
+          "price_subtotal": 8000
+        },
+        {
+          "id": 5,
+          "name": "Assurance transport",
+          "quantity": 1,
+          "price_unit": 800,
+          "tax_percent": 20,
+          "price_subtotal": 800
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "INV/2025/00044",
+      "move_type": "out_invoice",
+      "partner_id": 1,
+      "invoice_date": "2025-03-20",
+      "invoice_date_due": "2025-04-19",
+      "state": "posted",
+      "payment_state": "partial",
+      "currency": "EUR",
+      "amount_untaxed": 500,
+      "amount_tax": 100,
+      "amount_total": 600,
+      "narration": "Acompte 50 % encaissé",
+      "invoice_line_ids": [
+        {
+          "id": 6,
+          "name": "Audit sécurité applicative",
+          "quantity": 5,
+          "price_unit": 100,
+          "tax_percent": 20,
+          "price_subtotal": 500
+        }
+      ]
+    }
+      ]
+    }
   }
 }

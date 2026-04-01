@@ -33,4 +33,3 @@ Start-Process powershell -ArgumentList "-NoProfile","-ExecutionPolicy","Bypass",
 
 Write-Host ""
 Write-Host "Terminé. L'app va s'ouvrir dans Chrome, connectée à http://127.0.0.1:8000/api." -ForegroundColor Green
-

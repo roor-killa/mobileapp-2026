@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Rapport d'utilisation — SECONDAPP</title>
+  <style>
+    :root { color-scheme: light; }
+    body {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      line-height: 1.55;
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+      color: #1a1a1a;
+      font-size: 11pt;
+    }
+    h1 { font-size: 1.75rem; margin-top: 0; }
+    h2 { font-size: 1.35rem; margin-top: 2rem; border-bottom: 1px solid #ccc; padding-bottom: 0.25rem; }
+    h3 { font-size: 1.1rem; margin-top: 1.25rem; }
+    table { border-collapse: collapse; width: 100%; margin: 1rem 0; font-size: 0.95rem; }
+    th, td { border: 1px solid #bbb; padding: 0.45rem 0.6rem; text-align: left; vertical-align: top; }
+    th { background: #f0f0f0; }
+    code, pre { font-family: ui-monospace, Consolas, monospace; font-size: 0.88em; }
+    code { background: #f4f4f4; padding: 0.1em 0.35em; border-radius: 3px; }
+    pre { background: #f8f8f8; padding: 1rem; overflow-x: auto; border: 1px solid #ddd; border-radius: 6px; }
+    pre code { background: none; padding: 0; }
+    hr { border: none; border-top: 1px solid #ddd; margin: 2rem 0; }
+    ul, ol { padding-left: 1.4rem; }
+    @media print {
+      body { max-width: none; padding: 0.5cm 1cm; font-size: 10pt; }
+      h2 { page-break-after: avoid; }
+      tr { page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+<h1>Rapport d&#39;utilisation — SECONDAPP</h1>
+<p><strong>Application web bancaire « premium » et module de facturation type Odoo</strong><br><strong>Auteur du projet</strong> : (à compléter)<br><strong>Date du rapport</strong> : avril 2026<br><strong>Emplacement du code</strong> : dossier <code>SECONDAPP</code> du dépôt <code>mobileapp-2026</code></p>
+<hr>
+<h2>1. Contexte et fil du projet</h2>
+<h3>1.1 Première itération et présentation</h3>
+<p>Le travail a débuté par un <strong>premier projet</strong> (application bancaire / mobile ou full-stack selon le périmètre initial) mené jusqu’à une <strong>phase présentable</strong> : démonstration fonctionnelle, soutenance ou rendu pédagogique. Cette première version a permis de valider des choix techniques, une première UX et une intégration avec un backend ou des données de démonstration.</p>
+<h3>1.2 Insatisfaction et décision de repartir de zéro</h3>
+<p>Après cette étape, le résultat <strong>ne correspondait plus aux objectifs</strong> (lisibilité du code, cohérence UI, modularité, alignement avec une maquette plus aboutie, ou simplicité de déploiement des données de test). Plutôt que d’empiler des correctifs sur une base jugée inadaptée, le choix a été fait de <strong>tout recommencer depuis zéro</strong> : nouvelle base front, nouvelle organisation des dossiers, et nouvelle stratégie pour les données fictives.</p>
+<h3>1.3 Naissance de la « deuxième application » — SECONDAPP</h3>
+<p>La <strong>deuxième application</strong> est le dossier <strong><code>SECONDAPP</code></strong> à la racine du monorepo. Elle n’est pas une simple copie : c’est une <strong>refonte</strong> orientée :</p>
+<ul>
+<li><strong>Interface</strong> : expérience type application bancaire mobile « premium », à partir d’un bundle issu de l’écosystème Figma / Make (composants, thème, effets visuels).</li>
+<li><strong>Données</strong> : API légère via <strong>Docker</strong> + <strong>json-server</strong> pour simuler un backend sans base SQL locale obligatoire.</li>
+<li><strong>Extension métier</strong> : ajout d’un <strong>module de facturation</strong> calqué sur les concepts <strong>Odoo</strong> (<code>res.partner</code>, <code>account.move</code>, états brouillon / comptabilisé / paiement), avec édition des brouillons et création de factures côté client.</li>
+</ul>
+<p>Le reste du dépôt peut contenir d’autres briques (ex. <code>project/firstapp</code> Flutter, <code>infrastructure/back-laravel</code>, etc.) ; ce rapport se concentre sur <strong>SECONDAPP</strong> et son usage.</p>
+<hr>
+<h2>2. Objectifs fonctionnels de SECONDAPP</h2>
+<table>
+<thead>
+<tr>
+<th>Objectif</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Démonstration UX</td>
+<td>Parcours bancaire crédible : accueil, solde, graphiques, transferts, crypto, investissements, cartes, analytics, sécurité, profil.</td>
+</tr>
+<tr>
+<td>Données dynamiques</td>
+<td>Charger graphiques et listes depuis un fichier JSON via une API HTTP locale.</td>
+</tr>
+<tr>
+<td>Résilience</td>
+<td>Si l’API n’est pas disponible, l’application <strong>reste utilisable</strong> avec un état « vide » ou message explicite.</td>
+</tr>
+<tr>
+<td>Facturation</td>
+<td>Consulter des factures et partenaires ; <strong>modifier</strong> les brouillons ; <strong>créer</strong> de nouveaux brouillons ; conserver les changements <strong>dans le navigateur</strong> (localStorage).</td>
+</tr>
+<tr>
+<td>Présentation / portfolio</td>
+<td>Projet lisible, documenté, reproductible sur une machine de développement Windows.</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>3. Architecture technique</h2>
+<h3>3.1 Stack principale</h3>
+<ul>
+<li><strong>Runtime / build</strong> : Node.js, <strong>Vite 6</strong>, <strong>TypeScript</strong>.</li>
+<li><strong>UI</strong> : <strong>React 18</strong>, <strong>Tailwind CSS 4</strong> (plugin Vite), composants type <strong>shadcn/Radix</strong> (Dialog, Sheet, Select, etc.).</li>
+<li><strong>Graphiques</strong> : <strong>Recharts</strong> (courbes, aires) sur le tableau de bord et autres écrans.</li>
+<li><strong>Animation</strong> : <strong>Motion</strong> (ex-Framer Motion).</li>
+<li><strong>Routing</strong> : <strong>React Router</strong> (configuration dans <code>src/app/routes.tsx</code>).</li>
+<li><strong>Thème</strong> : <strong>ThemeContext</strong> (dégradés, apparence clair/sombre selon implémentation).</li>
+</ul>
+<h3>3.2 Structure des dossiers (vue d’ensemble)</h3>
+<pre><code>SECONDAPP/
+├── docker/
+│   └── db.json              # Données mock (dashboard + facturation imbriquée)
+├── docker-compose.yml       # Service json-server, port hôte 3001
+├── src/
+│   ├── main.tsx
+│   ├── app/
+│   │   ├── App.tsx
+│   │   ├── routes.tsx
+│   │   ├── contexts/
+│   │   ├── components/      # Écrans + UI + effets + modales
+│   │   └── services/        # Appels API, persistance facturation, proxy URL
+│   └── styles/
+├── package.json
+├── vite.config.ts           # Proxy /json-api → json-server
+└── README.md
+</code></pre>
+<h3>3.3 Flux de données (dashboard et facturation)</h3>
+<ol>
+<li>Le conteneur <strong>Docker</strong> expose <strong>json-server</strong> (image <code>clue/json-server</code>) sur <strong><code>http://127.0.0.1:3001</code></strong> (mapping <code>3001:80</code>).</li>
+<li>Le fichier <strong><code>docker/db.json</code></strong> contient une clé racine <strong><code>dashboard</code></strong> avec :<ul>
+<li><code>balanceData</code>, <code>transactions</code>, <code>insights</code> (tableau de bord) ;</li>
+<li><strong><code>invoicing</code></strong> : objets <strong><code>partners</code></strong> et <strong><code>invoices</code></strong> (facturation).</li>
+</ul>
+</li>
+<li>Le navigateur, en <strong><code>npm run dev</code></strong>, ne appelle pas directement le port 3001 pour éviter les problèmes <strong>CORS</strong> : Vite <strong>proxifie</strong> le chemin <strong><code>/json-api</code></strong> vers <code>http://127.0.0.1:3001</code> (voir <code>vite.config.ts</code> et <code>jsonServerBaseUrl.ts</code>).</li>
+<li>Les services <strong><code>dashboardApi.ts</code></strong> et <strong><code>invoicingApi.ts</code></strong> consomment <strong><code>GET /dashboard</code></strong> (relatif au proxy, donc <code>/json-api/dashboard</code>).</li>
+</ol>
+<h3>3.4 Contrainte importante : json-server 0.12 (image clue/json-server)</h3>
+<p>L’image embarque <strong>json-server en version 0.12</strong>. Comportement observé : seule une ressource de type « objet racine » bien exposée fonctionnait de façon fiable pour l’usage choisi ; les routes <strong><code>/partners</code></strong> et <strong><code>/invoices</code></strong> en racine renvoyaient <strong>404</strong> alors que <strong><code>/dashboard</code></strong> répondait en 200.  </p>
+<p><strong>Décision d’architecture</strong> : regrouper <strong><code>partners</code></strong> et <strong><code>invoices</code></strong> <strong>à l’intérieur</strong> de l’objet <code>dashboard</code>, sous la clé <strong><code>invoicing</code></strong>, pour tout charger via <strong><code>GET /dashboard</code></strong>. Cela simplifie le front et reste compatible avec cette version de json-server.</p>
+<h3>3.5 Persistance des brouillons de facturation</h3>
+<p>Le volume Docker monte <code>db.json</code> en <strong>lecture seule</strong> (<code>:ro</code>). Les écritures REST vers json-server ne mettraient pas à jour durablement le fichier sans changer le compose.  </p>
+<p><strong>Choix produit</strong> : les <strong>créations</strong> et <strong>modifications</strong> de <strong>brouillons</strong> sont enregistrées dans <strong><code>localStorage</code></strong> (clé <code>secondapp-invoicing-drafts-v1</code>), avec <strong>fusion</strong> au chargement : les brouillons locaux <strong>écrasent</strong> les entrées de même <code>id</code> venant du JSON. Les factures <strong>comptabilisées / payées</strong> restent en <strong>lecture seule</strong> dans l’UI.</p>
+<hr>
+<h2>4. Parcours utilisateur par zone de l’application</h2>
+<h3>4.1 Authentification (écrans Login / SignUp)</h3>
+<p>Écrans présents pour la cohérence du parcours « app bancaire » ; l’authentification réelle peut être simulée ou non branchée à un backend selon le contexte du cours ou du portfolio.</p>
+<h3>4.2 Layout principal</h3>
+<ul>
+<li><strong>Barre du bas</strong> : navigation entre Home, Transferts, Crypto, Investissements.</li>
+<li><strong>Zone flottante (haut droite)</strong> : raccourcis vers Analytics, Cartes, Sécurité, Profil, et <strong>Facturation</strong> (icône reçu) vers <strong><code>/invoices</code></strong>.</li>
+</ul>
+<h3>4.3 Tableau de bord (<code>/</code>)</h3>
+<ul>
+<li>Solde (affichage masquable), mini-graphique alimenté par <strong><code>balanceData</code></strong>.</li>
+<li>Liste des transactions et cartes d’« insights » si les données sont disponibles.</li>
+<li>Message explicite si l’API ne répond pas (Docker arrêté ou erreur réseau).</li>
+</ul>
+<h3>4.4 Autres écrans métier</h3>
+<ul>
+<li><strong>Transferts</strong> : envoi, demande, QR, fractionnement (UI + toasts).</li>
+<li><strong>Crypto / Investissements</strong> : graphiques temps réel simulés ou données statiques selon l’écran.</li>
+<li><strong>Cartes, Analytics, Sécurité, Profil</strong> : enrichissement UX du prototype.</li>
+</ul>
+<h3>4.5 Facturation (<code>/invoices</code>)</h3>
+<ul>
+<li><strong>Liste</strong> des factures avec filtres (Toutes, Brouillon, À encaisser, Payées).</li>
+<li><strong>Clic sur une facture</strong> :<ul>
+<li><strong><code>state === draft</code></strong> → ouverture de l’<strong>éditeur</strong> (modification autorisée tant que la facture n’est pas « envoyée » au sens métier : ici, tant qu’elle reste <strong>brouillon</strong>).</li>
+<li><strong>Sinon</strong> → <strong>vue détail en lecture seule</strong> (équivalent facture comptabilisée / payée).</li>
+</ul>
+</li>
+<li><strong>Bouton « Nouvelle facture (brouillon) »</strong> : création avec lignes éditables, client choisi dans la liste des partenaires, calcul automatique HT / TVA / TTC.</li>
+<li><strong>Enregistrement</strong> : stockage local + message de confirmation.</li>
+<li><strong>Suppression</strong> : réservée aux brouillons créés dans l’app (identifiants négatifs).</li>
+<li><strong>Reprise version serveur</strong> : pour un brouillon issu du JSON (<code>id</code> positif), possibilité d’annuler les modifications locales.</li>
+</ul>
+<hr>
+<h2>5. Guide d’installation et d’utilisation (détaillé)</h2>
+<h3>5.1 Prérequis</h3>
+<ul>
+<li><strong>Node.js</strong> (LTS recommandé) et <strong>npm</strong>.</li>
+<li><strong>Docker Desktop</strong> (Windows) pour lancer <code>docker compose</code>.</li>
+<li>Navigateur récent (Chrome, Edge, Firefox).</li>
+</ul>
+<h3>5.2 Installation</h3>
+<pre><code class="language-bash">cd SECONDAPP
+npm install
+</code></pre>
+<h3>5.3 Lancer les données (Docker)</h3>
+<pre><code class="language-bash">npm run docker:up
+# équivalent : docker compose up -d
+</code></pre>
+<p>Vérification optionnelle : ouvrir ou interroger <code>http://127.0.0.1:3001/dashboard</code> (réponse JSON).</p>
+<h3>5.4 Lancer le front-end</h3>
+<pre><code class="language-bash">npm run dev
+</code></pre>
+<p>Ouvrir l’URL indiquée par Vite (typiquement <code>http://localhost:5173</code>).</p>
+<p><strong>Important</strong> : après modification de <code>docker/db.json</code>, un <strong><code>docker compose restart</code></strong> peut être nécessaire pour que le conteneur relise le fichier selon l’image utilisée.</p>
+<h3>5.5 Variables d’environnement (optionnel)</h3>
+<ul>
+<li><strong><code>VITE_API_BASE_URL</code></strong> : URL directe du json-server ; à n’utiliser que si CORS est correctement configuré côté serveur. Par défaut, le projet utilise le <strong>proxy</strong> <code>/json-api</code>.</li>
+</ul>
+<h3>5.6 Build de production</h3>
+<pre><code class="language-bash">npm run build
+npm run preview
+</code></pre>
+<p>Le proxy est aussi défini pour <strong><code>preview</code></strong> ; un hébergement statique sans proxy nécessiterait une configuration serveur (Nginx, etc.) ou une URL d’API avec CORS.</p>
+<hr>
+<h2>6. Problèmes rencontrés et solutions retenues</h2>
+<table>
+<thead>
+<tr>
+<th>Problème</th>
+<th>Cause</th>
+<th>Solution</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Données absentes malgré Docker</td>
+<td><strong>CORS</strong> : origine Vite ≠ origine port 3001</td>
+<td>Proxy Vite <code>/json-api</code> + base URL relative</td>
+</tr>
+<tr>
+<td>Facturation toujours vide</td>
+<td><strong>404</strong> sur <code>/partners</code> et <code>/invoices</code> avec json-server 0.12</td>
+<td>Données <code>invoicing</code> imbriquées sous <code>dashboard</code> ; un seul <code>GET /dashboard</code></td>
+</tr>
+<tr>
+<td>Impossible de « sauver » sur le disque</td>
+<td>Volume <code>db.json</code> en <strong>lecture seule</strong></td>
+<td>Persistance <strong>localStorage</strong> pour brouillons</td>
+</tr>
+<tr>
+<td>UX facturation</td>
+<td>Besoin métier type Odoo</td>
+<td>Modèle de champs aligné Odoo + états + lignes + totaux recalculés</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>7. Périmètre hors SECONDAPP (rappel)</h2>
+<p>Le dépôt peut contenir :</p>
+<ul>
+<li><strong><code>project/firstapp</code></strong> : application Flutter MyBank branchée sur Laravel.</li>
+<li><strong><code>infrastructure/back-laravel</code></strong>, <strong><code>infrastructure/infra</code></strong>, etc.</li>
+</ul>
+<p>Ce rapport <strong>ne remplace pas</strong> la documentation de ces modules ; il documente <strong>SECONDAPP</strong> comme <strong>deuxième application</strong> dédiée au front web « premium » et à la facturation mock.</p>
+<hr>
+<h2>8. Perspectives d’évolution</h2>
+<ul>
+<li>Brancher une <strong>vraie API Odoo</strong> (JSON-RPC / XML-RPC) ou un backend Laravel pour persister factures et partenaires.</li>
+<li>Mettre à jour l’image Docker vers un <strong>json-server</strong> récent ou un petit serveur <strong>Express</strong> custom avec CORS et routes REST explicites.</li>
+<li>Authentification réelle et cloisonnement des données par utilisateur.</li>
+<li>Tests automatisés (Vitest / Playwright) sur les flux dashboard et facturation.</li>
+<li>Internationalisation (i18n) si passage en production.</li>
+</ul>
+<hr>
+<h2>9. Glossaire</h2>
+<table>
+<thead>
+<tr>
+<th>Terme</th>
+<th>Signification</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Brouillon</strong></td>
+<td>Facture <code>state: draft</code> — éditable dans SECONDAPP.</td>
+</tr>
+<tr>
+<td><strong>Comptabilisée</strong></td>
+<td>Facture <code>state: posted</code> — lecture seule dans l’UI actuelle.</td>
+</tr>
+<tr>
+<td><strong>json-server</strong></td>
+<td>Outil servant un fichier JSON comme fausse API REST.</td>
+</tr>
+<tr>
+<td><strong>Proxy Vite</strong></td>
+<td>Redirection des requêtes <code>/json-api/*</code> vers le conteneur local.</td>
+</tr>
+<tr>
+<td><strong>localStorage</strong></td>
+<td>Stockage navigateur pour les brouillons créés ou modifiés.</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>10. Conclusion</h2>
+<p>SECONDAPP matérialise une <strong>second phase</strong> du projet : refonte volontaire après une première présentation, avec une <strong>UI riche</strong>, des <strong>données pilotées par Docker</strong>, et un <strong>module de facturation</strong> pédagogiquement aligné sur <strong>Odoo</strong>, tout en contournant les limites techniques de l’outil mock (version json-server, CORS, écriture fichier) par des choix d’architecture explicites. Ce document sert de <strong>rapport d’utilisation</strong> et de base pour un export PDF pour encadrement, portfolio ou soutenance.</p>
+<hr>
+<p><em>Fin du rapport.</em></p>
+
+<p style="margin-top:3rem;font-size:0.85rem;color:#666;"><em>Document généré pour impression PDF — SECONDAPP</em></p>
+</body>
+</html>

@@ -8,6 +8,7 @@ import Cards from "./components/Cards";
 import Analytics from "./components/Analytics";
 import Security from "./components/Security";
 import Profile from "./components/Profile";
+import Invoicing from "./components/Invoicing";
 import Login from "./components/Login";
 import SignUp from "./components/SignUp";
 
@@ -32,6 +33,7 @@ export const router = createBrowserRouter([
       { path: "analytics", Component: Analytics },
       { path: "security", Component: Security },
       { path: "profile", Component: Profile },
+      { path: "invoices", Component: Invoicing },
     ],
   },
 ]);

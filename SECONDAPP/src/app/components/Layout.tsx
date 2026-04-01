@@ -1,5 +1,5 @@
 import { Outlet, useLocation, Link } from "react-router";
-import { Home, ArrowLeftRight, Bitcoin, TrendingUp, CreditCard, PieChart, Shield, User } from "lucide-react";
+import { Home, ArrowLeftRight, Bitcoin, TrendingUp, CreditCard, PieChart, Shield, User, Receipt } from "lucide-react";
 import FuturisticBackground from "./effects/FuturisticBackground";
 import LEDIndicator from "./effects/LEDIndicator";
 import { useTheme } from "../contexts/ThemeContext";
@@ -68,7 +68,18 @@ export default function Layout() {
         </nav>
 
         {/* Floating Action Menu */}
-        <div className="fixed top-6 right-6 flex gap-2 z-10">
+        <div className="fixed top-6 right-6 flex flex-wrap justify-end gap-2 z-10 max-w-[min(100%,28rem)]">
+          <Link
+            to="/invoices"
+            className={`p-3 rounded-2xl backdrop-blur-xl transition-all hover:scale-110 shadow-lg ${
+              isActive("/invoices")
+                ? "bg-white shadow-2xl"
+                : "bg-white/20 border-2 border-white/40 hover:border-white/60 hover:bg-white/30"
+            }`}
+            title="Facturation (Odoo)"
+          >
+            <Receipt className={`w-5 h-5 ${isActive("/invoices") ? "text-amber-500" : "text-white"}`} />
+          </Link>
           <Link
             to="/analytics"
             className={`p-3 rounded-2xl backdrop-blur-xl transition-all hover:scale-110 shadow-lg ${

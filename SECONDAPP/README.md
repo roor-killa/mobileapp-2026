@@ -1,23 +1,41 @@
+# SECONDAPP — Application bancaire web (Vite + React)
 
-# Premium Mobile Banking App
+Deuxième version du projet, refaite **depuis zéro** après une première mouture déjà présentée : orientation **interface premium** (base Figma), données mock via **Docker** + **json-server**, et module **facturation** inspiré d’Odoo.
 
-This is a code bundle for Premium Mobile Banking App. The original project is available at https://www.figma.com/design/drujZvaK0EJspH7OUCFuYi/Premium-Mobile-Banking-App.
+## En bref
 
-## Running the code
+| Élément | Détail |
+|--------|--------|
+| Stack | React 18, Vite 6, TypeScript, Tailwind 4, Radix/shadcn, Recharts, Motion |
+| Données | `docker/db.json` servi par `clue/json-server` sur le port **3001** |
+| Front | `npm run dev` → souvent **http://localhost:5173** |
+| Sans Docker | L’app démarre ; **dashboard** et **clients** viennent du JSON : affichage vide côté données si le conteneur est arrêté |
+| Facturation | Route `/invoices` ; brouillons **éditables** + **création** ; sauvegarde **localStorage** (le fichier JSON Docker est en lecture seule) |
 
-Run `npm i` to install the dependencies.
+## Démarrage rapide
 
-Run `npm run docker:up` to start the Docker database API on `http://localhost:3001`.
+```bash
+npm install
+npm run docker:up    # ou : docker compose up -d
+npm run dev
+```
 
-Run `npm run dev` to start the frontend.
+- API mock : `http://localhost:3001` (le navigateur passe par le **proxy Vite** `/json-api` pour éviter le CORS).
+- Arrêt Docker : `npm run docker:down`
 
-If Docker is not running, the app still loads but dashboard data is empty.
+## Rapport détaillé
 
-## Docker API
+Le **rapport d’utilisation** complet est dans **`docs/RAPPORT-UTILISATION-DETAILLE.md`**.
 
-- Database file: `docker/db.json`
-- Docker service: `docker-compose.yml`
-- API endpoint used by the frontend: `GET /dashboard`
+**Obtenir un PDF** (sur ta machine) :
 
-You can stop Docker with `npm run docker:down`.
-  
+```bash
+npm run report:html
+```
+
+Puis ouvre **`docs/RAPPORT-UTILISATION-DETAILLE.html`** dans le navigateur → **Ctrl+P** (Imprimer) → **Enregistrer au format PDF**.
+
+## Liens utiles
+
+- Maquette d’origine (bundle Figma) : voir lien dans l’historique du dépôt / métadonnées du projet Make.
+- Données : `docker/db.json` (`dashboard` + `invoicing.partners` / `invoicing.invoices`).

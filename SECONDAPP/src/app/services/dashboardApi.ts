@@ -23,11 +23,11 @@ export type DashboardResponse = {
   insights: DashboardInsight[];
 };
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:3001";
+import { getJsonServerBaseUrl } from "./jsonServerBaseUrl";
 
 export async function getDashboardData(): Promise<DashboardResponse | null> {
   try {
-    const res = await fetch(`${API_BASE_URL}/dashboard`);
+    const res = await fetch(`${getJsonServerBaseUrl()}/dashboard`);
     if (!res.ok) {
       return null;
     }
