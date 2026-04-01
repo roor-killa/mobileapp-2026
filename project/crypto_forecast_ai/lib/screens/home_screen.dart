@@ -1,17 +1,8 @@
-import 'dart:async';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:intl/intl.dart' hide TextDirection;
 import '../services/api.dart';
-import '../services/history_store.dart';
-import '../models/history_entry.dart';
-
-class _PricePoint {
-  final DateTime t;
-  final double price;
-  const _PricePoint(this.t, this.price);
-}
+import 'market_search_screen.dart';
+import 'watchlist_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -19,1092 +10,929 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen>
-    with SingleTickerProviderStateMixin {
-  final _api = Api(baseUrl: "http://127.0.0.1:8000");
-  final _store = HistoryStore();
+class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
+  late final TabController _tab;
 
-  final _searchCtrl = TextEditingController(text: "bitcoin");
+  final TextEditingController _coinCtrl = TextEditingController(text: "bitcoin");
 
-  Timer? _debounce;
-  bool _searchLoading = false;
-  List<Map<String, dynamic>> _suggestions = [];
-
-  int _days = 180;
+  int _historyDays = 180;
   int _horizon = 7;
-  int _zoom = 90;
 
-  bool _loading = false;
-  String? _error;
+  bool _loadingHistory = false;
+  bool _loadingPredict = false;
 
-  List<_PricePoint> _history = [];
-  List<double> _predicted = [];
+  List<double> _hist = [];
   double? _currentPrice;
-  String _model = "";
 
-  final _usd = NumberFormat.currency(locale: "en_US", symbol: "\$");
-  final _dateFmt = DateFormat("dd/MM/yyyy", "fr_FR");
-
-  late final AnimationController _pulse;
-
-  static const bg1 = Color(0xFF070A12);
-  static const bg2 = Color(0xFF0B1230);
-  static const surface = Color(0xFF0C1020);
-
-  // Palette Trading: cyan (historique) / vert (prévision) / rouge baisse
-  static const neon = Color(0xFF22D3EE);  // cyan
-  static const neon2 = Color(0xFF34D399); // vert néon
-  static const down = Color(0xFFFB7185);  // rouge/rose
-
-  String get _coinId => _searchCtrl.text.trim().toLowerCase();
+  List<double> _pred = [];
+  String _modelLabel = "—";
 
   @override
   void initState() {
     super.initState();
-    _pulse = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1600),
-    )..repeat(reverse: true);
-
-    WidgetsBinding.instance.addPostFrameCallback((_) => _chargerHistorique());
+    _tab = TabController(length: 3, vsync: this);
+    _loadHistory();
   }
 
   @override
   void dispose() {
-    _debounce?.cancel();
-    _searchCtrl.dispose();
-    _pulse.dispose();
+    _tab.dispose();
+    _coinCtrl.dispose();
     super.dispose();
   }
 
-  void _showInfo() {
-    showModalBottomSheet(
-      context: context,
-      showDragHandle: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 18),
-        child: GlassCard(
+  String get _coinId => _coinCtrl.text.trim().toLowerCase();
+
+  void _snack(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), behavior: SnackBarBehavior.floating),
+    );
+  }
+
+  Future<void> _loadHistory() async {
+    final id = _coinId;
+    if (id.isEmpty) return _snack("Coin ID requis (ex: bitcoin).");
+
+    setState(() => _loadingHistory = true);
+    try {
+      final data = await api.history(id, days: _historyDays);
+      final prices = (data["prices"] as List<dynamic>? ?? [])
+          .map((p) => (p as List<dynamic>)[1] as num)
+          .map((v) => v.toDouble())
+          .toList();
+
+      if (prices.isEmpty) throw Exception("Historique vide (coin_id invalide ?)");
+
+      setState(() {
+        _hist = prices;
+        _currentPrice = prices.last;
+        _pred = [];
+        _modelLabel = "—";
+      });
+    } catch (e) {
+      _snack("Chargement historique impossible: $e");
+    } finally {
+      if (mounted) setState(() => _loadingHistory = false);
+    }
+  }
+
+  Future<void> _predict() async {
+    final id = _coinId;
+    if (id.isEmpty) return _snack("Coin ID requis (ex: bitcoin).");
+    if (_hist.isEmpty) return _snack("Charge l’historique avant de prédire.");
+
+    setState(() => _loadingPredict = true);
+    try {
+      final data = await api.predict(id, horizon: _horizon);
+      final preds = (data["predicted_prices"] as List<dynamic>? ?? [])
+          .map((e) => (e as num).toDouble())
+          .toList();
+
+      setState(() {
+        _pred = preds;
+        _modelLabel = (data["model"] ?? "Modèle").toString();
+        _currentPrice = (data["current_price"] as num?)?.toDouble() ?? _currentPrice;
+      });
+
+      _tab.animateTo(1);
+    } catch (e) {
+      _snack("Prévision impossible: $e");
+    } finally {
+      if (mounted) setState(() => _loadingPredict = false);
+    }
+  }
+
+  double? get _projection => _pred.isEmpty ? null : _pred.last;
+
+  double? get _delta {
+    if (_currentPrice == null || _projection == null) return null;
+    return _projection! - _currentPrice!;
+  }
+
+  double? get _pct {
+    if (_currentPrice == null || _projection == null || _currentPrice == 0) return null;
+    return (_projection! - _currentPrice!) / _currentPrice! * 100.0;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final coinName = _coinId.isEmpty ? "—" : _coinId.toUpperCase();
+
+    final cur = _currentPrice;
+    final proj = _projection;
+    final delta = _delta;
+    final pct = _pct;
+    final up = (delta ?? 0) >= 0;
+
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        title: const Text("Analyse"),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        actions: [
+          IconButton(
+            tooltip: "Watchlist",
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const WatchlistScreen()),
+            ),
+            icon: const Icon(Icons.star_rounded),
+          ),
+          IconButton(
+            tooltip: "Info",
+            onPressed: () => _snack("Coin ID = identifiant CoinGecko (bitcoin, ethereum, solana...)"),
+            icon: const Icon(Icons.info_outline_rounded),
+          ),
+        ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(54),
           child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                Text("À propos",
-                    style:
-                        TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
-                SizedBox(height: 8),
-                Text(
-                  "Estimation basée sur l’historique + un modèle simple.\n"
-                  "Ce n’est pas un conseil d’investissement.",
-                  style: TextStyle(color: Colors.white70),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+            child: _FuturTabs(controller: _tab),
+          ),
+        ),
+      ),
+      body: Stack(
+        children: [
+          _FuturBackground(primary: cs.primary, secondary: cs.secondary),
+          SafeArea(
+            child: TabBarView(
+              controller: _tab,
+              children: [
+                _OverviewTab(
+                  coinName: coinName,
+                  coinCtrl: _coinCtrl,
+                  historyDays: _historyDays,
+                  horizon: _horizon,
+                  onChangeDays: (v) => setState(() => _historyDays = v),
+                  onChangeHorizon: (v) => setState(() => _horizon = v),
+                  onSubmitCoin: _loadHistory,
+                  current: cur,
+                  projection: proj,
+                  modelLabel: _modelLabel,
+                  delta: delta,
+                  pct: pct,
+                  deltaUp: up,
+                  loadingHistory: _loadingHistory,
+                  loadingPredict: _loadingPredict,
                 ),
+                _ForecastTab(
+                  coinName: coinName,
+                  horizon: _horizon,
+                  current: cur,
+                  projection: proj,
+                  modelLabel: _modelLabel,
+                  preds: _pred,
+                ),
+                _ChartTab(hist: _hist, pred: _pred),
               ],
             ),
           ),
+        ],
+      ),
+      bottomNavigationBar: _FuturBottomBar(
+        loadingLoad: _loadingHistory,
+        loadingPredict: _loadingPredict,
+        onLoad: _loadingHistory ? null : _loadHistory,
+        onPredict: _loadingPredict ? null : _predict,
+      ),
+    );
+  }
+}
+
+// =========================
+// UI components (modern)
+// =========================
+
+class _FuturBackground extends StatelessWidget {
+  final Color primary;
+  final Color secondary;
+  const _FuturBackground({required this.primary, required this.secondary});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: RadialGradient(
+          center: const Alignment(-0.7, -0.9),
+          radius: 1.2,
+          colors: [
+            primary.withOpacity(0.25),
+            secondary.withOpacity(0.12),
+            const Color(0xFF05070B),
+          ],
+        ),
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            right: -120,
+            top: 30,
+            child: _GlowBlob(color: secondary.withOpacity(0.35), size: 280),
+          ),
+          Positioned(
+            left: -140,
+            bottom: -40,
+            child: _GlowBlob(color: primary.withOpacity(0.30), size: 320),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GlowBlob extends StatelessWidget {
+  final Color color;
+  final double size;
+  const _GlowBlob({required this.color, required this.size});
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: color,
+              blurRadius: 90,
+              spreadRadius: 40,
+            )
+          ],
         ),
       ),
     );
   }
+}
 
-  void _onSearchChanged(String v) {
-    _debounce?.cancel();
-    final q = v.trim().toLowerCase();
-    if (q.length < 2) {
-      setState(() => _suggestions = []);
-      return;
-    }
-    _debounce = Timer(const Duration(milliseconds: 250), () async {
-      try {
-        setState(() => _searchLoading = true);
-        final res = await _api.searchCoins(q);
-        if (!mounted) return;
-        setState(() => _suggestions = res);
-      } catch (_) {
-        if (!mounted) return;
-        setState(() => _suggestions = []);
-      } finally {
-        if (mounted) setState(() => _searchLoading = false);
-      }
-    });
-  }
+class _FuturTabs extends StatelessWidget {
+  final TabController controller;
+  const _FuturTabs({required this.controller});
 
-  Future<void> _chargerHistorique() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-      // on garde la data précédente (si tu veux), ou on vide :
-      // _history = [];
-      _predicted = [];
-      _model = "";
-    });
-
-    try {
-      if (_coinId.isEmpty) throw Exception("Entre un actif (ex: bitcoin).");
-
-      final data = await _api.history(_coinId, days: _days);
-
-      final raw = (data["prices"] as List<dynamic>);
-      final points = raw.map((e) {
-        final ts = (e as List<dynamic>)[0] as num;
-        final price = (e[1] as num).toDouble();
-        return _PricePoint(
-          DateTime.fromMillisecondsSinceEpoch(ts.toInt(), isUtc: true).toLocal(),
-          price,
-        );
-      }).toList();
-
-      setState(() {
-        _history = points;
-        _currentPrice = points.isNotEmpty ? points.last.price : null;
-      });
-    } catch (e) {
-      setState(() => _error = e.toString());
-    } finally {
-      setState(() => _loading = false);
-    }
-  }
-
-  Future<void> _predire() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-      _predicted = [];
-      _model = "";
-    });
-
-    try {
-      if (_coinId.isEmpty) throw Exception("Entre un actif (ex: bitcoin).");
-
-      final data = await _api.predict(_coinId, horizon: _horizon);
-      if (data["success"] != true) {
-        throw Exception(data["message"] ?? "Échec de la prédiction");
-      }
-
-      final current = (data["current_price"] as num).toDouble();
-      final preds = (data["predicted_prices"] as List<dynamic>)
-          .map((e) => (e as num).toDouble())
-          .toList();
-      final model = (data["model"] as String?) ?? "unknown";
-
-      setState(() {
-        _currentPrice = current;
-        _predicted = preds;
-        _model = model;
-      });
-
-      await _store.add(
-        HistoryEntry(
-          coinId: _coinId,
-          createdAt: DateTime.now(),
-          currentPrice: current,
-          horizonDays: _horizon,
-          predictedPrices: preds,
-          model: model,
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        color: cs.surface.withOpacity(0.50),
+        border: Border.all(color: cs.onSurface.withOpacity(0.08)),
+      ),
+      child: TabBar(
+        controller: controller,
+        indicatorSize: TabBarIndicatorSize.tab,
+        dividerColor: Colors.transparent,
+        labelStyle: const TextStyle(fontWeight: FontWeight.w900),
+        unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w800),
+        indicator: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          gradient: LinearGradient(
+            colors: [cs.primary.withOpacity(0.35), cs.secondary.withOpacity(0.22)],
+          ),
+          border: Border.all(color: cs.primary.withOpacity(0.25)),
         ),
-      );
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Prédiction enregistrée")),
-        );
-      }
-    } catch (e) {
-      setState(() => _error = e.toString());
-    } finally {
-      setState(() => _loading = false);
-    }
+        tabs: const [
+          Tab(text: "Aperçu"),
+          Tab(text: "Prévision"),
+          Tab(text: "Graphique"),
+        ],
+      ),
+    );
   }
+}
 
-  List<_PricePoint> get _visibleHistory {
-    if (_history.isEmpty) return [];
-    final n = _history.length;
-    if (_zoom <= 0 || _zoom >= n || _zoom == 999999) return _history;
-    return _history.sublist(n - _zoom);
+class _GlassCard extends StatelessWidget {
+  final Widget child;
+  const _GlassCard({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(22),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            cs.surface.withOpacity(0.65),
+            cs.surface.withOpacity(0.38),
+          ],
+        ),
+        border: Border.all(color: cs.onSurface.withOpacity(0.08)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.35),
+            blurRadius: 22,
+            offset: const Offset(0, 14),
+          )
+        ],
+      ),
+      child: child,
+    );
   }
+}
 
-  List<FlSpot> _historySpots() {
-    final vis = _visibleHistory;
-    return List.generate(vis.length, (i) => FlSpot(i.toDouble(), vis[i].price));
-  }
+class _Chip extends StatelessWidget {
+  final String label;
+  final String value;
+  const _Chip({required this.label, required this.value});
 
-  List<FlSpot> _predSpots() {
-    final startX =
-        _visibleHistory.isEmpty ? 0 : _visibleHistory.length.toDouble();
-    return List.generate(
-        _predicted.length, (i) => FlSpot(startX + i.toDouble(), _predicted[i]));
-  }
-
-  String _zoomLabel() => _zoom == 999999 ? "Tout" : "${_zoom} pts";
-
-  Widget _chip(String label, String value, {Color? glow}) {
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: surface,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: const Color(0xFF1F2A4A)),
-        boxShadow: glow == null
-            ? const []
-            : [
-                BoxShadow(
-                  color: glow.withOpacity(0.25),
-                  blurRadius: 18,
-                  spreadRadius: 1,
-                ),
-              ],
+        color: Colors.black.withOpacity(0.22),
+        border: Border.all(color: cs.onSurface.withOpacity(0.08)),
       ),
-      child: RichText(
-        text: TextSpan(
-          children: [
-            TextSpan(
-              text: "$label : ",
-              style: const TextStyle(
-                  color: Colors.white70, fontWeight: FontWeight.w700),
-            ),
-            TextSpan(
-              text: value,
-              style: const TextStyle(
-                  color: Colors.white, fontWeight: FontWeight.w900),
-            ),
-          ],
-        ),
+      child: Text(
+        "$label : $value",
+        style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12.5),
       ),
     );
   }
+}
+
+class _DeltaPill extends StatelessWidget {
+  final double delta;
+  final double pct;
+  final bool up;
+  const _DeltaPill({required this.delta, required this.pct, required this.up});
 
   @override
   Widget build(BuildContext context) {
-    final vis = _visibleHistory;
-    final history = _historySpots();
-    final preds = _predSpots();
-
-    final current = _currentPrice;
-    final forecastLast = _predicted.isNotEmpty ? _predicted.last : null;
-
-    double? delta;
-    double? pct;
-    if (current != null && forecastLast != null && current != 0) {
-      delta = forecastLast - current;
-      pct = (delta / current) * 100.0;
-    }
-
-    final hasForecast = (forecastLast != null && delta != null && pct != null);
-
-    final skeletonPriceCard = _loading && current == null;
-    final skeletonForecastList = _loading && _predicted.isEmpty;
-    final skeletonChart = _loading && history.isEmpty;
-
-    return DefaultTabController(
-      length: 3,
-      child: Scaffold(
-        extendBodyBehindAppBar: true,
-        appBar: AppBar(
-          title: const Text("Prévision Crypto"),
-          actions: [
-            IconButton(onPressed: _showInfo, icon: const Icon(Icons.info_outline)),
-          ],
-          bottom: const TabBar(
-            indicatorColor: neon,
-            labelColor: Colors.white,
-            unselectedLabelColor: Colors.white60,
-            tabs: [
-              Tab(text: "Aperçu"),
-              Tab(text: "Prévision"),
-              Tab(text: "Graphique"),
-            ],
-          ),
-        ),
-        body: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [bg1, bg2],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-          child: SafeArea(
-            child: TabBarView(
-              children: [
-                // ================= APERÇU =================
-                ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                  children: [
-                    AnimatedBuilder(
-                      animation: _pulse,
-                      builder: (context, _) {
-                        final t = _pulse.value;
-                        final glowCyan = Color.lerp(
-                          neon.withOpacity(0.05),
-                          neon.withOpacity(0.22),
-                          t,
-                        )!;
-                        final glowGreen = Color.lerp(
-                          neon2.withOpacity(0.04),
-                          neon2.withOpacity(0.18),
-                          1 - t,
-                        )!;
-
-                        return Stack(
-                          children: [
-                            Positioned.fill(
-                              child: IgnorePointer(
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(18),
-                                    boxShadow: [
-                                      BoxShadow(
-                                          color: glowCyan,
-                                          blurRadius: 40,
-                                          spreadRadius: 1),
-                                      BoxShadow(
-                                          color: glowGreen,
-                                          blurRadius: 42,
-                                          spreadRadius: 1),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                            GlassCard(
-                              child: Padding(
-                                padding: const EdgeInsets.all(16),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      _coinId.isEmpty
-                                          ? "Choisir un actif"
-                                          : _coinId.toUpperCase(),
-                                      style: const TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.w900),
-                                    ),
-                                    const SizedBox(height: 12),
-
-                                    if (skeletonPriceCard)
-                                      const FuturSkeletonPriceHeader()
-                                    else
-                                      Wrap(
-                                        spacing: 10,
-                                        runSpacing: 10,
-                                        children: [
-                                          _chip(
-                                            "Prix",
-                                            current == null
-                                                ? "—"
-                                                : _usd.format(current),
-                                            glow: neon,
-                                          ),
-                                          _chip("Horizon", "J+$_horizon",
-                                              glow: neon2),
-                                          _chip("Zoom", _zoomLabel()),
-                                        ],
-                                      ),
-
-                                    const SizedBox(height: 14),
-
-                                    AnimatedSwitcher(
-                                      duration:
-                                          const Duration(milliseconds: 220),
-                                      child: _loading && !hasForecast
-                                          ? const FuturSkeletonLineBlock(
-                                              key: ValueKey("sk1"),
-                                            )
-                                          : hasForecast
-                                              ? Row(
-                                                  key: const ValueKey("forecast"),
-                                                  children: [
-                                                    Expanded(
-                                                      child: TweenAnimationBuilder<
-                                                          double>(
-                                                        tween: Tween<double>(
-                                                          begin: current ??
-                                                              forecastLast!,
-                                                          end: forecastLast!,
-                                                        ),
-                                                        duration: const Duration(
-                                                            milliseconds: 350),
-                                                        builder: (_, v, __) => Text(
-                                                          "Projection : ${_usd.format(v)}",
-                                                          style: const TextStyle(
-                                                              fontSize: 16,
-                                                              fontWeight:
-                                                                  FontWeight.w900),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                    Builder(builder: (_) {
-                                                      final isUp = delta! >= 0;
-                                                      final pillText =
-                                                          isUp ? neon2 : down;
-                                                      final pillBg = isUp
-                                                          ? neon2.withOpacity(0.16)
-                                                          : down.withOpacity(0.14);
-                                                      final pillBorder = isUp
-                                                          ? neon2.withOpacity(0.55)
-                                                          : down.withOpacity(0.55);
-
-                                                      return Container(
-                                                        padding: const EdgeInsets
-                                                            .symmetric(
-                                                            horizontal: 12,
-                                                            vertical: 8),
-                                                        decoration: BoxDecoration(
-                                                          color: pillBg,
-                                                          borderRadius:
-                                                              BorderRadius.circular(
-                                                                  999),
-                                                          border: Border.all(
-                                                              color: pillBorder),
-                                                          boxShadow: [
-                                                            BoxShadow(
-                                                              color: pillText
-                                                                  .withOpacity(
-                                                                      0.18),
-                                                              blurRadius: 18,
-                                                              spreadRadius: 1,
-                                                            )
-                                                          ],
-                                                        ),
-                                                        child: Text(
-                                                          "${delta! >= 0 ? '+' : ''}${_usd.format(delta)} (${pct! >= 0 ? '+' : ''}${pct!.toStringAsFixed(2)}%)",
-                                                          style: TextStyle(
-                                                            fontWeight:
-                                                                FontWeight.w900,
-                                                            color: pillText,
-                                                          ),
-                                                        ),
-                                                      );
-                                                    }),
-                                                  ],
-                                                )
-                                              : const Text(
-                                                  "Charge l’historique puis lance une prédiction.",
-                                                  key: ValueKey("hint"),
-                                                  style: TextStyle(
-                                                      color: Colors.white70),
-                                                ),
-                                    ),
-
-                                    if (_model.isNotEmpty) ...[
-                                      const SizedBox(height: 8),
-                                      Text("Modèle : $_model",
-                                          style: const TextStyle(
-                                              color: Colors.white60)),
-                                    ],
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Recherche
-                    GlassCard(
-                      child: Padding(
-                        padding: const EdgeInsets.all(14),
-                        child: Column(
-                          children: [
-                            TextField(
-                              controller: _searchCtrl,
-                              onChanged: _onSearchChanged,
-                              textInputAction: TextInputAction.search,
-                              onSubmitted: (_) => _chargerHistorique(),
-                              decoration: InputDecoration(
-                                labelText:
-                                    "Rechercher un actif (CoinGecko id)",
-                                prefixIcon: const Icon(Icons.search),
-                                suffixIcon: _searchLoading
-                                    ? const Padding(
-                                        padding: EdgeInsets.all(12),
-                                        child: SizedBox(
-                                          width: 16,
-                                          height: 16,
-                                          child: CircularProgressIndicator(
-                                              strokeWidth: 2),
-                                        ),
-                                      )
-                                    : (_coinId.isEmpty
-                                        ? null
-                                        : IconButton(
-                                            icon: const Icon(Icons.clear),
-                                            onPressed: _loading
-                                                ? null
-                                                : () => setState(
-                                                    () => _searchCtrl.clear()),
-                                          )),
-                              ),
-                            ),
-
-                            if (_suggestions.isNotEmpty) ...[
-                              const SizedBox(height: 10),
-                              Container(
-                                decoration: BoxDecoration(
-                                  color: surface.withOpacity(0.55),
-                                  borderRadius: BorderRadius.circular(14),
-                                  border: Border.all(
-                                      color: const Color(0xFF1F2A4A)),
-                                ),
-                                child: ListView.separated(
-                                  shrinkWrap: true,
-                                  physics:
-                                      const NeverScrollableScrollPhysics(),
-                                  itemCount: _suggestions.length,
-                                  separatorBuilder: (_, __) =>
-                                      const Divider(
-                                          height: 1,
-                                          color: Color(0xFF1F2A4A)),
-                                  itemBuilder: (context, i) {
-                                    final s = _suggestions[i];
-                                    final id = (s["id"] ?? "").toString();
-                                    final name = (s["name"] ?? "").toString();
-                                    final symbol = (s["symbol"] ?? "")
-                                        .toString()
-                                        .toUpperCase();
-                                    final rank = s["market_cap_rank"];
-                                    final thumb = (s["thumb"] ?? "").toString();
-
-                                    return ListTile(
-                                      leading: CircleAvatar(
-                                        backgroundColor:
-                                            const Color(0xFF18223F),
-                                        backgroundImage: thumb.isNotEmpty
-                                            ? NetworkImage(thumb)
-                                            : null,
-                                        child: thumb.isEmpty
-                                            ? Text(
-                                                symbol.isNotEmpty
-                                                    ? symbol[0]
-                                                    : "?",
-                                                style: const TextStyle(
-                                                    fontWeight:
-                                                        FontWeight.w900),
-                                              )
-                                            : null,
-                                      ),
-                                      title: Text(
-                                        "$name ($symbol)",
-                                        style: const TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.w800),
-                                      ),
-                                      subtitle: Text(
-                                        "id : $id${rank != null ? " • rang : $rank" : ""}",
-                                        style: const TextStyle(
-                                            color: Colors.white60),
-                                      ),
-                                      onTap: () {
-                                        setState(() {
-                                          _searchCtrl.text = id;
-                                          _suggestions = [];
-                                        });
-                                        _chargerHistorique();
-                                      },
-                                    );
-                                  },
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Paramètres + actions
-                    GlassCard(
-                      child: Padding(
-                        padding: const EdgeInsets.all(14),
-                        child: Column(
-                          children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: DropdownButtonFormField<int>(
-                                    value: _days,
-                                    dropdownColor: surface,
-                                    decoration: const InputDecoration(
-                                        labelText: "Jours d’historique"),
-                                    items: const [30, 90, 180, 365]
-                                        .map((d) => DropdownMenuItem(
-                                            value: d, child: Text("$d")))
-                                        .toList(),
-                                    onChanged: _loading
-                                        ? null
-                                        : (v) =>
-                                            setState(() => _days = v ?? 180),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: DropdownButtonFormField<int>(
-                                    value: _horizon,
-                                    dropdownColor: surface,
-                                    decoration: const InputDecoration(
-                                        labelText: "Prévision"),
-                                    items: const [1, 3, 7, 14]
-                                        .map((h) => DropdownMenuItem(
-                                            value: h, child: Text("J+$h")))
-                                        .toList(),
-                                    onChanged: _loading
-                                        ? null
-                                        : (v) => setState(
-                                            () => _horizon = v ?? 7),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: FilledButton.tonalIcon(
-                                    onPressed:
-                                        _loading ? null : _chargerHistorique,
-                                    icon: const Icon(Icons.download),
-                                    label: const Text("Charger"),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: FilledButton.icon(
-                                    onPressed: _loading ? null : _predire,
-                                    icon: const Icon(Icons.auto_graph),
-                                    label: const Text("Prédire"),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-                            if (_loading) const LinearProgressIndicator(),
-                            AnimatedSwitcher(
-                              duration: const Duration(milliseconds: 220),
-                              child: _error == null
-                                  ? const SizedBox.shrink()
-                                  : Padding(
-                                      padding: const EdgeInsets.only(top: 10),
-                                      child: Row(
-                                        children: [
-                                          const Icon(Icons.error_outline,
-                                              color: Colors.redAccent),
-                                          const SizedBox(width: 10),
-                                          Expanded(
-                                            child: Text(
-                                              _error!,
-                                              style: const TextStyle(
-                                                  color: Colors.redAccent,
-                                                  fontWeight:
-                                                      FontWeight.w700),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-
-                // ================= PRÉVISION =================
-                ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                  children: [
-                    GlassCard(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text("Trajectoire de prévision",
-                                style: TextStyle(
-                                    fontSize: 16, fontWeight: FontWeight.w900)),
-                            const SizedBox(height: 10),
-
-                            if (skeletonForecastList)
-                              const FuturSkeletonForecastList()
-                            else if (_predicted.isEmpty)
-                              const Text(
-                                "Lance une prédiction pour afficher les prix estimés.",
-                                style: TextStyle(color: Colors.white70),
-                              )
-                            else
-                              ...List.generate(_predicted.length, (i) {
-                                final day = i + 1;
-                                final value = _predicted[i];
-                                return Padding(
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 8),
-                                  child: Row(
-                                    children: [
-                                      SizedBox(
-                                        width: 64,
-                                        child: Text("J+$day",
-                                            style: const TextStyle(
-                                                fontWeight: FontWeight.w900,
-                                                color: Colors.white)),
-                                      ),
-                                      Expanded(
-                                        child: TweenAnimationBuilder<double>(
-                                          tween: Tween<double>(
-                                              begin: value * 0.98, end: value),
-                                          duration: const Duration(
-                                              milliseconds: 260),
-                                          builder: (_, v, __) => Text(
-                                            _usd.format(v),
-                                            style: const TextStyle(
-                                                color: Colors.white70),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              }),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-
-                // ================= GRAPHIQUE =================
-                ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                  children: [
-                    GlassCard(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text("Graphique",
-                                style: TextStyle(
-                                    fontSize: 16, fontWeight: FontWeight.w900)),
-                            const SizedBox(height: 12),
-                            DropdownButtonFormField<int>(
-                              value: _zoom,
-                              dropdownColor: surface,
-                              decoration:
-                                  const InputDecoration(labelText: "Zoom (fenêtre)"),
-                              items: const [30, 90, 180, 999999]
-                                  .map((z) => DropdownMenuItem(
-                                        value: z,
-                                        child: Text(
-                                            z == 999999 ? "Tout" : "$z points"),
-                                      ))
-                                  .toList(),
-                              onChanged: _loading
-                                  ? null
-                                  : (v) => setState(() => _zoom = (v ?? 90)),
-                            ),
-                            const SizedBox(height: 12),
-
-                            if (skeletonChart)
-                              const FuturSkeletonChart()
-                            else if (history.isEmpty)
-                              const Text("Aucune donnée. Clique sur “Charger”.",
-                                  style: TextStyle(color: Colors.white70))
-                            else
-                              SizedBox(
-                                height: 340,
-                                child: LineChart(
-                                  LineChartData(
-                                    lineTouchData: LineTouchData(
-  				      enabled: true,
-  				      touchTooltipData: LineTouchTooltipData(
-    					getTooltipColor: (touchedSpot) => surface.withOpacity(0.95),
-    					tooltipBorderRadius: BorderRadius.circular(12),
-    					tooltipBorder: const BorderSide(color: Color(0xFF1F2A4A)),
-    					getTooltipItems: (spots) {
-      					  return spots.map((s) {
-        				    final idx = s.x.round();
-        				    String dateStr = "";
-        				    if (idx >= 0 && idx < vis.length) {
-          				      dateStr = _dateFmt.format(vis[idx].t);
-        				    }
-        				    return LineTooltipItem(
-          				      "$dateStr\n${_usd.format(s.y)}",
-             				      const TextStyle(
-            					fontWeight: FontWeight.w900,
-            					color: Colors.white,
-          				      ),
-        				    );
-      					  }).toList();
-    					},
-  				      ),
-				    ),
-
-                                    gridData: FlGridData(
-                                      show: true,
-                                      drawVerticalLine: false,
-                                      getDrawingHorizontalLine: (value) =>
-                                          FlLine(
-                                        color: const Color(0xFF1F2A4A),
-                                        strokeWidth: 1,
-                                      ),
-                                    ),
-                                    titlesData: const FlTitlesData(show: false),
-                                    borderData: FlBorderData(
-                                      show: true,
-                                      border: Border.all(
-                                          color: const Color(0xFF1F2A4A)),
-                                    ),
-                                    lineBarsData: [
-                                      // Historique cyan
-                                      LineChartBarData(
-                                        spots: history,
-                                        isCurved: true,
-                                        curveSmoothness: 0.18,
-                                        color: neon,
-                                        barWidth: 2.2,
-                                        dotData: const FlDotData(show: false),
-                                        belowBarData: BarAreaData(
-                                          show: true,
-                                          gradient: LinearGradient(
-                                            colors: [
-                                              neon.withOpacity(0.22),
-                                              Colors.transparent
-                                            ],
-                                            begin: Alignment.topCenter,
-                                            end: Alignment.bottomCenter,
-                                          ),
-                                        ),
-                                      ),
-                                      // Prévision vert
-                                      if (preds.isNotEmpty)
-                                        LineChartBarData(
-                                          spots: preds,
-                                          isCurved: true,
-                                          curveSmoothness: 0.18,
-                                          color: neon2,
-                                          barWidth: 2.2,
-                                          dotData:
-                                              const FlDotData(show: false),
-                                          belowBarData: BarAreaData(
-                                            show: true,
-                                            gradient: LinearGradient(
-                                              colors: [
-                                                neon2.withOpacity(0.18),
-                                                Colors.transparent
-                                              ],
-                                              begin: Alignment.topCenter,
-                                              end: Alignment.bottomCenter,
-                                            ),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
+    final cs = Theme.of(context).colorScheme;
+    final bg = up ? cs.primaryContainer : cs.errorContainer;
+    final fg = up ? cs.onPrimaryContainer : cs.onErrorContainer;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(999),
+        color: bg,
+        boxShadow: [
+          BoxShadow(
+            color: (up ? cs.primary : cs.error).withOpacity(0.20),
+            blurRadius: 18,
+          )
+        ],
+        border: Border.all(color: cs.onSurface.withOpacity(0.06)),
+      ),
+      child: Text(
+        "${up ? "+" : ""}\$${delta.toStringAsFixed(2)} (${pct >= 0 ? "+" : ""}${pct.toStringAsFixed(2)}%)",
+        style: TextStyle(fontWeight: FontWeight.w900, color: fg),
       ),
     );
   }
 }
 
-class GlassCard extends StatelessWidget {
-  final Widget child;
-  const GlassCard({super.key, required this.child});
+class _OverviewTab extends StatelessWidget {
+  final String coinName;
+  final TextEditingController coinCtrl;
 
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(18),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-        child: Container(
-          decoration: BoxDecoration(
-            color: const Color(0xFF0C1020).withOpacity(0.55),
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: const Color(0xFF1F2A4A)),
-          ),
-          child: child,
-        ),
-      ),
-    );
-  }
-}
+  final int historyDays;
+  final int horizon;
+  final ValueChanged<int> onChangeDays;
+  final ValueChanged<int> onChangeHorizon;
+  final VoidCallback onSubmitCoin;
 
-/* =========================
-   SKELETON (shimmer futur)
-   ========================= */
+  final double? current;
+  final double? projection;
+  final String modelLabel;
+  final double? delta;
+  final double? pct;
+  final bool deltaUp;
 
-class FuturShimmer extends StatefulWidget {
-  final Widget child;
-  const FuturShimmer({super.key, required this.child});
+  final bool loadingHistory;
+  final bool loadingPredict;
 
-  @override
-  State<FuturShimmer> createState() => _FuturShimmerState();
-}
-
-class _FuturShimmerState extends State<FuturShimmer>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _c;
-
-  @override
-  void initState() {
-    super.initState();
-    _c = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    )..repeat();
-  }
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _c,
-      builder: (context, _) {
-        final t = _c.value; // 0..1
-        final base = const Color(0xFF0F1733);
-        final hi = const Color(0xFF1B2A55);
-        return ShaderMask(
-          blendMode: BlendMode.srcATop,
-          shaderCallback: (rect) {
-            return LinearGradient(
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-              colors: [base, hi, base],
-              stops: const [0.1, 0.5, 0.9],
-              transform: _SlidingGradientTransform(slidePercent: t),
-            ).createShader(rect);
-          },
-          child: widget.child,
-        );
-      },
-    );
-  }
-}
-
-class _SlidingGradientTransform extends GradientTransform {
-  final double slidePercent; // 0..1
-  const _SlidingGradientTransform({required this.slidePercent});
-
-  @override
-  Matrix4? transform(Rect bounds, {TextDirection? textDirection}) {
-    final dx = bounds.width * (slidePercent * 2 - 1);
-    return Matrix4.translationValues(dx, 0.0, 0.0);
-  }
-}
-
-class FuturSkeletonBox extends StatelessWidget {
-  final double height;
-  final double? width;
-  final BorderRadius borderRadius;
-  const FuturSkeletonBox({
-    super.key,
-    required this.height,
-    this.width,
-    this.borderRadius = const BorderRadius.all(Radius.circular(12)),
+  const _OverviewTab({
+    required this.coinName,
+    required this.coinCtrl,
+    required this.historyDays,
+    required this.horizon,
+    required this.onChangeDays,
+    required this.onChangeHorizon,
+    required this.onSubmitCoin,
+    required this.current,
+    required this.projection,
+    required this.modelLabel,
+    required this.delta,
+    required this.pct,
+    required this.deltaUp,
+    required this.loadingHistory,
+    required this.loadingPredict,
   });
 
   @override
   Widget build(BuildContext context) {
-    return FuturShimmer(
-      child: Container(
-        height: height,
-        width: width,
-        decoration: BoxDecoration(
-          color: const Color(0xFF0F1733),
-          borderRadius: borderRadius,
-          border: Border.all(color: const Color(0xFF1F2A4A)),
+    final cs = Theme.of(context).colorScheme;
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 110),
+      children: [
+        _GlassCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(coinName, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  _Chip(label: "Prix", value: current == null ? "—" : "\$${current!.toStringAsFixed(2)}"),
+                  _Chip(label: "Horizon", value: "J+$horizon"),
+                  const _Chip(label: "Zoom", value: "90 pts"),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Projection : ${projection == null ? "—" : "\$${projection!.toStringAsFixed(2)}"}",
+                          style: const TextStyle(fontWeight: FontWeight.w900),
+                        ),
+                        const SizedBox(height: 6),
+                        Text("Modèle : $modelLabel", style: TextStyle(color: cs.onSurface.withOpacity(0.70))),
+                      ],
+                    ),
+                  ),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 220),
+                    child: (delta != null && pct != null)
+                        ? _DeltaPill(delta: delta!, pct: pct!, up: deltaUp)
+                        : const SizedBox.shrink(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              if (loadingHistory || loadingPredict)
+                LinearProgressIndicator(
+                  minHeight: 3,
+                  color: cs.primary,
+                  backgroundColor: cs.onSurface.withOpacity(0.08),
+                ),
+            ],
+          ),
         ),
+        const SizedBox(height: 14),
+        _GlassCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text("Actif", style: TextStyle(color: cs.onSurface.withOpacity(0.7), fontWeight: FontWeight.w800)),
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  color: Colors.black.withOpacity(0.18),
+                  border: Border.all(color: cs.onSurface.withOpacity(0.08)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.search_rounded, color: cs.onSurface.withOpacity(0.7)),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: TextField(
+                        controller: coinCtrl,
+                        decoration: const InputDecoration(
+                          border: InputBorder.none,
+                          hintText: "CoinGecko id (bitcoin, ethereum...)",
+                        ),
+                        onSubmitted: (_) => onSubmitCoin(),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: "Recherche",
+                      onPressed: () async {
+                        final picked = await Navigator.push<String?>(
+                          context,
+                          MaterialPageRoute(builder: (_) => const MarketSearchScreen()),
+                        );
+                        final id = (picked ?? "").trim();
+                        if (id.isNotEmpty) {
+                          coinCtrl.text = id;
+                          onSubmitCoin();
+                        }
+                      },
+                      icon: const Icon(Icons.manage_search_rounded),
+                    ),
+                    IconButton(
+                      tooltip: "Effacer",
+                      onPressed: () => coinCtrl.clear(),
+                      icon: const Icon(Icons.close_rounded),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _dropBlock(
+                      cs,
+                      label: "Jours d'historique",
+                      child: DropdownButton<int>(
+                        value: historyDays,
+                        isExpanded: true,
+                        underline: const SizedBox.shrink(),
+                        dropdownColor: cs.surface,
+                        items: const [30, 90, 180, 365].map((d) {
+                          return DropdownMenuItem(value: d, child: Text("$d"));
+                        }).toList(),
+                        onChanged: (v) => onChangeDays(v ?? 180),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _dropBlock(
+                      cs,
+                      label: "Prévision",
+                      child: DropdownButton<int>(
+                        value: horizon,
+                        isExpanded: true,
+                        underline: const SizedBox.shrink(),
+                        dropdownColor: cs.surface,
+                        items: const [3, 7, 14, 30].map((h) {
+                          return DropdownMenuItem(value: h, child: Text("J+$h"));
+                        }).toList(),
+                        onChanged: (v) => onChangeHorizon(v ?? 7),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                "Tip: coinId doit correspondre à CoinGecko.",
+                style: TextStyle(color: cs.onSurface.withOpacity(0.55), fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _dropBlock(ColorScheme cs, {required String label, required Widget child}) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        color: Colors.black.withOpacity(0.18),
+        border: Border.all(color: cs.onSurface.withOpacity(0.08)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: TextStyle(color: cs.onSurface.withOpacity(0.65), fontWeight: FontWeight.w800)),
+          const SizedBox(height: 6),
+          child,
+        ],
       ),
     );
   }
 }
 
-class FuturSkeletonPriceHeader extends StatelessWidget {
-  const FuturSkeletonPriceHeader({super.key});
+class _ForecastTab extends StatelessWidget {
+  final String coinName;
+  final int horizon;
+  final double? current;
+  final double? projection;
+  final String modelLabel;
+  final List<double> preds;
+
+  const _ForecastTab({
+    required this.coinName,
+    required this.horizon,
+    required this.current,
+    required this.projection,
+    required this.modelLabel,
+    required this.preds,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 10,
-      runSpacing: 10,
-      children: const [
-        FuturSkeletonBox(height: 34, width: 170, borderRadius: BorderRadius.all(Radius.circular(999))),
-        FuturSkeletonBox(height: 34, width: 110, borderRadius: BorderRadius.all(Radius.circular(999))),
-        FuturSkeletonBox(height: 34, width: 120, borderRadius: BorderRadius.all(Radius.circular(999))),
-      ],
-    );
-  }
-}
+    final cs = Theme.of(context).colorScheme;
 
-class FuturSkeletonLineBlock extends StatelessWidget {
-  const FuturSkeletonLineBlock({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: const [
-        FuturSkeletonBox(height: 16, width: 220),
-        SizedBox(height: 10),
-        FuturSkeletonBox(height: 14, width: 180),
-      ],
-    );
-  }
-}
-
-class FuturSkeletonForecastList extends StatelessWidget {
-  const FuturSkeletonForecastList({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: List.generate(7, (i) {
-        return const Padding(
-          padding: EdgeInsets.symmetric(vertical: 8),
-          child: Row(
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 110),
+      children: [
+        _GlassCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              FuturSkeletonBox(height: 14, width: 54),
-              SizedBox(width: 14),
-              Expanded(child: FuturSkeletonBox(height: 14)),
+              Text("Prévision • $coinName", style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+              const SizedBox(height: 10),
+              Text("Prix actuel : ${current == null ? "—" : "\$${current!.toStringAsFixed(2)}"}"),
+              Text("Projection (J+$horizon) : ${projection == null ? "—" : "\$${projection!.toStringAsFixed(2)}"}"),
+              const SizedBox(height: 8),
+              Text("Modèle : $modelLabel", style: TextStyle(color: cs.onSurface.withOpacity(0.70))),
             ],
           ),
-        );
-      }),
+        ),
+        const SizedBox(height: 14),
+        _GlassCard(
+          child: preds.isEmpty
+              ? Text("Aucune prévision. Appuie sur “Prédire”.",
+                  style: TextStyle(color: cs.onSurface.withOpacity(0.65), fontWeight: FontWeight.w700))
+              : Column(
+                  children: preds.asMap().entries.map((e) {
+                    final day = e.key + 1;
+                    final v = e.value;
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        color: Colors.black.withOpacity(0.18),
+                        border: Border.all(color: cs.onSurface.withOpacity(0.08)),
+                      ),
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            width: 62,
+                            child: Text("J+$day", style: const TextStyle(fontWeight: FontWeight.w900)),
+                          ),
+                          Expanded(
+                            child: Text("\$${v.toStringAsFixed(2)}",
+                                style: const TextStyle(fontWeight: FontWeight.w900)),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+        ),
+      ],
     );
   }
 }
 
-class FuturSkeletonChart extends StatelessWidget {
-  const FuturSkeletonChart({super.key});
+class _ChartTab extends StatelessWidget {
+  final List<double> hist;
+  final List<double> pred;
+  const _ChartTab({required this.hist, required this.pred});
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: const [
-        FuturSkeletonBox(height: 18, width: 140),
-        SizedBox(height: 12),
-        FuturSkeletonBox(height: 340),
+    final cs = Theme.of(context).colorScheme;
+
+    if (hist.isEmpty) {
+      return ListView(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 110),
+        children: [
+          _GlassCard(
+            child: SizedBox(
+              height: 260,
+              child: Center(
+                child: Text(
+                  "Charge l’historique pour afficher un graphique.",
+                  style: TextStyle(color: cs.onSurface.withOpacity(0.70), fontWeight: FontWeight.w700),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    final histSpots = <FlSpot>[];
+    for (int i = 0; i < hist.length; i++) {
+      histSpots.add(FlSpot(i.toDouble(), hist[i]));
+    }
+
+    final predSpots = <FlSpot>[];
+    if (pred.isNotEmpty) {
+      final startX = (hist.length - 1).toDouble();
+      predSpots.add(FlSpot(startX, hist.last));
+      for (int i = 0; i < pred.length; i++) {
+        predSpots.add(FlSpot(startX + (i + 1).toDouble(), pred[i]));
+      }
+    }
+
+    final allY = [...hist, ...pred];
+    final minY = allY.reduce((a, b) => a < b ? a : b);
+    final maxY = allY.reduce((a, b) => a > b ? a : b);
+    final pad = (maxY - minY) * 0.08;
+    final yMin = minY - pad;
+    final yMax = maxY + pad;
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 110),
+      children: [
+        _GlassCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text("Graphique", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+              const SizedBox(height: 8),
+              Text(
+                pred.isEmpty ? "Historique (USD)" : "Historique + Prévision (USD)",
+                style: TextStyle(color: cs.onSurface.withOpacity(0.70), fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 260,
+                child: LineChart(
+                  LineChartData(
+                    minY: yMin,
+                    maxY: yMax,
+                    gridData: FlGridData(
+                      show: true,
+                      drawVerticalLine: false,
+                      horizontalInterval: (yMax - yMin) / 4,
+                      getDrawingHorizontalLine: (_) => FlLine(
+                        color: cs.onSurface.withOpacity(0.06),
+                        strokeWidth: 1,
+                      ),
+                    ),
+                    titlesData: FlTitlesData(
+                      leftTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 48,
+                          getTitlesWidget: (v, meta) => Text(
+                            "\$${v.toStringAsFixed(0)}",
+                            style: TextStyle(
+                              color: cs.onSurface.withOpacity(0.6),
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                      rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      bottomTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    ),
+                    borderData: FlBorderData(
+                      show: true,
+                      border: Border.all(color: cs.onSurface.withOpacity(0.08)),
+                    ),
+                    lineTouchData: LineTouchData(
+                      enabled: true,
+                      touchTooltipData: LineTouchTooltipData(
+                        getTooltipItems: (spots) {
+                          return spots.map((s) {
+                            final x = s.x.toInt();
+                            final isPred = pred.isNotEmpty && x >= hist.length - 1;
+                            final label = isPred ? "Prévision" : "Historique";
+                            return LineTooltipItem(
+                              "$label\n\$${s.y.toStringAsFixed(2)}",
+                              const TextStyle(fontWeight: FontWeight.w900),
+                            );
+                          }).toList();
+                        },
+                      ),
+                    ),
+                    lineBarsData: [
+                      LineChartBarData(
+                        spots: histSpots,
+                        isCurved: true,
+                        curveSmoothness: 0.25,
+                        barWidth: 3,
+                        color: cs.primary,
+                        dotData: const FlDotData(show: false),
+                        belowBarData: BarAreaData(
+                          show: true,
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              cs.primary.withOpacity(0.18),
+                              cs.primary.withOpacity(0.00),
+                            ],
+                          ),
+                        ),
+                      ),
+                      if (predSpots.isNotEmpty)
+                        LineChartBarData(
+                          spots: predSpots,
+                          isCurved: true,
+                          curveSmoothness: 0.25,
+                          barWidth: 2,
+                          color: cs.secondary,
+                          dotData: FlDotData(
+                            show: true,
+                            getDotPainter: (_, __, ___, ____) => FlDotCirclePainter(
+                              radius: 2.2,
+                              color: cs.secondary,
+                              strokeColor: cs.surface,
+                              strokeWidth: 1,
+                            ),
+                          ),
+                          belowBarData: BarAreaData(show: false),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 10,
+                runSpacing: 8,
+                children: [
+                  _legend(cs.primary, "Historique"),
+                  if (predSpots.isNotEmpty) _legend(cs.secondary, "Prévision"),
+                ],
+              )
+            ],
+          ),
+        ),
       ],
+    );
+  }
+
+  Widget _legend(Color c, String text) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(99)),
+        ),
+        const SizedBox(width: 6),
+        Text(text, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
+      ],
+    );
+  }
+}
+
+class _FuturBottomBar extends StatelessWidget {
+  final VoidCallback? onLoad;
+  final VoidCallback? onPredict;
+  final bool loadingLoad;
+  final bool loadingPredict;
+
+  const _FuturBottomBar({
+    required this.onLoad,
+    required this.onPredict,
+    required this.loadingLoad,
+    required this.loadingPredict,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
+    Widget loader() => const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2));
+
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
+        child: Row(
+          children: [
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: onLoad,
+                icon: loadingLoad ? loader() : const Icon(Icons.download_rounded),
+                label: const Text("Charger", style: TextStyle(fontWeight: FontWeight.w900)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: cs.surface.withOpacity(0.72),
+                  foregroundColor: cs.onSurface,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: onPredict,
+                icon: loadingPredict ? loader() : const Icon(Icons.auto_graph_rounded),
+                label: const Text("Prédire", style: TextStyle(fontWeight: FontWeight.w900)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: cs.primary,
+                  foregroundColor: cs.onPrimary,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shadowColor: cs.primary.withOpacity(0.35),
+                  elevation: 8,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

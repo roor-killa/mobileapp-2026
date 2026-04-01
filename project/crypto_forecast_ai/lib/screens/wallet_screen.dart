@@ -2,9 +2,11 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'orders_screen.dart';
 
 import '../services/api.dart';
 import '../services/auth_store.dart';
+import '../services/session_store.dart';
 
 class WalletScreen extends StatefulWidget {
   final VoidCallback onLogout;
@@ -92,7 +94,9 @@ class _WalletScreenState extends State<WalletScreen> {
   }
 
   Future<void> _logout() async {
+    // On vide les 2 stores (le projet a 2 clés différentes selon les écrans)
     await AuthStore.clear();
+    await SessionStore.clear();
     api.setToken(null);
     widget.onLogout();
   }
@@ -102,6 +106,12 @@ class _WalletScreenState extends State<WalletScreen> {
 
     final coinCtrl = TextEditingController(text: "bitcoin");
     final amountCtrl = TextEditingController(text: isBuy ? "100" : "0.01");
+
+    // ✅ Saisie intelligente (CoinGecko via /search?query=...)
+    Timer? _coinDebounce;
+    bool searchingCoins = false;
+    List<Map<String, dynamic>> coinSuggestions = [];
+
 
     String? err;
     bool busy = false;
@@ -193,13 +203,100 @@ class _WalletScreenState extends State<WalletScreen> {
                     ],
                   ),
                   const SizedBox(height: 10),
-                  TextField(
-                    controller: coinCtrl,
-                    decoration: const InputDecoration(
-                      labelText: "Crypto (coin_id)",
-                      hintText: "ex: bitcoin, ethereum, solana",
+                  Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextField(
+                      controller: coinCtrl,
+                      onChanged: (v) {
+                        final q = v.trim();
+                        _coinDebounce?.cancel();
+
+                        if (q.length < 2) {
+                          setSheet(() {
+                            coinSuggestions = [];
+                            searchingCoins = false;
+                          });
+                          return;
+                        }
+
+                        setSheet(() => searchingCoins = true);
+
+                        _coinDebounce = Timer(const Duration(milliseconds: 300), () async {
+                          try {
+                            final coins = await api.searchCoins(q);
+
+                            // tri intelligent : meilleur market_cap_rank en premier
+                            coins.sort((a, b) {
+                              final ar = (a["market_cap_rank"] ?? 999999) as int;
+                              final br = (b["market_cap_rank"] ?? 999999) as int;
+                              return ar.compareTo(br);
+                            });
+
+                            final top = coins.take(8).toList();
+
+                            setSheet(() {
+                              coinSuggestions = top;
+                              searchingCoins = false;
+                            });
+                          } catch (_) {
+                            setSheet(() {
+                              coinSuggestions = [];
+                              searchingCoins = false;
+                            });
+                          }
+                        });
+                      },
+                      decoration: InputDecoration(
+                        labelText: "Crypto (coin_id)",
+                        hintText: "ex: bitcoin, ethereum, solana",
+                        suffixIcon: searchingCoins
+                            ? const Padding(
+                                padding: EdgeInsets.all(12),
+                                child: SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                ),
+                              )
+                            : const Icon(Icons.search_rounded),
+                      ),
                     ),
-                  ),
+
+                    if (coinSuggestions.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        constraints: const BoxConstraints(maxHeight: 220),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.04),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: Colors.white.withOpacity(0.08)),
+                        ),
+                        child: ListView.separated(
+                          shrinkWrap: true,
+                          itemCount: coinSuggestions.length,
+                          separatorBuilder: (_, __) => Divider(height: 1, color: Colors.white.withOpacity(0.06)),
+                          itemBuilder: (_, i) {
+                            final c = coinSuggestions[i];
+                            final id = (c["id"] ?? "").toString();
+                            final name = (c["name"] ?? "").toString();
+                            final sym = (c["symbol"] ?? "").toString().toUpperCase();
+
+                            return ListTile(
+                              dense: true,
+                              title: Text("$name ($sym)", style: const TextStyle(fontWeight: FontWeight.w800)),
+                              subtitle: Text(id, style: TextStyle(color: Colors.white.withOpacity(0.65))),
+                              onTap: () {
+                                coinCtrl.text = id; // ✅ on enregistre l'id attendu par le backend
+                                setSheet(() => coinSuggestions = []);
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
                   const SizedBox(height: 10),
                   TextField(
                     controller: amountCtrl,
@@ -259,6 +356,11 @@ class _WalletScreenState extends State<WalletScreen> {
             onPressed: () => _reload(),
             icon: const Icon(Icons.refresh),
             tooltip: "Rafraîchir",
+          ),
+          IconButton(
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const OrdersScreen())),
+            icon: const Icon(Icons.receipt_long_rounded),
+            tooltip: "Ordres",
           ),
           IconButton(
             onPressed: _logout,
@@ -384,11 +486,12 @@ class _WalletScreenState extends State<WalletScreen> {
                 final value = (m["value_usd"] ?? 0).toDouble();
 
                 // delta prix depuis la dernière refresh (si dispo)
-                final prev = _prevPrice[coin];
-                final dp = (prev == null) ? 0.0 : (price - prev);
-                final pct = (prev == null || prev == 0) ? 0.0 : (dp / prev * 100);
+                // ✅ PnL latent (si fourni par l'API)
+                final pnl = (m["pnl_usd"] ?? 0).toDouble();
+                final pnlPct = (m["pnl_pct"] ?? 0).toDouble();
+                final avgCost = (m["avg_cost_usd"] ?? 0).toDouble();
 
-                final up = dp > 0;
+                final up = pnl >= 0;
                 final pillBg = up ? cs.primaryContainer : cs.errorContainer;
                 final pillFg = up ? cs.onPrimaryContainer : cs.onErrorContainer;
 
@@ -407,7 +510,7 @@ class _WalletScreenState extends State<WalletScreen> {
                     subtitle: Padding(
                       padding: const EdgeInsets.only(top: 6),
                       child: Text(
-                        "Qty: ${amount.toStringAsFixed(6)}  •  Prix: ${_usd.format(price)}",
+                        "Qty: ${amount.toStringAsFixed(6)}  •  PRU: ${_usd.format(avgCost)}  •  Prix: ${_usd.format(price)}",
                         style: TextStyle(color: Colors.white.withOpacity(0.70)),
                       ),
                     ),
@@ -423,19 +526,17 @@ class _WalletScreenState extends State<WalletScreen> {
                         AnimatedSwitcher(
                           duration: const Duration(milliseconds: 220),
                           child: Container(
-                            key: ValueKey("${coin}_$price"),
+                            key: ValueKey("${coin}_$pnl"),
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                             decoration: BoxDecoration(
-                              color: dp == 0 ? Colors.white.withOpacity(0.06) : pillBg,
+                              color: pillBg,
                               borderRadius: BorderRadius.circular(999),
                             ),
                             child: Text(
-                              dp == 0
-                                  ? "—"
-                                  : "${up ? '+' : ''}${dp.toStringAsFixed(2)} (${up ? '+' : ''}${pct.toStringAsFixed(2)}%)",
+                              "${up ? '+' : ''}${pnl.toStringAsFixed(2)} (${up ? '+' : ''}${pnlPct.toStringAsFixed(2)}%)",
                               style: TextStyle(
                                 fontWeight: FontWeight.w900,
-                                color: dp == 0 ? Colors.white.withOpacity(0.70) : pillFg,
+                                color: pillFg,
                               ),
                             ),
                           ),

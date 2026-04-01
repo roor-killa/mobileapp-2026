@@ -1,4 +1,4 @@
-import 'dart:math';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../services/api.dart';
 
@@ -9,639 +9,569 @@ class BankScreen extends StatefulWidget {
   State<BankScreen> createState() => _BankScreenState();
 }
 
-class _BankScreenState extends State<BankScreen> with TickerProviderStateMixin {
+class _BankScreenState extends State<BankScreen> {
   bool _loading = true;
-  bool _sending = false;
 
-  double _balance = 0.0;
-  DateTime? _updatedAt;
+  double _balance = 0;
   List<dynamic> _txs = const [];
+  List<dynamic> _bens = const [];
 
-  final _toCtrl = TextEditingController();
-  final _amountCtrl = TextEditingController();
-  final _noteCtrl = TextEditingController();
-
-  late final AnimationController _pulseCtrl;
+  // Filtres historique
+  String _direction = "all"; // all | in | out
+  String? _counterparty;
+  DateTime? _fromDate;
+  DateTime? _toDate;
 
   @override
   void initState() {
     super.initState();
-    _pulseCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1100),
-    )..repeat(reverse: true);
-
     _refresh();
   }
 
-  @override
-  void dispose() {
-    _pulseCtrl.dispose();
-    _toCtrl.dispose();
-    _amountCtrl.dispose();
-    _noteCtrl.dispose();
-    super.dispose();
+  void _snack(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), behavior: SnackBarBehavior.floating),
+    );
   }
 
   Future<void> _refresh() async {
     setState(() => _loading = true);
     try {
       final bal = await api.bankBalance();
-      final txs = await api.bankTransactions(limit: 30);
+      final txs = await api.bankTransactions(
+        limit: 30,
+        direction: _direction,
+        fromDate: _fromDate,
+        toDate: _toDate,
+        counterparty: _counterparty,
+      );
+      final bens = await api.bankBeneficiaries();
 
-      final b = (bal["balance_usd"] as num?)?.toDouble() ?? 0.0;
-      final up = bal["updated_at"]?.toString();
       setState(() {
-        _balance = b;
-        _updatedAt = up != null ? DateTime.tryParse(up) : null;
+        _balance = (bal["balance_usd"] as num).toDouble();
         _txs = txs;
+        _bens = bens;
       });
     } catch (e) {
-      _showError(e.toString());
+      _snack(e.toString());
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
-  Future<void> _sendTransfer() async {
-    final to = _toCtrl.text.trim();
-    final amt = double.tryParse(_amountCtrl.text.replaceAll(",", ".")) ?? 0.0;
-    final note = _noteCtrl.text.trim();
+  Future<void> _addBeneficiary() async {
+    final aliasCtrl = TextEditingController();
+    final emailCtrl = TextEditingController();
 
-    if (to.isEmpty || !to.contains("@")) {
-      _showError("Email destinataire invalide.");
-      return;
-    }
-    if (amt <= 0) {
-      _showError("Montant invalide.");
-      return;
+    Timer? debounce;
+    bool searching = false;
+    List<Map<String, dynamic>> suggestions = [];
+
+    void clearSuggestions(StateSetter setStateDialog) {
+      setStateDialog(() => suggestions = []);
     }
 
-    setState(() => _sending = true);
-    try {
-      final res = await api.bankTransfer(toEmail: to, usdAmount: amt, note: note);
-      final msg = res["message"]?.toString() ?? "Virement envoyé.";
-
-      _toCtrl.clear();
-      _amountCtrl.clear();
-      _noteCtrl.clear();
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(msg),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+    Future<void> runSearch(StateSetter setStateDialog, String q) async {
+      final query = q.trim();
+      if (query.length < 2) {
+        clearSuggestions(setStateDialog);
+        return;
       }
 
+      debounce?.cancel();
+      debounce = Timer(const Duration(milliseconds: 300), () async {
+        setStateDialog(() => searching = true);
+        try {
+          final users = await api.searchUsers(query, limit: 8);
+
+          // evite d'afficher les emails déjà en bénéficiaires
+          final existing = _bens
+              .map((b) => (b["email"] ?? "").toString().toLowerCase())
+              .where((e) => e.isNotEmpty)
+              .toSet();
+
+          final filtered = users.where((u) {
+            final email = (u["email"] ?? "").toString().toLowerCase();
+            return email.isNotEmpty && !existing.contains(email);
+          }).toList();
+
+          setStateDialog(() => suggestions = filtered);
+        } catch (_) {
+          // silencieux : on ne casse pas le dialog si l'endpoint n'est pas dispo
+          setStateDialog(() => suggestions = []);
+        } finally {
+          setStateDialog(() => searching = false);
+        }
+      });
+    }
+
+    await showDialog(
+      context: context,
+      builder: (_) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              title: const Text("Ajouter un bénéficiaire"),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: aliasCtrl,
+                    decoration: const InputDecoration(labelText: "Alias"),
+                  ),
+                  TextField(
+                    controller: emailCtrl,
+                    decoration: InputDecoration(
+                      labelText: "Email (recherche intelligente)",
+                      suffixIcon: searching
+                          ? const Padding(
+                              padding: EdgeInsets.all(12),
+                              child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                            )
+                          : (emailCtrl.text.isEmpty
+                              ? null
+                              : IconButton(
+                                  icon: const Icon(Icons.clear),
+                                  onPressed: () {
+                                    emailCtrl.clear();
+                                    clearSuggestions(setStateDialog);
+                                  },
+                                )),
+                    ),
+                    onChanged: (v) => runSearch(setStateDialog, v),
+                  ),
+
+                  if (suggestions.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      constraints: const BoxConstraints(maxHeight: 220),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.12)),
+                      ),
+                      child: ListView.separated(
+                        shrinkWrap: true,
+                        itemCount: suggestions.length,
+                        separatorBuilder: (_, __) => const Divider(height: 1),
+                        itemBuilder: (_, i) {
+                          final u = suggestions[i];
+                          final email = (u["email"] ?? "").toString();
+                          final fn = (u["first_name"] ?? "").toString();
+                          final ln = (u["last_name"] ?? "").toString();
+                          final name = ("$fn $ln").trim();
+
+                          return ListTile(
+                            dense: true,
+                            title: Text(name.isEmpty ? email : "$name • $email"),
+                            onTap: () {
+                              emailCtrl.text = email;
+                              // auto-alias si vide
+                              if (aliasCtrl.text.trim().isEmpty) {
+                                aliasCtrl.text = name.isNotEmpty ? name : email.split("@").first;
+                              }
+                              clearSuggestions(setStateDialog);
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    debounce?.cancel();
+                    Navigator.pop(context);
+                  },
+                  child: const Text("Annuler"),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    try {
+                      final email = emailCtrl.text.trim().toLowerCase();
+                      final alias = aliasCtrl.text.trim();
+
+                      if (email.isEmpty || !email.contains("@")) {
+                        _snack("Email invalide.");
+                        return;
+                      }
+
+                      await api.bankAddBeneficiary(alias: alias, email: email);
+
+                      if (context.mounted) Navigator.pop(context);
+                      await _refresh();
+                    } catch (e) {
+                      _snack(e.toString());
+                    }
+                  },
+                  child: const Text("Ajouter"),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _deleteBeneficiary(int id) async {
+    try {
+      await api.bankDeleteBeneficiary(id);
       await _refresh();
     } catch (e) {
-      _showError(e.toString());
-    } finally {
-      if (mounted) setState(() => _sending = false);
+      _snack(e.toString());
     }
   }
 
-  void _showError(String msg) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        behavior: SnackBarBehavior.floating,
-      ),
+  Future<void> _transferTo(String email) async {
+    final amountCtrl = TextEditingController(text: "50");
+    final noteCtrl = TextEditingController(text: "Virement");
+
+    await showDialog(
+      context: context,
+      builder: (_) {
+        return AlertDialog(
+          title: Text("Virement à $email"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: amountCtrl, decoration: const InputDecoration(labelText: "Montant USD")),
+              TextField(controller: noteCtrl, decoration: const InputDecoration(labelText: "Note")),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text("Annuler")),
+            ElevatedButton(
+              onPressed: () async {
+                try {
+                  final amt = double.parse(amountCtrl.text.replaceAll(",", "."));
+                  await api.bankTransfer(toEmail: email, usdAmount: amt, note: noteCtrl.text.trim());
+                  if (context.mounted) Navigator.pop(context);
+                  await _refresh();
+                } catch (e) {
+                  _snack(e.toString());
+                }
+              },
+              child: const Text("Envoyer"),
+            )
+          ],
+        );
+      },
     );
   }
 
-  String _money(double v) {
-    // format simple (évite dépendance intl)
-    return "\$${v.toStringAsFixed(2)}";
+  
+  
+  Widget _dirChip(BuildContext context, {required String label, required String value}) {
+    final selected = _direction == value;
+    return ChoiceChip(
+      selected: selected,
+      label: Text(label),
+      onSelected: (_) {
+        setState(() => _direction = value);
+        _refresh();
+      },
+    );
   }
 
-  @override
-  Widget build(BuildContext context) {
+Future<void> _openFilters() async {
+    String direction = _direction;
+    String? counterparty = _counterparty;
+    DateTime? fromD = _fromDate;
+    DateTime? toD = _toDate;
+
     final cs = Theme.of(context).colorScheme;
-    final surface = cs.surface;
-    final bg = cs.surfaceContainerLowest;
 
-    return Scaffold(
-      backgroundColor: bg,
-      body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: _refresh,
-          child: ListView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 22),
-            children: [
-              _Header(cs: cs),
-              const SizedBox(height: 14),
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: cs.surface,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setLocal) {
+            Future<void> pickFrom() async {
+              final d = await showDatePicker(
+                context: ctx,
+                initialDate: fromD ?? DateTime.now(),
+                firstDate: DateTime(2020),
+                lastDate: DateTime.now().add(const Duration(days: 3650)),
+              );
+              if (d != null) setLocal(() => fromD = DateTime(d.year, d.month, d.day));
+            }
 
-              // --- Balance Card ---
-              _GlassCard(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Compte courant",
-                        style: TextStyle(
-                          color: cs.onSurface.withOpacity(0.75),
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.2,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
+            Future<void> pickTo() async {
+              final d = await showDatePicker(
+                context: ctx,
+                initialDate: toD ?? DateTime.now(),
+                firstDate: DateTime(2020),
+                lastDate: DateTime.now().add(const Duration(days: 3650)),
+              );
+              if (d != null) setLocal(() => toD = DateTime(d.year, d.month, d.day));
+            }
 
-                      AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 220),
-                        child: _loading
-                            ? _BalanceSkeleton(cs: cs, pulse: _pulseCtrl)
-                            : TweenAnimationBuilder<double>(
-                                tween: Tween(begin: 0, end: _balance),
-                                duration: const Duration(milliseconds: 650),
-                                curve: Curves.easeOutCubic,
-                                builder: (context, val, _) {
-                                  return Text(
-                                    _money(val),
-                                    style: TextStyle(
-                                      fontSize: 34,
-                                      fontWeight: FontWeight.w900,
-                                      color: cs.onSurface,
-                                      letterSpacing: -0.6,
-                                    ),
-                                  );
-                                },
-                              ),
-                      ),
-
-                      const SizedBox(height: 6),
-                      Text(
-                        _updatedAt == null
-                            ? "Synchronisation…"
-                            : "Mis à jour : ${_updatedAt!.toLocal().toString().split('.').first}",
-                        style: TextStyle(
-                          color: cs.onSurface.withOpacity(0.55),
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12.5,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 16,
+                right: 16,
+                top: 14,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 14,
               ),
-
-              const SizedBox(height: 14),
-
-              // --- Transfer Card ---
-              _GlassCard(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Virement",
-                        style: TextStyle(
-                          color: cs.onSurface,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 16,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-
-                      _NeoField(
-                        controller: _toCtrl,
-                        label: "Email du bénéficiaire",
-                        hint: "ex: b@test.com",
-                        icon: Icons.alternate_email_rounded,
-                      ),
-                      const SizedBox(height: 10),
-
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _NeoField(
-                              controller: _amountCtrl,
-                              label: "Montant (USD)",
-                              hint: "ex: 50",
-                              keyboardType: TextInputType.number,
-                              icon: Icons.payments_rounded,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: _NeoField(
-                              controller: _noteCtrl,
-                              label: "Note",
-                              hint: "optionnel",
-                              icon: Icons.notes_rounded,
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 14),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 48,
-                        child: ElevatedButton(
-                          onPressed: _sending ? null : _sendTransfer,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: cs.primary,
-                            foregroundColor: cs.onPrimary,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                          ),
-                          child: AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 180),
-                            child: _sending
-                                ? const SizedBox(
-                                    key: ValueKey("loading"),
-                                    width: 22,
-                                    height: 22,
-                                    child: CircularProgressIndicator(strokeWidth: 2.4),
-                                  )
-                                : const Text(
-                                    key: ValueKey("txt"),
-                                    "Envoyer",
-                                    style: TextStyle(fontWeight: FontWeight.w900),
-                                  ),
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 8),
-                      Text(
-                        "Démo : ce virement bouge ton solde USD entre utilisateurs.",
-                        style: TextStyle(
-                          color: cs.onSurface.withOpacity(0.55),
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 14),
-
-              // --- Transactions ---
-              Row(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: Text(
-                      "Historique",
-                      style: TextStyle(
-                        color: cs.onSurface,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 16,
+                  const Text("Filtres", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+                  const SizedBox(height: 12),
+
+                  DropdownButtonFormField<String>(
+                    value: direction,
+                    items: const [
+                      DropdownMenuItem(value: "all", child: Text("Tout")),
+                      DropdownMenuItem(value: "in", child: Text("Entrants")),
+                      DropdownMenuItem(value: "out", child: Text("Sortants")),
+                    ],
+                    onChanged: (v) => setLocal(() => direction = v ?? "all"),
+                    decoration: const InputDecoration(labelText: "Direction", border: OutlineInputBorder()),
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  DropdownButtonFormField<String>(
+                    value: counterparty,
+                    items: [
+                      const DropdownMenuItem(value: null, child: Text("— Aucun")),
+                      ..._bens.map((b) {
+                        final email = (b["email"] ?? "").toString();
+                        final alias = (b["alias"] ?? "").toString();
+                        return DropdownMenuItem(
+                          value: email,
+                          child: Text(alias.isEmpty ? email : "$alias • $email"),
+                        );
+                      }).toList(),
+                    ],
+                    onChanged: (v) => setLocal(() => counterparty = v),
+                    decoration: const InputDecoration(labelText: "Bénéficiaire", border: OutlineInputBorder()),
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: pickFrom,
+                          icon: const Icon(Icons.date_range_rounded),
+                          label: Text(fromD == null
+                              ? "Date début"
+                              : "${fromD!.year}-${fromD!.month.toString().padLeft(2, '0')}-${fromD!.day.toString().padLeft(2, '0')}"),
+                        ),
                       ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: pickTo,
+                          icon: const Icon(Icons.date_range_rounded),
+                          label: Text(toD == null
+                              ? "Date fin"
+                              : "${toD!.year}-${toD!.month.toString().padLeft(2, '0')}-${toD!.day.toString().padLeft(2, '0')}"),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        setState(() {
+                          _direction = direction;
+                          _counterparty = counterparty;
+                          _fromDate = fromD;
+                          _toDate = toD;
+                        });
+                        Navigator.pop(ctx);
+                        _refresh();
+                      },
+                      child: const Text("Appliquer", style: TextStyle(fontWeight: FontWeight.w900)),
                     ),
                   ),
-                  IconButton(
-                    onPressed: _refresh,
-                    icon: Icon(Icons.refresh_rounded, color: cs.onSurface.withOpacity(0.8)),
-                  )
+
+                  const SizedBox(height: 10),
+
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        _direction = "all";
+                        _counterparty = null;
+                        _fromDate = null;
+                        _toDate = null;
+                      });
+                      Navigator.pop(ctx);
+                      _refresh();
+                    },
+                    child: const Text("Réinitialiser"),
+                  ),
                 ],
               ),
-              const SizedBox(height: 6),
-
-              _GlassCard(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
-                  child: _loading
-                      ? _TxSkeleton(cs: cs, pulse: _pulseCtrl)
-                      : (_txs.isEmpty
-                          ? Padding(
-                              padding: const EdgeInsets.all(14),
-                              child: Text(
-                                "Aucune transaction pour le moment.",
-                                style: TextStyle(
-                                  color: cs.onSurface.withOpacity(0.65),
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            )
-                          : Column(
-                              children: _txs.take(12).map((t) {
-                                final kind = (t["kind"] ?? "").toString();
-                                final note = (t["note"] ?? "").toString();
-                                final amount = (t["amount_usd"] as num?)?.toDouble() ?? 0.0;
-                                final created = (t["created_at"] ?? "").toString();
-                                final ref = (t["ref"] ?? "").toString();
-
-                                final isOut = amount < 0;
-                                final chipColor = isOut ? cs.errorContainer : cs.primaryContainer;
-                                final chipText = isOut ? cs.onErrorContainer : cs.onPrimaryContainer;
-
-                                return Container(
-                                  margin: const EdgeInsets.only(bottom: 10),
-                                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
-                                  decoration: BoxDecoration(
-                                    color: surface.withOpacity(0.55),
-                                    borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(
-                                      color: cs.onSurface.withOpacity(0.08),
-                                    ),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Container(
-                                        width: 42,
-                                        height: 42,
-                                        decoration: BoxDecoration(
-                                          borderRadius: BorderRadius.circular(14),
-                                          color: chipColor,
-                                        ),
-                                        child: Icon(
-                                          isOut ? Icons.call_made_rounded : Icons.call_received_rounded,
-                                          color: chipText,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              kind,
-                                              style: TextStyle(
-                                                color: cs.onSurface,
-                                                fontWeight: FontWeight.w900,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 2),
-                                            Text(
-                                              note.isEmpty ? (ref.isEmpty ? "—" : ref) : note,
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: TextStyle(
-                                                color: cs.onSurface.withOpacity(0.65),
-                                                fontWeight: FontWeight.w600,
-                                                fontSize: 12.5,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 2),
-                                            Text(
-                                              created.replaceFirst("T", " ").split(".").first,
-                                              style: TextStyle(
-                                                color: cs.onSurface.withOpacity(0.5),
-                                                fontWeight: FontWeight.w600,
-                                                fontSize: 12,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Text(
-                                        (isOut ? "-" : "+") + _money(amount.abs()),
-                                        style: TextStyle(
-                                          color: isOut ? cs.error : cs.primary,
-                                          fontWeight: FontWeight.w900,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              }).toList(),
-                            )),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+            );
+          },
+        );
+      },
     );
   }
-}
 
-class _Header extends StatelessWidget {
-  final ColorScheme cs;
-  const _Header({required this.cs});
-
-  @override
+@override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        _NeonDot(cs: cs),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                "Banque",
-                style: TextStyle(
-                  color: cs.onSurface,
-                  fontSize: 22,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -0.3,
-                ),
-              ),
-              Text(
-                "Solde • virements • historique",
-                style: TextStyle(
-                  color: cs.onSurface.withOpacity(0.65),
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
+    final cs = Theme.of(context).colorScheme;
 
-class _NeonDot extends StatelessWidget {
-  final ColorScheme cs;
-  const _NeonDot({required this.cs});
-
-  @override
-  Widget build(BuildContext context) {
-    final neon = cs.primary;
-    return Container(
-      width: 38,
-      height: 38,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14),
-        gradient: LinearGradient(
-          colors: [
-            neon.withOpacity(0.95),
-            cs.secondary.withOpacity(0.9),
-          ],
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: neon.withOpacity(0.35),
-            blurRadius: 18,
-            spreadRadius: 1,
-          ),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Banque"),
+        actions: [
+          IconButton(onPressed: _refresh, icon: const Icon(Icons.refresh_rounded)),
         ],
       ),
-      child: Icon(Icons.account_balance_rounded, color: cs.onPrimary),
+      body: RefreshIndicator(
+        onRefresh: _refresh,
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            _VirtualCard(balance: _balance),
+            const SizedBox(height: 14),
+
+            if (_loading) const LinearProgressIndicator(),
+            const SizedBox(height: 10),
+
+            Row(
+              children: [
+                const Expanded(child: Text("Bénéficiaires", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16))),
+                IconButton(onPressed: _addBeneficiary, icon: const Icon(Icons.person_add_alt_1_rounded)),
+              ],
+            ),
+
+            if (_bens.isEmpty)
+              Text("Aucun bénéficiaire.", style: TextStyle(color: cs.onSurface.withOpacity(0.65)))
+            else
+              ..._bens.map((b) {
+                final id = (b["id"] as num).toInt();
+                final alias = (b["alias"] ?? "").toString();
+                final email = (b["email"] ?? "").toString();
+
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: cs.surface.withOpacity(0.55),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: cs.onSurface.withOpacity(0.08)),
+                  ),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        backgroundColor: cs.primary.withOpacity(0.25),
+                        child: Text(alias.isNotEmpty ? alias[0].toUpperCase() : "?"),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(alias, style: const TextStyle(fontWeight: FontWeight.w900)),
+                            Text(email, style: TextStyle(color: cs.onSurface.withOpacity(0.65))),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: "Virement",
+                        onPressed: () => _transferTo(email),
+                        icon: const Icon(Icons.send_rounded),
+                      ),
+                      IconButton(
+                        tooltip: "Supprimer",
+                        onPressed: () => _deleteBeneficiary(id),
+                        icon: Icon(Icons.delete_rounded, color: cs.error),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+
+            const SizedBox(height: 12),
+            const Text("Historique", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+            const SizedBox(height: 10),
+
+            if (_txs.isEmpty)
+              Text("Aucune transaction.", style: TextStyle(color: cs.onSurface.withOpacity(0.65)))
+            else
+              ..._txs.take(12).map((t) {
+                final kind = (t["kind"] ?? "").toString();
+                final note = (t["note"] ?? "").toString();
+                final cp = (t["counterparty_email"] ?? "").toString();
+                final amt = (t["amount_usd"] as num).toDouble();
+                final isOut = amt < 0;
+
+                return ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: CircleAvatar(
+                    backgroundColor: isOut ? cs.errorContainer : cs.primaryContainer,
+                    child: Icon(isOut ? Icons.call_made_rounded : Icons.call_received_rounded),
+                  ),
+                  title: Text(kind, style: const TextStyle(fontWeight: FontWeight.w900)),
+                  subtitle: Text([
+                    if (cp.isNotEmpty) cp,
+                    if (note.isNotEmpty) note else "—",
+                  ].join(" • ")),
+                  trailing: Text(
+                    (isOut ? "-" : "+") + "\$${amt.abs().toStringAsFixed(2)}",
+                    style: TextStyle(fontWeight: FontWeight.w900, color: isOut ? cs.error : cs.primary),
+                  ),
+                );
+              }).toList(),
+          ],
+        ),
+      ),
     );
   }
 }
 
-class _GlassCard extends StatelessWidget {
-  final Widget child;
-  const _GlassCard({required this.child});
+class _VirtualCard extends StatelessWidget {
+  final double balance;
+  const _VirtualCard({required this.balance});
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+
     return Container(
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(22),
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            cs.surface.withOpacity(0.62),
-            cs.surface.withOpacity(0.35),
-          ],
+          colors: [cs.primary.withOpacity(0.26), cs.secondary.withOpacity(0.14), const Color(0xFF070B10)],
         ),
-        border: Border.all(color: cs.onSurface.withOpacity(0.08)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.35),
-            blurRadius: 18,
-            offset: const Offset(0, 12),
-          ),
-        ],
-      ),
-      child: child,
-    );
-  }
-}
-
-class _NeoField extends StatelessWidget {
-  final TextEditingController controller;
-  final String label;
-  final String hint;
-  final IconData icon;
-  final TextInputType? keyboardType;
-
-  const _NeoField({
-    required this.controller,
-    required this.label,
-    required this.hint,
-    required this.icon,
-    this.keyboardType,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return TextField(
-      controller: controller,
-      keyboardType: keyboardType,
-      style: TextStyle(
-        color: cs.onSurface,
-        fontWeight: FontWeight.w800,
-      ),
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        prefixIcon: Icon(icon),
-        filled: true,
-        fillColor: cs.surface.withOpacity(0.55),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: cs.onSurface.withOpacity(0.08)),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: cs.onSurface.withOpacity(0.08)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: cs.primary.withOpacity(0.75), width: 1.6),
-        ),
-      ),
-    );
-  }
-}
-
-class _BalanceSkeleton extends StatelessWidget {
-  final ColorScheme cs;
-  final AnimationController pulse;
-  const _BalanceSkeleton({required this.cs, required this.pulse});
-
-  @override
-  Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: Tween<double>(begin: 0.35, end: 0.9).animate(
-        CurvedAnimation(parent: pulse, curve: Curves.easeInOut),
-      ),
-      child: Container(
-        height: 38,
-        width: 220,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
-          color: cs.onSurface.withOpacity(0.12),
-        ),
-      ),
-    );
-  }
-}
-
-class _TxSkeleton extends StatelessWidget {
-  final ColorScheme cs;
-  final AnimationController pulse;
-  const _TxSkeleton({required this.cs, required this.pulse});
-
-  @override
-  Widget build(BuildContext context) {
-    Widget line(double w) => Container(
-          height: 12,
-          width: w,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
-            color: cs.onSurface.withOpacity(0.12),
-          ),
-        );
-
-    return FadeTransition(
-      opacity: Tween<double>(begin: 0.35, end: 0.9).animate(
-        CurvedAnimation(parent: pulse, curve: Curves.easeInOut),
+        border: Border.all(color: cs.primary.withOpacity(0.25)),
+        boxShadow: [BoxShadow(color: cs.primary.withOpacity(0.18), blurRadius: 28, spreadRadius: 1)],
       ),
       child: Column(
-        children: List.generate(6, (i) {
-          final w1 = 170 + Random(i).nextInt(80);
-          final w2 = 90 + Random(i + 7).nextInt(80);
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Row(
-              children: [
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(14),
-                    color: cs.onSurface.withOpacity(0.12),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      line(w1.toDouble()),
-                      const SizedBox(height: 8),
-                      line(w2.toDouble()),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          );
-        }),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text("Carte virtuelle", style: TextStyle(fontWeight: FontWeight.w900)),
+          const SizedBox(height: 10),
+          Text("\$${balance.toStringAsFixed(2)}", style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 12),
+          Text("**** **** **** 4821", style: TextStyle(letterSpacing: 2, color: cs.onSurface.withOpacity(0.7))),
+          const SizedBox(height: 6),
+          Text("EXP 08/29  •  CVV ***", style: TextStyle(color: cs.onSurface.withOpacity(0.65))),
+        ],
       ),
     );
   }

@@ -1,74 +1,225 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 class Api {
-  final String baseUrl;
+  late final String baseUrl;
   String? _token;
+  String? _refreshToken;
 
-  Api({this.baseUrl = "http://127.0.0.1:8000"});
+  /// Callback optionnel (ex: persist tokens).
+  Future<void> Function(String? access, String? refresh)? onTokenUpdate;
+
+  Api({String? baseUrlOverride}) {
+    baseUrl = baseUrlOverride ?? _defaultBaseUrl();
+  }
+
+  static String _defaultBaseUrl() {
+    if (kIsWeb) return "http://127.0.0.1:8000";
+    if (defaultTargetPlatform == TargetPlatform.android) return "http://10.0.2.2:8000";
+    return "http://127.0.0.1:8000";
+  }
 
   void setToken(String? token) => _token = token;
+  void setRefreshToken(String? token) => _refreshToken = token;
 
-  Map<String, String> _headers({bool auth = false}) {
+  Map<String, String> _headers({bool auth = false, bool json = true}) {
     final h = <String, String>{
-      "Content-Type": "application/json",
+      "Accept": "application/json",
+      if (json) "Content-Type": "application/json; charset=utf-8",
     };
-    if (auth && _token != null) {
+    if (auth && _token != null && _token!.isNotEmpty) {
       h["Authorization"] = "Bearer $_token";
     }
     return h;
   }
 
-  Exception _err(http.Response res) {
-    // Essaye d'extraire un message JSON {detail: "..."} sinon renvoie brut
+  Exception _httpError(http.Response res) {
     try {
-      final data = jsonDecode(res.body);
-      if (data is Map && data["detail"] != null) {
-        return Exception(data["detail"].toString());
+      final body = jsonDecode(res.body);
+      if (body is Map && body["detail"] != null) {
+        return Exception(body["detail"].toString());
       }
     } catch (_) {}
-    return Exception(res.body.isNotEmpty ? res.body : "HTTP ${res.statusCode}");
+    return Exception("HTTP ${res.statusCode}: ${res.body}");
   }
 
-  // ---------- AUTH ----------
-  Future<Map<String, dynamic>> register(String email, String password) async {
-    final uri = Uri.parse("$baseUrl/auth/register");
+  Uri _u(String path, {Map<String, String>? q}) {
+    final base = Uri.parse(baseUrl);
+    final uri = base.replace(
+      path: (base.path.endsWith("/") ? base.path.substring(0, base.path.length - 1) : base.path) + path,
+      queryParameters: q,
+    );
+    return uri;
+  }
+
+  // -------------------------
+  
+  Future<bool> _tryRefresh() async {
+    final rt = _refreshToken;
+    if (rt == null || rt.isEmpty) return false;
+
+    final uri = Uri.parse("$baseUrl/auth/refresh");
     final res = await http.post(
       uri,
       headers: _headers(),
-      body: jsonEncode({"email": email, "password": password}),
+      body: jsonEncode({"refresh_token": rt}),
     );
-    if (res.statusCode != 200) throw _err(res);
+
+    if (res.statusCode != 200) return false;
+
+    final data = jsonDecode(res.body) as Map<String, dynamic>;
+    final at = (data["access_token"] ?? "").toString();
+    final newRt = (data["refresh_token"] ?? "").toString();
+
+    if (at.isEmpty) return false;
+
+    _token = at;
+    if (newRt.isNotEmpty) _refreshToken = newRt;
+
+    if (onTokenUpdate != null) {
+      await onTokenUpdate!(_token, _refreshToken);
+    }
+    return true;
+  }
+
+  Future<http.Response> _authedRequest(Future<http.Response> Function(Map<String, String> h) fn) async {
+    var res = await fn(_headers(auth: true));
+    if (res.statusCode == 401) {
+      final ok = await _tryRefresh();
+      if (ok) {
+        res = await fn(_headers(auth: true));
+      }
+    }
+    return res;
+  }
+
+// HEALTH
+  // -------------------------
+  Future<bool> health() async {
+    final res = await http.get(_u("/health"), headers: _headers(json: false));
+    return res.statusCode == 200;
+  }
+
+  // -------------------------
+  // AUTH
+  // -------------------------
+  Future<Map<String, dynamic>> register({
+    required String email,
+    required String password,
+    required String firstName,
+    required String lastName,
+    required String phone,
+  }) async {
+    final res = await http.post(
+      _u("/auth/register"),
+      headers: _headers(),
+      body: jsonEncode({
+        "email": email,
+        "password": password,
+        "first_name": firstName,
+        "last_name": lastName,
+        "phone": phone,
+      }),
+    );
+    if (res.statusCode != 200) throw _httpError(res);
     return jsonDecode(res.body) as Map<String, dynamic>;
   }
 
-  Future<String> login(String email, String password) async {
+  Future<Map<String, dynamic>> login(String email, String password) async {
     final uri = Uri.parse("$baseUrl/auth/login");
     final res = await http.post(
       uri,
       headers: _headers(),
       body: jsonEncode({"email": email, "password": password}),
     );
-    if (res.statusCode != 200) throw _err(res);
+    if (res.statusCode != 200) throw _httpError(res);
     final data = jsonDecode(res.body) as Map<String, dynamic>;
-    final token = data["access_token"] as String;
+
+    final token = (data["access_token"] ?? "").toString();
+    final refresh = (data["refresh_token"] ?? "").toString();
+
+    if (token.isEmpty) throw Exception("Token manquant");
     _token = token;
-    return token;
+    if (refresh.isNotEmpty) _refreshToken = refresh;
+
+    if (onTokenUpdate != null) {
+      await onTokenUpdate!(_token, _refreshToken);
+    }
+
+    return data;
   }
 
   Future<Map<String, dynamic>> me() async {
-    final uri = Uri.parse("$baseUrl/me");
-    final res = await http.get(uri, headers: _headers(auth: true));
-    if (res.statusCode != 200) throw _err(res);
+    final res = await http.get(_u("/me"), headers: _headers(auth: true, json: false));
+    if (res.statusCode != 200) throw _httpError(res);
     return jsonDecode(res.body) as Map<String, dynamic>;
   }
 
-  // ---------- BANK (USD) ----------
-  Future<Map<String, dynamic>> bankBalance() async {
-    final uri = Uri.parse("$baseUrl/bank/balance");
-    final res = await http.get(uri, headers: _headers(auth: true));
-    if (res.statusCode != 200) throw _err(res);
+  Future<Map<String, dynamic>> changePassword(String oldPassword, String newPassword) async {
+    final uri = Uri.parse("$baseUrl/auth/change-password");
+    final res = await _authedRequest((h) => http.post(
+          uri,
+          headers: h,
+          body: jsonEncode({"old_password": oldPassword, "new_password": newPassword}),
+        ));
+    if (res.statusCode != 200) throw _httpError(res);
     return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
+  // -------------------------
+  // USERS (autocomplete comptes)
+  // GET /users/search?q=...
+  // -------------------------
+  Future<List<Map<String, dynamic>>> searchUsers(String q, {int limit = 10}) async {
+    final query = q.trim();
+    if (query.length < 2) return [];
+
+    final res = await http.get(
+      _u("/users/search", q: {"q": query, "limit": "$limit"}),
+      headers: _headers(auth: true, json: false),
+    );
+    if (res.statusCode != 200) throw _httpError(res);
+
+    final data = jsonDecode(res.body);
+    final list = (data as List<dynamic>? ?? []);
+    return list.cast<Map<String, dynamic>>();
+  }
+
+  // -------------------------
+  // BANK
+  // -------------------------
+  Future<Map<String, dynamic>> bankBalance() async {
+    final res = await http.get(_u("/bank/balance"), headers: _headers(auth: true, json: false));
+    if (res.statusCode != 200) throw _httpError(res);
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
+  Future<List<dynamic>> bankTransactions({
+    int limit = 30,
+    String direction = "all",
+    DateTime? fromDate,
+    DateTime? toDate,
+    String? counterparty,
+  }) async {
+    final qp = <String, String>{
+      "limit": "$limit",
+      "direction": direction,
+    };
+    if (fromDate != null) {
+      qp["from_date"] = fromDate.toIso8601String();
+    }
+    if (toDate != null) {
+      qp["to_date"] = toDate.toIso8601String();
+    }
+    if (counterparty != null && counterparty.trim().isNotEmpty) {
+      qp["counterparty"] = counterparty.trim();
+    }
+
+    final uri = Uri.parse("$baseUrl/bank/transactions").replace(queryParameters: qp);
+    final res = await _authedRequest((h) => http.get(uri, headers: h));
+    if (res.statusCode != 200) throw _httpError(res);
+    return jsonDecode(res.body) as List<dynamic>;
   }
 
   Future<Map<String, dynamic>> bankTransfer({
@@ -77,102 +228,186 @@ class Api {
     String note = "",
   }) async {
     final uri = Uri.parse("$baseUrl/bank/transfer");
-    final res = await http.post(
-      uri,
-      headers: _headers(auth: true),
-      body: jsonEncode({
-        "to_email": toEmail,
-        "usd_amount": usdAmount,
-        "note": note,
-      }),
-    );
-    if (res.statusCode != 200) throw _err(res);
+    final res = await _authedRequest((h) => http.post(
+          uri,
+          headers: h,
+          body: jsonEncode({"to_email": toEmail, "usd_amount": usdAmount, "note": note}),
+        ));
+    if (res.statusCode != 200) throw _httpError(res);
     return jsonDecode(res.body) as Map<String, dynamic>;
   }
 
-  Future<List<dynamic>> bankTransactions({int limit = 30}) async {
-    final uri = Uri.parse("$baseUrl/bank/transactions?limit=$limit");
-    final res = await http.get(uri, headers: _headers(auth: true));
-    if (res.statusCode != 200) throw _err(res);
-    return jsonDecode(res.body) as List<dynamic>;
+  // -------------------------
+  // BENEFICIARIES
+  // -------------------------
+  Future<List<Map<String, dynamic>>> bankBeneficiaries() async {
+    final res = await http.get(_u("/bank/beneficiaries"), headers: _headers(auth: true, json: false));
+    if (res.statusCode != 200) throw _httpError(res);
+    final data = jsonDecode(res.body);
+    final list = (data as List<dynamic>? ?? []);
+    return list.cast<Map<String, dynamic>>();
   }
 
-  // ---------- WALLET (CRYPTO) ----------
+  Future<Map<String, dynamic>> bankAddBeneficiary({
+    required String email,
+    String alias = "",
+  }) async {
+    final res = await http.post(
+      _u("/bank/beneficiaries"),
+      headers: _headers(auth: true),
+      body: jsonEncode({"alias": alias, "email": email}),
+    );
+    if (res.statusCode != 200) throw _httpError(res);
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
+  Future<void> bankDeleteBeneficiary(int id) async {
+    final uri = Uri.parse("$baseUrl/bank/beneficiaries/$id");
+    final res = await _authedRequest((h) => http.delete(uri, headers: h));
+    if (res.statusCode != 200) throw _httpError(res);
+  }
+
+  
+  // -------------------------
+  // WALLET / TRADE
+  // -------------------------
   Future<Map<String, dynamic>> wallet() async {
-    final uri = Uri.parse("$baseUrl/wallet");
-    final res = await http.get(uri, headers: _headers(auth: true));
-    if (res.statusCode != 200) throw _err(res);
+    final res = await http.get(
+      _u("/wallet"),
+      headers: _headers(auth: true, json: false),
+    );
+    if (res.statusCode != 200) throw _httpError(res);
     return jsonDecode(res.body) as Map<String, dynamic>;
   }
 
   Future<Map<String, dynamic>> buy(String coinId, double usdAmount) async {
-    final uri = Uri.parse("$baseUrl/trade/buy");
+    final cid = coinId.trim().toLowerCase();
     final res = await http.post(
-      uri,
+      _u("/trade/buy"),
       headers: _headers(auth: true),
-      body: jsonEncode({"coin_id": coinId, "usd_amount": usdAmount}),
+      body: jsonEncode({"coin_id": cid, "usd_amount": usdAmount}),
     );
-    if (res.statusCode != 200) throw _err(res);
+    if (res.statusCode != 200) throw _httpError(res);
     return jsonDecode(res.body) as Map<String, dynamic>;
   }
 
   Future<Map<String, dynamic>> sell(String coinId, double coinAmount) async {
-    final uri = Uri.parse("$baseUrl/trade/sell");
+    final cid = coinId.trim().toLowerCase();
     final res = await http.post(
-      uri,
+      _u("/trade/sell"),
       headers: _headers(auth: true),
-      body: jsonEncode({"coin_id": coinId, "coin_amount": coinAmount}),
+      body: jsonEncode({"coin_id": cid, "coin_amount": coinAmount}),
     );
-    if (res.statusCode != 200) throw _err(res);
+    if (res.statusCode != 200) throw _httpError(res);
     return jsonDecode(res.body) as Map<String, dynamic>;
   }
 
-  Future<List<dynamic>> transactions() async {
-    final uri = Uri.parse("$baseUrl/transactions");
-    final res = await http.get(uri, headers: _headers(auth: true));
-    if (res.statusCode != 200) throw _err(res);
+
+// -------------------------
+  
+  // USERS (pour saisie intelligente bénéficiaires)
+  Future<List<Map<String, dynamic>>> usersSearch(String q) async {
+    final uri = Uri.parse("$baseUrl/users/search?q=$q");
+    final res = await _authedRequest((h) => http.get(uri, headers: h));
+    if (res.statusCode != 200) throw _httpError(res);
+    final data = jsonDecode(res.body) as Map<String, dynamic>;
+    final users = (data["users"] as List<dynamic>? ?? []);
+    return users.cast<Map<String, dynamic>>();
+  }
+
+
+  // ORDERS
+  Future<List<dynamic>> listOrders({String status = "open"}) async {
+    final uri = Uri.parse("$baseUrl/orders?status=$status");
+    final res = await _authedRequest((h) => http.get(uri, headers: h));
+    if (res.statusCode != 200) throw _httpError(res);
     return jsonDecode(res.body) as List<dynamic>;
   }
 
-  // ---------- MARKET ----------
+  Future<Map<String, dynamic>> createOrder({
+    required String coinId,
+    required String side, // BUY/SELL
+    required String orderType, // LIMIT/STOP_LOSS/TAKE_PROFIT
+    required double qty,
+    double? limitPrice,
+    double? triggerPrice,
+  }) async {
+    final uri = Uri.parse("$baseUrl/orders");
+    final body = {
+      "coin_id": coinId,
+      "side": side,
+      "order_type": orderType,
+      "qty": qty,
+      "limit_price": limitPrice,
+      "trigger_price": triggerPrice,
+    };
+    final res = await _authedRequest((h) => http.post(uri, headers: h, body: jsonEncode(body)));
+    if (res.statusCode != 200) throw _httpError(res);
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> cancelOrder(int id) async {
+    final uri = Uri.parse("$baseUrl/orders/$id/cancel");
+    final res = await _authedRequest((h) => http.post(uri, headers: h));
+    if (res.statusCode != 200) throw _httpError(res);
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
+// MARKET
+  // -------------------------
   Future<List<Map<String, dynamic>>> searchCoins(String query) async {
-    final uri = Uri.parse("$baseUrl/search?query=$query");
-    final res = await http.get(uri);
-    if (res.statusCode != 200) throw _err(res);
+    final q = query.trim();
+    if (q.length < 2) return [];
+
+    final res = await http.get(
+      _u("/search", q: {"query": q}),
+      headers: _headers(json: false),
+    );
+    if (res.statusCode != 200) throw _httpError(res);
+
     final data = jsonDecode(res.body) as Map<String, dynamic>;
     final coins = (data["coins"] as List<dynamic>? ?? []);
     return coins.cast<Map<String, dynamic>>();
   }
 
   Future<Map<String, dynamic>> history(String coinId, {int days = 90}) async {
-    final uri = Uri.parse("$baseUrl/history/$coinId?days=$days");
-    final res = await http.get(uri);
-    if (res.statusCode != 200) throw _err(res);
+    final safeId = Uri.encodeComponent(coinId);
+    final res = await http.get(
+      _u("/history/$safeId", q: {"days": "$days"}),
+      headers: _headers(json: false),
+    );
+    if (res.statusCode != 200) throw _httpError(res);
     return jsonDecode(res.body) as Map<String, dynamic>;
   }
 
   Future<Map<String, dynamic>> predict(String coinId, {int horizon = 7}) async {
-    final uri = Uri.parse("$baseUrl/predict/$coinId?horizon=$horizon");
-    final res = await http.get(uri);
-    if (res.statusCode != 200) throw _err(res);
+    final safeId = Uri.encodeComponent(coinId);
+    final res = await http.get(
+      _u("/predict/$safeId", q: {"horizon": "$horizon"}),
+      headers: _headers(json: false),
+    );
+    if (res.statusCode != 200) throw _httpError(res);
     return jsonDecode(res.body) as Map<String, dynamic>;
   }
 
-  Future<Map<String, dynamic>> priceOne(String coinId) async {
-    final uri = Uri.parse("$baseUrl/price/$coinId");
+  
+  Future<Map<String, dynamic>> pricesMarketMany(List<String> ids) async {
+    final uri = Uri.parse("$baseUrl/prices/market?ids=${ids.join(',')}");
     final res = await http.get(uri);
-    if (res.statusCode != 200) throw _err(res);
+    if (res.statusCode != 200) throw _httpError(res);
     return jsonDecode(res.body) as Map<String, dynamic>;
   }
 
-  Future<Map<String, dynamic>> pricesMany(List<String> coinIds) async {
-    final ids = coinIds.join(",");
-    final uri = Uri.parse("$baseUrl/prices?ids=$ids");
-    final res = await http.get(uri);
-    if (res.statusCode != 200) throw _err(res);
+Future<Map<String, dynamic>> pricesMany(List<String> ids) async {
+    if (ids.isEmpty) return {"prices": {}};
+
+    final res = await http.get(
+      _u("/prices", q: {"ids": ids.join(",")}),
+      headers: _headers(json: false),
+    );
+    if (res.statusCode != 200) throw _httpError(res);
     return jsonDecode(res.body) as Map<String, dynamic>;
   }
 }
 
-// Singleton pratique (optionnel)
-final api = Api(baseUrl: "http://127.0.0.1:8000");
+final api = Api();

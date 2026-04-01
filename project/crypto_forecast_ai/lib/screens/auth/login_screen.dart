@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/api.dart';
 import '../../services/auth_store.dart';
+import '../../services/session_store.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -23,8 +24,14 @@ class _LoginScreenState extends State<LoginScreen> {
       _err = null;
     });
     try {
-      final token = await api.login(_email.text.trim(), _pass.text);
+      final data = await api.login(_email.text.trim(), _pass.text);
+      final token = (data["access_token"] ?? "").toString();
+      final refresh = (data["refresh_token"] ?? "").toString();
       await AuthStore.saveToken(token);
+      await SessionStore.saveToken(token);
+      if (refresh.isNotEmpty) await SessionStore.saveRefreshToken(refresh);
+      api.setToken(token);
+      api.setRefreshToken(refresh);
       widget.onLoggedIn();
     } catch (e) {
       setState(() => _err = e.toString());

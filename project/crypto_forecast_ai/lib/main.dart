@@ -1,30 +1,35 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
-
-import 'package:intl/intl.dart';
-import 'package:intl/date_symbol_data_local.dart';
 
 import 'screens/home_screen.dart';
 import 'screens/bank_screen.dart';
 import 'screens/auth_screen.dart';
+import 'screens/profile_screen.dart';
+import 'screens/wallet_screen.dart';
+
 import 'services/session_store.dart';
 import 'services/api.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // ✅ IMPORTANT: initialise les locales pour DateFormat()
-  // Tu peux mettre 'fr_FR' ou juste 'fr' (les deux marchent souvent).
-  Intl.defaultLocale = 'fr_FR';
-  await initializeDateFormatting('fr_FR', null);
-
-  // Charge la session si elle existe
   final token = await SessionStore.loadToken();
-  if (token != null && token.isNotEmpty) {
+    final refresh = await SessionStore.loadRefreshToken();
+  final logged = token != null && token.isNotEmpty;
+
+  if (logged) {
     api.setToken(token);
+    api.setRefreshToken(refresh);
+    api.onTokenUpdate = (access, refreshTok) async {
+      if (access != null && access.isNotEmpty) {
+        await SessionStore.saveToken(access);
+      }
+      if (refreshTok != null && refreshTok.isNotEmpty) {
+        await SessionStore.saveRefreshToken(refreshTok);
+      }
+    };
   }
 
-  runApp(MyApp(isLogged: token != null && token.isNotEmpty));
+  runApp(MyApp(isLogged: logged));
 }
 
 class MyApp extends StatelessWidget {
@@ -33,31 +38,16 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const seed = Color(0xFF00FFC6); // cyan/vert neon
+    const seed = Color(0xFF00FFC6);
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'NeoBank',
-
-      // ✅ Force l'app en français
-      locale: const Locale('fr', 'FR'),
-      supportedLocales: const [
-        Locale('fr', 'FR'),
-        Locale('fr'),
-        Locale('en'),
-      ],
-      localizationsDelegates: const [
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
         colorScheme: ColorScheme.fromSeed(seedColor: seed, brightness: Brightness.dark),
         scaffoldBackgroundColor: const Color(0xFF070B10),
-        cardTheme: const CardThemeData(elevation: 0, margin: EdgeInsets.zero),
       ),
       routes: {
         "/": (_) => isLogged ? const RootShell() : const AuthScreen(),
@@ -71,7 +61,6 @@ class MyApp extends StatelessWidget {
 
 class RootShell extends StatefulWidget {
   const RootShell({super.key});
-
   @override
   State<RootShell> createState() => _RootShellState();
 }
@@ -83,7 +72,9 @@ class _RootShellState extends State<RootShell> {
     await SessionStore.clear();
     api.setToken(null);
     if (!mounted) return;
-    Navigator.of(context).pushReplacementNamed("/auth");
+
+    // ✅ évite de revenir en arrière vers une page protégée
+    Navigator.of(context).pushNamedAndRemoveUntil("/auth", (route) => false);
   }
 
   @override
@@ -91,24 +82,23 @@ class _RootShellState extends State<RootShell> {
     final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
+      appBar: (_index == 2) ? null : AppBar(
+        title: const Text("NeoBank"),
+        actions: [
+          IconButton(
+            onPressed: _logout,
+            tooltip: "Déconnexion",
+            icon: const Icon(Icons.logout_rounded),
+          )
+        ],
+      ),
       body: IndexedStack(
         index: _index,
         children: [
           const HomeScreen(),
-          Stack(
-            children: [
-              const BankScreen(),
-              Positioned(
-                right: 12,
-                top: MediaQuery.of(context).padding.top + 10,
-                child: IconButton(
-                  onPressed: _logout,
-                  tooltip: "Déconnexion",
-                  icon: Icon(Icons.logout_rounded, color: cs.onSurface.withOpacity(0.85)),
-                ),
-              )
-            ],
-          ),
+          const BankScreen(),
+          WalletScreen(onLogout: _logout),
+          const ProfileScreen(),
         ],
       ),
       bottomNavigationBar: NavigationBar(
@@ -119,6 +109,8 @@ class _RootShellState extends State<RootShell> {
         destinations: const [
           NavigationDestination(icon: Icon(Icons.show_chart_rounded), label: "Marché"),
           NavigationDestination(icon: Icon(Icons.account_balance_rounded), label: "Banque"),
+          NavigationDestination(icon: Icon(Icons.account_balance_wallet_rounded), label: "Wallet"),
+          NavigationDestination(icon: Icon(Icons.person_rounded), label: "Profil"),
         ],
       ),
     );

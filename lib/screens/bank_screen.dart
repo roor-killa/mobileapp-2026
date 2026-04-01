@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import '../services/api.dart';
@@ -16,6 +17,14 @@ class _BankScreenState extends State<BankScreen> with TickerProviderStateMixin {
   double _balance = 0.0;
   DateTime? _updatedAt;
   List<dynamic> _txs = const [];
+
+  // ✅ beneficiaries cache
+  List<Map<String, dynamic>> _beneficiaries = const [];
+
+  // ✅ suggestions state
+  Timer? _debounce;
+  bool _searchingUsers = false;
+  List<Map<String, dynamic>> _suggestions = const [];
 
   final _toCtrl = TextEditingController();
   final _amountCtrl = TextEditingController();
@@ -36,6 +45,7 @@ class _BankScreenState extends State<BankScreen> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _pulseCtrl.dispose();
     _toCtrl.dispose();
     _amountCtrl.dispose();
@@ -49,18 +59,86 @@ class _BankScreenState extends State<BankScreen> with TickerProviderStateMixin {
       final bal = await api.bankBalance();
       final txs = await api.bankTransactions(limit: 30);
 
+      // ✅ load beneficiaries too
+      final bens = await api.bankBeneficiaries();
+
       final b = (bal["balance_usd"] as num?)?.toDouble() ?? 0.0;
       final up = bal["updated_at"]?.toString();
+
       setState(() {
         _balance = b;
         _updatedAt = up != null ? DateTime.tryParse(up) : null;
         _txs = txs;
+        _beneficiaries = bens;
       });
     } catch (e) {
       _showError(e.toString());
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  void _onToChanged(String v) {
+    final q = v.trim().toLowerCase();
+
+    // suggestions from beneficiaries (instant)
+    final fromBen = q.isEmpty
+        ? <Map<String, dynamic>>[]
+        : _beneficiaries.where((b) {
+            final email = (b["email"] ?? "").toString().toLowerCase();
+            final alias = (b["alias"] ?? "").toString().toLowerCase();
+            final fn = (b["first_name"] ?? "").toString().toLowerCase();
+            final ln = (b["last_name"] ?? "").toString().toLowerCase();
+            return email.contains(q) || alias.contains(q) || fn.contains(q) || ln.contains(q);
+          }).take(6).toList();
+
+    setState(() {
+      _suggestions = fromBen;
+    });
+
+    // remote search users (debounce)
+    _debounce?.cancel();
+    if (q.length < 2) return;
+
+    _debounce = Timer(const Duration(milliseconds: 300), () async {
+      setState(() => _searchingUsers = true);
+
+      try {
+        final users = await api.searchUsers(q, limit: 8);
+
+        // filter out emails already in beneficiaries to avoid duplicates
+        final existingEmails = _beneficiaries
+            .map((b) => (b["email"] ?? "").toString().toLowerCase())
+            .toSet();
+
+        final extra = users.where((u) {
+          final email = (u["email"] ?? "").toString().toLowerCase();
+          return email.isNotEmpty && !existingEmails.contains(email);
+        }).toList();
+
+        // merge: beneficiaries first, then extra users
+        final merged = <Map<String, dynamic>>[
+          ...fromBen.map((b) => {"_type": "beneficiary", ...b}),
+          ...extra.map((u) => {"_type": "user", ...u}),
+        ];
+
+        if (!mounted) return;
+        setState(() => _suggestions = merged);
+      } catch (_) {
+        // silent fail (ne bloque pas)
+      } finally {
+        if (!mounted) return;
+        setState(() => _searchingUsers = false);
+      }
+    });
+  }
+
+  void _pickSuggestion(Map<String, dynamic> s) {
+    final email = (s["email"] ?? "").toString();
+    if (email.isEmpty) return;
+
+    _toCtrl.text = email;
+    setState(() => _suggestions = []);
   }
 
   Future<void> _sendTransfer() async {
@@ -85,13 +163,11 @@ class _BankScreenState extends State<BankScreen> with TickerProviderStateMixin {
       _toCtrl.clear();
       _amountCtrl.clear();
       _noteCtrl.clear();
+      setState(() => _suggestions = []);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(msg),
-            behavior: SnackBarBehavior.floating,
-          ),
+          SnackBar(content: Text(msg), behavior: SnackBarBehavior.floating),
         );
       }
 
@@ -106,17 +182,11 @@ class _BankScreenState extends State<BankScreen> with TickerProviderStateMixin {
   void _showError(String msg) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        behavior: SnackBarBehavior.floating,
-      ),
+      SnackBar(content: Text(msg), behavior: SnackBarBehavior.floating),
     );
   }
 
-  String _money(double v) {
-    // format simple (évite dépendance intl)
-    return "\$${v.toStringAsFixed(2)}";
-  }
+  String _money(double v) => "\$${v.toStringAsFixed(2)}";
 
   @override
   Widget build(BuildContext context) {
@@ -136,7 +206,6 @@ class _BankScreenState extends State<BankScreen> with TickerProviderStateMixin {
               _Header(cs: cs),
               const SizedBox(height: 14),
 
-              // --- Balance Card ---
               _GlassCard(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
@@ -152,7 +221,6 @@ class _BankScreenState extends State<BankScreen> with TickerProviderStateMixin {
                         ),
                       ),
                       const SizedBox(height: 10),
-
                       AnimatedSwitcher(
                         duration: const Duration(milliseconds: 220),
                         child: _loading
@@ -174,7 +242,6 @@ class _BankScreenState extends State<BankScreen> with TickerProviderStateMixin {
                                 },
                               ),
                       ),
-
                       const SizedBox(height: 6),
                       Text(
                         _updatedAt == null
@@ -193,7 +260,6 @@ class _BankScreenState extends State<BankScreen> with TickerProviderStateMixin {
 
               const SizedBox(height: 14),
 
-              // --- Transfer Card ---
               _GlassCard(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
@@ -215,7 +281,48 @@ class _BankScreenState extends State<BankScreen> with TickerProviderStateMixin {
                         label: "Email du bénéficiaire",
                         hint: "ex: b@test.com",
                         icon: Icons.alternate_email_rounded,
+                        onChanged: _onToChanged,
+                        suffix: _searchingUsers
+                            ? const Padding(
+                                padding: EdgeInsets.all(12),
+                                child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                              )
+                            : null,
                       ),
+
+                      // ✅ Suggestions box
+                      if (_suggestions.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Container(
+                          constraints: const BoxConstraints(maxHeight: 220),
+                          decoration: BoxDecoration(
+                            color: surface.withOpacity(0.55),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: cs.onSurface.withOpacity(0.08)),
+                          ),
+                          child: ListView.separated(
+                            shrinkWrap: true,
+                            itemCount: _suggestions.length,
+                            separatorBuilder: (_, __) => Divider(height: 1, color: cs.onSurface.withOpacity(0.08)),
+                            itemBuilder: (_, i) {
+                              final s = _suggestions[i];
+                              final email = (s["email"] ?? "").toString();
+                              final alias = (s["alias"] ?? "").toString();
+                              final fn = (s["first_name"] ?? "").toString();
+                              final ln = (s["last_name"] ?? "").toString();
+                              final name = ("$fn $ln").trim();
+                              final label = alias.isNotEmpty ? alias : (name.isNotEmpty ? name : "Compte");
+
+                              return ListTile(
+                                dense: true,
+                                title: Text("$label • $email", style: TextStyle(color: cs.onSurface, fontWeight: FontWeight.w800)),
+                                onTap: () => _pickSuggestion(s),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+
                       const SizedBox(height: 10),
 
                       Row(
@@ -250,9 +357,7 @@ class _BankScreenState extends State<BankScreen> with TickerProviderStateMixin {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: cs.primary,
                             foregroundColor: cs.onPrimary,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                           ),
                           child: AnimatedSwitcher(
                             duration: const Duration(milliseconds: 180),
@@ -288,17 +393,12 @@ class _BankScreenState extends State<BankScreen> with TickerProviderStateMixin {
 
               const SizedBox(height: 14),
 
-              // --- Transactions ---
               Row(
                 children: [
                   Expanded(
                     child: Text(
                       "Historique",
-                      style: TextStyle(
-                        color: cs.onSurface,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 16,
-                      ),
+                      style: TextStyle(color: cs.onSurface, fontWeight: FontWeight.w900, fontSize: 16),
                     ),
                   ),
                   IconButton(
@@ -343,9 +443,7 @@ class _BankScreenState extends State<BankScreen> with TickerProviderStateMixin {
                                   decoration: BoxDecoration(
                                     color: surface.withOpacity(0.55),
                                     borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(
-                                      color: cs.onSurface.withOpacity(0.08),
-                                    ),
+                                    border: Border.all(color: cs.onSurface.withOpacity(0.08)),
                                   ),
                                   child: Row(
                                     children: [
@@ -366,13 +464,7 @@ class _BankScreenState extends State<BankScreen> with TickerProviderStateMixin {
                                         child: Column(
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
-                                            Text(
-                                              kind,
-                                              style: TextStyle(
-                                                color: cs.onSurface,
-                                                fontWeight: FontWeight.w900,
-                                              ),
-                                            ),
+                                            Text(kind, style: TextStyle(color: cs.onSurface, fontWeight: FontWeight.w900)),
                                             const SizedBox(height: 2),
                                             Text(
                                               note.isEmpty ? (ref.isEmpty ? "—" : ref) : note,
@@ -526,6 +618,8 @@ class _NeoField extends StatelessWidget {
   final String hint;
   final IconData icon;
   final TextInputType? keyboardType;
+  final ValueChanged<String>? onChanged;
+  final Widget? suffix;
 
   const _NeoField({
     required this.controller,
@@ -533,6 +627,8 @@ class _NeoField extends StatelessWidget {
     required this.hint,
     required this.icon,
     this.keyboardType,
+    this.onChanged,
+    this.suffix,
   });
 
   @override
@@ -541,6 +637,7 @@ class _NeoField extends StatelessWidget {
     return TextField(
       controller: controller,
       keyboardType: keyboardType,
+      onChanged: onChanged,
       style: TextStyle(
         color: cs.onSurface,
         fontWeight: FontWeight.w800,
@@ -549,6 +646,7 @@ class _NeoField extends StatelessWidget {
         labelText: label,
         hintText: hint,
         prefixIcon: Icon(icon),
+        suffixIcon: suffix,
         filled: true,
         fillColor: cs.surface.withOpacity(0.55),
         border: OutlineInputBorder(
