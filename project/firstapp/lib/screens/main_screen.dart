@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'crypto_screen.dart';
 import 'history_screen.dart';
 import 'wallet_screen.dart'; // <-- C'est bien le bon import !
+import 'chat_screen.dart';
 
 // --- NOS NOUVELLES COULEURS THEME (Inspirées du React) ---
 const Color bgDark = Color(0xFF09090B); // zinc-950
@@ -25,10 +26,10 @@ class _MainScreenState extends State<MainScreen> {
 
   // Liste de tes futurs écrans redesignés
   final List<Widget> _screens = [
-    const WalletScreen(),   // <-- La bonne classe de ton wallet_screen.dart
+    const WalletScreen(),  
     const HistoryScreen(),  
     const CryptoScreen(),
-    const Center(child: Text("Chat IA (À venir)", style: TextStyle(color: Colors.white))), 
+    const ChatScreen(), 
   ];
 
   // ---> NOUVEAU 3 : La fonction pour changer d'onglet manuellement <---
