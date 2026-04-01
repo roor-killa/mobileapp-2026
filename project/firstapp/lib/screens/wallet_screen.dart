@@ -26,6 +26,7 @@ class _WalletScreenState extends State<WalletScreen> {
   
   double _soldeActuel = 0.0;
   double _soldeBkn = 0.0;
+  double _performanceBkn = 0.0;
   List<dynamic> _pockets = []; 
   bool _isLoading = true;
   String _userEmail = "utilisateur@mail.com"; 
@@ -57,6 +58,12 @@ class _WalletScreenState extends State<WalletScreen> {
     if (marketData['success'] == true && mounted) {
       setState(() {
         _soldeBkn = double.parse(marketData['user_solde_bkn'].toString());
+        
+        // ---> NOUVEAU : On tente de récupérer la performance depuis Laravel <---
+        // (Si ton API ne l'envoie pas encore, ça mettra 0.0 par défaut)
+        if (marketData['performance_24h'] != null) {
+          _performanceBkn = double.parse(marketData['performance_24h'].toString());
+        }
       });
     }
 
@@ -854,11 +861,19 @@ class _WalletScreenState extends State<WalletScreen> {
                           ),
                         ],
                       ),
-                      const Column(
+                      Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          Text('+12.5%', style: TextStyle(color: emerald500, fontSize: 16, fontWeight: FontWeight.bold)),
-                          Text('Performance', style: TextStyle(color: textGray, fontSize: 12)),
+                          // ---> NOUVEAU : La couleur et le signe changent selon si c'est positif ou négatif ! <---
+                          Text(
+                            '${_performanceBkn >= 0 ? '+' : ''}${_performanceBkn.toStringAsFixed(1)}%', 
+                            style: TextStyle(
+                              color: _performanceBkn >= 0 ? emerald500 : Colors.redAccent, 
+                              fontSize: 16, 
+                              fontWeight: FontWeight.bold
+                            )
+                          ),
+                          const Text('Performance', style: TextStyle(color: textGray, fontSize: 12)),
                         ],
                       )
                     ],

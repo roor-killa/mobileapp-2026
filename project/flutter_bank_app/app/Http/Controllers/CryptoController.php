@@ -13,28 +13,41 @@ class CryptoController extends Controller
     {
         $user = $request->user();
         
-        // On cherche le dernier prix connu. S'il n'y en a pas, on fixe le prix de départ à 1.00 € !
+        // 1. On récupère le prix actuel
         $dernierPrix = BknPrice::latest()->first();
         if (!$dernierPrix) {
             $dernierPrix = BknPrice::create(['prix' => 1.0000]);
         }
 
-        // === NOUVEAU : GESTION DES PÉRIODES (1H, 1J, 1S) ===
-        // On regarde si Flutter a envoyé une limite (ex: ?limit=12 pour 1H)
-        // S'il n'y a rien, on renvoie 100 points par défaut.
-        $limite = $request->query('limit', 100);
+        // 2. CALCUL DE LA PERFORMANCE SUR 24H
+        // On cherche le prix le plus proche d'il y a 24 heures
+        $prixIlYa24h = BknPrice::where('created_at', '<=', now()->subDay())
+            ->latest()
+            ->first();
 
-        // Au lieu de tout récupérer (ce qui ferait exploser l'appli s'il y a 100 000 prix),
-        // on prend seulement les derniers X prix, puis on les remet dans le bon ordre chrono.
+        // Si l'application est nouvelle et qu'on n'a pas encore 24h d'historique,
+        // on prend le tout premier prix enregistré comme point de départ.
+        if (!$prixIlYa24h) {
+            $prixIlYa24h = BknPrice::oldest()->first();
+        }
+
+        $performance24h = 0;
+        if ($prixIlYa24h && $prixIlYa24h->prix > 0) {
+            $performance24h = (($dernierPrix->prix - $prixIlYa24h->prix) / $prixIlYa24h->prix) * 100;
+        }
+
+        // 3. GESTION DE L'HISTORIQUE POUR LE GRAPHIQUE (Ton code existant)
+        $limite = $request->query('limit', 100);
         $historique = BknPrice::latest()
             ->take((int)$limite)
             ->get()
-            ->reverse() // On les remet du plus vieux au plus récent pour le graphique
-            ->values(); // Réinitialise les clés du tableau pour que Flutter soit content
+            ->reverse()
+            ->values();
 
         return response()->json([
             'success' => true,
             'current_price' => (float) $dernierPrix->prix,
+            'performance_24h' => (float) round($performance24h, 2), // On arrondit à 2 décimales
             'user_solde_eur' => (float) $user->solde,
             'user_solde_bkn' => (float) $user->solde_bkn,
             'price_history' => $historique

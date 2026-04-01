@@ -6,6 +6,7 @@ import '../services/api_service.dart';
 // Constantes couleurs
 const Color bgDark = Color(0xFF09090B);
 const Color cardDark = Color(0xFF18181B);
+const Color zinc700 = Color(0xFF27272A); // Ajout du gris pour les bordures
 const Color emerald500 = Color(0xFF10B981);
 const Color textGray = Color(0xFF71717A);
 
@@ -24,7 +25,7 @@ class _CryptoScreenState extends State<CryptoScreen> {
   bool _isTrading = false;
   String _tradeType = 'BUY'; // 'BUY' ou 'SELL'
   
-  // NOUVEAU : On gère la période du graphique
+  // Période du graphique
   int _selectedPeriod = 100; // 12=1H, 100=1D, 500=1W, 1000=All
   
   double _prixActuel = 0.0;
@@ -42,7 +43,6 @@ class _CryptoScreenState extends State<CryptoScreen> {
     _chargerMarche();
   }
 
-  // EXPLICATION : Fusion de ta logique et de la nouvelle logique graphique
   Future<void> _chargerMarche() async {
     setState(() => _isLoading = true);
     
@@ -52,7 +52,7 @@ class _CryptoScreenState extends State<CryptoScreen> {
     if (!mounted) return;
 
     if (data['success'] == true) {
-      // 1. On récupère l'historique (ATTENTION: on utilise 'price_history' comme dans ton ancien code)
+      // 1. On récupère l'historique
       final historyList = data['price_history'] as List<dynamic>? ?? [];
       
       // 2. Calcul du Plus Haut et Plus Bas pour l'affichage
@@ -60,7 +60,7 @@ class _CryptoScreenState extends State<CryptoScreen> {
       double tempLow = 999999;
       
       for (var item in historyList) {
-        double price = double.parse(item['prix'].toString()); // ATTENTION: 'prix' et pas 'price'
+        double price = double.parse(item['prix'].toString()); 
         if (price > tempHigh) tempHigh = price;
         if (price < tempLow) tempLow = price;
       }
@@ -82,14 +82,12 @@ class _CryptoScreenState extends State<CryptoScreen> {
     }
   }
 
-  // EXPLICATION : Changement de période du graphique
   void _changePeriod(int newPeriod) {
     if (_selectedPeriod == newPeriod) return;
     setState(() => _selectedPeriod = newPeriod);
     _chargerMarche();
   }
 
-  // EXPLICATION : Ta fonction de trade d'origine, inchangée
   Future<void> _trader() async {
     final quantite = double.tryParse(_quantiteController.text.trim());
     if (quantite == null || quantite <= 0) {
@@ -113,41 +111,51 @@ class _CryptoScreenState extends State<CryptoScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // ✅ LE NOUVEAU BLOC GRAPHIQUE INTELLIGENT :
-    SizedBox(
-      height: 180, 
-      // EXPLICATION : Si ça charge, on montre la roue ICI SEULEMENT. 
-      // Sinon, on dessine la courbe. Le reste de la page ne bouge pas !
-      child: _isLoading 
-          ? const Center(child: CircularProgressIndicator(color: emerald500))
-          : _buildChart(),
-    );
-
+    // Calcul du coût ou du gain estimé dans l'input
     double totalCost = (double.tryParse(_quantiteController.text) ?? 0) * _prixActuel;
+    
+    // Calcul de la valeur en euros du solde BKN actuel
+    double valeurSoldeEnEuros = _soldeBkn * _prixActuel;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Titre
+          // --- EN-TÊTE : TITRE ET SOLDE BKN ---
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 40, height: 40,
-                decoration: BoxDecoration(color: cardDark, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade900)),
-                child: const Icon(Icons.trending_up, color: emerald500),
+              Row(
+                children: [
+                  Container(
+                    width: 40, height: 40,
+                    decoration: BoxDecoration(color: cardDark, borderRadius: BorderRadius.circular(12), border: Border.all(color: zinc700)),
+                    child: const Icon(Icons.trending_up, color: emerald500),
+                  ),
+                  const SizedBox(width: 15),
+                  const Text('Marché', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+                ],
               ),
-              const SizedBox(width: 15),
-              const Text('Marché BKN', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+              // NOUVEAU : Affichage du Solde BKN en haut à droite
+              if (!_isLoading)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text('${_soldeBkn.toStringAsFixed(2)} BKN', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 2),
+                    Text('≈ ${valeurSoldeEnEuros.toStringAsFixed(2)} €', style: const TextStyle(color: emerald500, fontSize: 12, fontWeight: FontWeight.bold)),
+                  ],
+                )
             ],
           ),
           const SizedBox(height: 25),
 
-          // BLOC GRAPHIQUE (Nouveau)
+          // BLOC GRAPHIQUE
           Container(
             padding: const EdgeInsets.all(25),
-            decoration: BoxDecoration(color: cardDark, borderRadius: BorderRadius.circular(32), border: Border.all(color: Colors.grey.shade900)),
+            decoration: BoxDecoration(color: cardDark, borderRadius: BorderRadius.circular(32), border: Border.all(color: zinc700)),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -158,7 +166,9 @@ class _CryptoScreenState extends State<CryptoScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text('PRIX ACTUEL', style: TextStyle(color: textGray, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
-                        Text('${_prixActuel.toStringAsFixed(4)} €', style: const TextStyle(color: emerald500, fontSize: 28, fontWeight: FontWeight.bold)),
+                        _isLoading 
+                            ? const SizedBox(height: 33, width: 100, child: Align(alignment: Alignment.centerLeft, child: CircularProgressIndicator(color: emerald500, strokeWidth: 2)))
+                            : Text('${_prixActuel.toStringAsFixed(4)} €', style: const TextStyle(color: emerald500, fontSize: 28, fontWeight: FontWeight.bold)),
                       ],
                     ),
                     Row(
@@ -203,7 +213,9 @@ class _CryptoScreenState extends State<CryptoScreen> {
                 // Le Graphique Fl_chart
                 SizedBox(
                   height: 180, 
-                  child: _buildChart(),
+                  child: _isLoading 
+                      ? const Center(child: CircularProgressIndicator(color: emerald500))
+                      : _buildChart(),
                 ),
               ],
             ),
@@ -211,10 +223,10 @@ class _CryptoScreenState extends State<CryptoScreen> {
           
           const SizedBox(height: 25),
 
-          // BLOC DE TRADE (Ton ancien code, conservé)
+          // BLOC DE TRADE
           Container(
             padding: const EdgeInsets.all(25),
-            decoration: BoxDecoration(color: cardDark, borderRadius: BorderRadius.circular(32), border: Border.all(color: Colors.grey.shade900)),
+            decoration: BoxDecoration(color: cardDark, borderRadius: BorderRadius.circular(32), border: Border.all(color: zinc700)),
             child: Column(
               children: [
                 // Toggle Acheter / Vendre
@@ -225,7 +237,7 @@ class _CryptoScreenState extends State<CryptoScreen> {
                     children: [
                       Expanded(
                         child: GestureDetector(
-                          onTap: () => setState(() => _tradeType = 'BUY'),
+                          onTap: () => setState(() { _tradeType = 'BUY'; _quantiteController.clear(); }),
                           child: Container(
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             decoration: BoxDecoration(
@@ -238,7 +250,7 @@ class _CryptoScreenState extends State<CryptoScreen> {
                       ),
                       Expanded(
                         child: GestureDetector(
-                          onTap: () => setState(() => _tradeType = 'SELL'),
+                          onTap: () => setState(() { _tradeType = 'SELL'; _quantiteController.clear(); }),
                           child: Container(
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             decoration: BoxDecoration(
@@ -260,7 +272,7 @@ class _CryptoScreenState extends State<CryptoScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text('QUANTITÉ BKN', style: TextStyle(color: textGray, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
-                    Text('Dispo: ${_tradeType == 'BUY' ? '$_soldeEuros €' : '$_soldeBkn BKN'}', style: const TextStyle(color: textGray, fontSize: 10, fontWeight: FontWeight.bold)),
+                    Text('Dispo: ${_tradeType == 'BUY' ? '${_soldeEuros.toStringAsFixed(2)} €' : '${_soldeBkn.toStringAsFixed(2)} BKN'}', style: const TextStyle(color: textGray, fontSize: 10, fontWeight: FontWeight.bold)),
                   ],
                 ),
                 const SizedBox(height: 10),
