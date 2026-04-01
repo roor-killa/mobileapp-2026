@@ -7,6 +7,7 @@ import '../services/api_service.dart';
 import '../services/session_service.dart';
 import 'login_screen.dart';
 import 'emploi_du_temps_screen.dart';
+import 'devoirs_etudiant_screen.dart';
 
 class DashboardEtudiantScreen extends StatefulWidget {
   const DashboardEtudiantScreen({super.key});
@@ -36,7 +37,7 @@ class _DashboardEtudiantScreenState extends State<DashboardEtudiantScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _chargerDonnees();
     _messages.add({
       'role': 'assistant',
@@ -276,8 +277,9 @@ ${_construireContexteNotes()}''',
           labelColor: Colors.white,
           unselectedLabelColor: Colors.white60,
           tabs: const [
-            Tab(icon: Icon(Icons.grade), text: 'Mes notes'),
-            Tab(icon: Icon(Icons.calendar_month), text: 'Emploi du temps'),
+            Tab(icon: Icon(Icons.grade), text: 'Notes'),
+            Tab(icon: Icon(Icons.calendar_month), text: 'Emploi'),
+            Tab(icon: Icon(Icons.assignment), text: 'Devoirs'),
             Tab(icon: Icon(Icons.chat_bubble_outline), text: 'Assistant'),
           ],
         ),
@@ -309,8 +311,7 @@ ${_construireContexteNotes()}''',
                             borderRadius: BorderRadius.circular(20),
                             boxShadow: [
                               BoxShadow(
-                                color:
-                                    const Color(0xFF11998E).withOpacity(0.3),
+                                color: const Color(0xFF11998E).withOpacity(0.3),
                                 blurRadius: 15,
                                 offset: const Offset(0, 6),
                               ),
@@ -587,6 +588,9 @@ ${_construireContexteNotes()}''',
 
           // ── ONGLET EMPLOI DU TEMPS ────────────────────────────
           const EmploiDuTempsScreen(),
+
+          // ── ONGLET DEVOIRS ────────────────────────────────────
+          const DevoirsEtudiantScreen(),
 
           // ── ONGLET CHATBOT ────────────────────────────────────
           Column(

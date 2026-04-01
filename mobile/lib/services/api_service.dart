@@ -237,7 +237,8 @@ class ApiService {
     throw Exception('Erreur chargement emploi du temps');
   }
 
-  Future<List<Map<String, dynamic>>> getEmploiDuTempsProfesseur(int professeurId) async {
+  Future<List<Map<String, dynamic>>> getEmploiDuTempsProfesseur(
+      int professeurId) async {
     final response = await http.get(
       Uri.parse('$baseUrl/professeurs/$professeurId/emploi-du-temps'),
     );
@@ -264,7 +265,9 @@ class ApiService {
     return response.statusCode == 200;
   }
 
-  Future<bool> declarerPresence(int emploiId, int professeurId, String date, String statut, {String? motif}) async {
+  Future<bool> declarerPresence(
+      int emploiId, int professeurId, String date, String statut,
+      {String? motif}) async {
     final response = await http.post(
       Uri.parse('$baseUrl/emploi-du-temps/$emploiId/presence'),
       headers: {'Content-Type': 'application/json'},
@@ -274,6 +277,49 @@ class ApiService {
         'statut': statut,
         'motif': motif,
       }),
+    );
+    return response.statusCode == 200;
+  }
+
+  // ==========================================================
+  // DEVOIRS
+  // ==========================================================
+
+  Future<List<Map<String, dynamic>>> getDevoirsClasse(int classeId) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/classes/$classeId/devoirs'),
+    );
+    if (response.statusCode == 200) {
+      final List<dynamic> data = json.decode(response.body);
+      return data.map((e) => e as Map<String, dynamic>).toList();
+    }
+    throw Exception('Erreur chargement devoirs');
+  }
+
+  Future<List<Map<String, dynamic>>> getDevoirsProfesseur(
+      int professeurId) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/professeurs/$professeurId/devoirs'),
+    );
+    if (response.statusCode == 200) {
+      final List<dynamic> data = json.decode(response.body);
+      return data.map((e) => e as Map<String, dynamic>).toList();
+    }
+    throw Exception('Erreur chargement devoirs professeur');
+  }
+
+  Future<bool> creerDevoir(Map<String, dynamic> devoir) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/devoirs'),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode(devoir),
+    );
+    return response.statusCode == 201;
+  }
+
+  Future<bool> supprimerDevoir(int id) async {
+    final response = await http.delete(
+      Uri.parse('$baseUrl/devoirs/$id'),
     );
     return response.statusCode == 200;
   }

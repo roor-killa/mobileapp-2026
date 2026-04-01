@@ -8,6 +8,7 @@ import 'notes_screen.dart';
 import 'mes_matieres_screen.dart';
 import 'moyennes_classe_screen.dart';
 import 'emploi_du_temps_prof_screen.dart';
+import 'devoirs_prof_screen.dart';
 
 class EtudiantsScreen extends StatefulWidget {
   const EtudiantsScreen({super.key});
@@ -62,6 +63,19 @@ class _EtudiantsScreenState extends State<EtudiantsScreen> {
                 style: const TextStyle(color: Colors.white70),
               ),
             ),
+          ),
+          // Bouton devoirs
+          IconButton(
+            icon: const Icon(Icons.assignment, color: Colors.white),
+            tooltip: 'Mes devoirs',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const DevoirsProfScreen(),
+                ),
+              );
+            },
           ),
           // Bouton emploi du temps professeur
           IconButton(
