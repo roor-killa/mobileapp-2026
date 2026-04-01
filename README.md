@@ -4,7 +4,7 @@ Création application mobile L3 2026
 # MyWallet
 
 ### Auteur : Mathis Rénac
-#### Présentation dans le fichier MyWallet.pdf
+#### Présentation et captures d'écrans dans le fichier MyWallet.pdf
 ---
 
 ## Description
