@@ -1,6 +1,6 @@
 # UAPay — Checklist de publication (production)
 
-Ce dépôt contient :
+Ce dépôt contient : 
 
 - l’application Flutter (`mobileapp_prjtst_bkn/`)
 - le backend Node.js + Stripe (`backend/`)
