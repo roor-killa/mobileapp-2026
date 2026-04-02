@@ -30,20 +30,26 @@ class _LoginScreenState extends State<LoginScreen> {
 
     setState(() => _isLoading = true);
 
-    final user = await _authService.connecter(email, mdp);
+    try {
+      final user = await _authService.connecter(email, mdp);
 
-    if (!mounted) return;
-    setState(() => _isLoading = false);
+      if (!mounted) return;
+      setState(() => _isLoading = false);
 
-    if (user == null) {
-      _afficherErreur('Email ou mot de passe incorrect');
-      return;
+      if (user == null) {
+        _afficherErreur('Email ou mot de passe incorrect');
+        return;
+      }
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const DashboardScreen()),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      _afficherErreur('Impossible de contacter le serveur. Vérifiez votre connexion.');
     }
-
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const DashboardScreen()),
-    );
   }
 
   void _afficherErreur(String message) {

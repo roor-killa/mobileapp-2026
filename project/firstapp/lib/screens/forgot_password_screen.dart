@@ -34,21 +34,27 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
     setState(() => _isLoading = true);
 
-    final user = await DatabaseService.instance.trouverParEmail(email);
+    try {
+      final user = await DatabaseService.instance.trouverParEmail(email);
 
-    if (!mounted) return;
-    setState(() => _isLoading = false);
+      if (!mounted) return;
+      setState(() => _isLoading = false);
 
-    if (user == null) {
-      _afficherErreur('Aucun compte associé à cet email');
-      return;
+      if (user == null) {
+        _afficherErreur('Aucun compte associé à cet email');
+        return;
+      }
+
+      setState(() {
+        _emailValide = email;
+        _userIdValide = user.id;
+        _etape = 2;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      _afficherErreur('Impossible de contacter le serveur.');
     }
-
-    setState(() {
-      _emailValide = email;
-      _userIdValide = user.id;
-      _etape = 2;
-    });
   }
 
   // ── Étape 2 : enregistrer le nouveau mot de passe ─────────────────────────

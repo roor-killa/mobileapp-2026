@@ -1,216 +1,200 @@
 import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
 import '../models/utilisateur.dart';
 import '../models/transaction_model.dart';
 import '../models/goal_model.dart';
+import 'api_config.dart';
 
-/// Stockage local via SharedPreferences (fonctionne sur Web, Android, Windows...)
-/// Les données sont sérialisées en JSON.
+/// Service de données — toutes les opérations passent par le backend FastAPI.
 class DatabaseService {
   static final DatabaseService instance = DatabaseService._();
   DatabaseService._();
 
-  static const _keyUsers = 'users';
-  static const _keyTransactions = 'transactions';
-  static const _keyNextUserId = 'next_user_id';
-  static const _keyNextTransactionId = 'next_transaction_id';
-  static const _keyFavorites = 'favorites';
-  static const _keyGoals = 'goals';
-  static const _keyNextGoalId = 'next_goal_id';
+  static const _base = ApiConfig.baseUrl;
 
-  Future<SharedPreferences> get _prefs => SharedPreferences.getInstance();
-
-  // --- Utilisateurs ---
-
-  Future<List<Map<String, dynamic>>> _getUsers() async {
-    final prefs = await _prefs;
-    final json = prefs.getString(_keyUsers);
-    if (json == null) return [];
-    return List<Map<String, dynamic>>.from(jsonDecode(json));
-  }
-
-  Future<void> _saveUsers(List<Map<String, dynamic>> users) async {
-    final prefs = await _prefs;
-    await prefs.setString(_keyUsers, jsonEncode(users));
-  }
+  // ── Utilisateurs ────────────────────────────────────────────────────────────
 
   Future<bool> emailExiste(String email) async {
-    final users = await _getUsers();
-    return users.any((u) => u['email'] == email);
+    final uri = Uri.parse('$_base/users/existe')
+        .replace(queryParameters: {'email': email});
+    final res = await http.get(uri);
+    if (res.statusCode == 200) {
+      return (jsonDecode(res.body) as Map<String, dynamic>)['existe'] as bool;
+    }
+    return false;
   }
 
   Future<int> creerUtilisateur(Utilisateur u) async {
-    final prefs = await _prefs;
-    final users = await _getUsers();
-    final id = prefs.getInt(_keyNextUserId) ?? 1;
-    final map = u.toMap();
-    map['id'] = id;
-    users.add(map);
-    await _saveUsers(users);
-    await prefs.setInt(_keyNextUserId, id + 1);
-    return id;
+    final res = await http.post(
+      Uri.parse('$_base/users'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(u.toMap()),
+    );
+    if (res.statusCode == 200 || res.statusCode == 201) {
+      return (jsonDecode(res.body) as Map<String, dynamic>)['id'] as int;
+    }
+    if (res.statusCode == 400) throw Exception('EMAIL_EXISTE');
+    throw Exception('Erreur création utilisateur: ${res.statusCode}');
   }
 
   Future<Utilisateur?> trouverParEmail(String email) async {
-    final users = await _getUsers();
-    final match = users.where((u) => u['email'] == email).toList();
-    if (match.isEmpty) return null;
-    return Utilisateur.fromMap(match.first);
+    final uri = Uri.parse('$_base/users/par-email')
+        .replace(queryParameters: {'email': email});
+    final res = await http.get(uri);
+    if (res.statusCode == 200) {
+      return Utilisateur.fromMap(
+          jsonDecode(res.body) as Map<String, dynamic>);
+    }
+    return null;
   }
 
   Future<Utilisateur?> getUtilisateurById(int id) async {
-    final users = await _getUsers();
-    final matches = users.where((u) => u['id'] == id).toList();
-    if (matches.isEmpty) return null;
-    return Utilisateur.fromMap(matches.first);
+    final res = await http.get(Uri.parse('$_base/users/$id'));
+    if (res.statusCode == 200) {
+      return Utilisateur.fromMap(
+          jsonDecode(res.body) as Map<String, dynamic>);
+    }
+    return null;
   }
 
   Future<void> mettreAJourSolde(int userId, double nouveauSolde) async {
-    final users = await _getUsers();
-    for (final u in users) {
-      if (u['id'] == userId) {
-        u['solde_actuel'] = nouveauSolde;
-        break;
-      }
-    }
-    await _saveUsers(users);
+    await http.patch(
+      Uri.parse('$_base/users/$userId/solde'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'solde_actuel': nouveauSolde}),
+    );
   }
 
-  Future<void> mettreAJourUtilisateur(int id, {String? nom, String? motDePasse}) async {
-    final users = await _getUsers();
-    for (final u in users) {
-      if (u['id'] == id) {
-        if (nom != null) u['nom'] = nom;
-        if (motDePasse != null) u['mot_de_passe'] = motDePasse;
-        break;
-      }
-    }
-    await _saveUsers(users);
+  Future<void> mettreAJourUtilisateur(int id,
+      {String? nom, String? motDePasse}) async {
+    final body = <String, dynamic>{};
+    if (nom != null) body['nom'] = nom;
+    if (motDePasse != null) body['mot_de_passe'] = motDePasse;
+    await http.patch(
+      Uri.parse('$_base/users/$id'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(body),
+    );
   }
 
   Future<List<Utilisateur>> getTousLesUtilisateurs(int excludeId) async {
-    final users = await _getUsers();
-    return users
-        .where((u) => u['id'] != excludeId)
-        .map(Utilisateur.fromMap)
-        .toList();
+    final uri = Uri.parse('$_base/users')
+        .replace(queryParameters: {'exclude': excludeId.toString()});
+    final res = await http.get(uri);
+    if (res.statusCode == 200) {
+      final list = jsonDecode(res.body) as List<dynamic>;
+      return list
+          .map((e) => Utilisateur.fromMap(e as Map<String, dynamic>))
+          .toList();
+    }
+    return [];
   }
 
-  // --- Transactions ---
-
-  Future<List<Map<String, dynamic>>> _getTransactions() async {
-    final prefs = await _prefs;
-    final json = prefs.getString(_keyTransactions);
-    if (json == null) return [];
-    return List<Map<String, dynamic>>.from(jsonDecode(json));
-  }
-
-  Future<void> _saveTransactions(List<Map<String, dynamic>> transactions) async {
-    final prefs = await _prefs;
-    await prefs.setString(_keyTransactions, jsonEncode(transactions));
-  }
+  // ── Transactions ────────────────────────────────────────────────────────────
 
   Future<int> enregistrerTransaction(TransactionModel t) async {
-    final prefs = await _prefs;
-    final transactions = await _getTransactions();
-    final id = prefs.getInt(_keyNextTransactionId) ?? 1;
-    final map = t.toMap();
-    map['id'] = id;
-    transactions.add(map);
-    await _saveTransactions(transactions);
-    await prefs.setInt(_keyNextTransactionId, id + 1);
-    return id;
+    final res = await http.post(
+      Uri.parse('$_base/transactions'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(t.toMap()),
+    );
+    if (res.statusCode == 200 || res.statusCode == 201) {
+      return (jsonDecode(res.body) as Map<String, dynamic>)['id'] as int;
+    }
+    throw Exception('Erreur enregistrement transaction: ${res.statusCode}');
   }
 
   Future<List<TransactionModel>> getTransactions(int userId) async {
-    final all = await _getTransactions();
-    final liste = all
-        .where((t) => t['utilisateur_id'] == userId)
-        .map(TransactionModel.fromMap)
-        .toList();
-    liste.sort((a, b) => b.dateHeure.compareTo(a.dateHeure));
-    return liste;
+    final uri = Uri.parse('$_base/transactions')
+        .replace(queryParameters: {'user_id': userId.toString()});
+    final res = await http.get(uri);
+    if (res.statusCode == 200) {
+      final list = jsonDecode(res.body) as List<dynamic>;
+      return list
+          .map((e) => TransactionModel.fromMap(e as Map<String, dynamic>))
+          .toList();
+    }
+    return [];
   }
 
-  Future<List<TransactionModel>> getTransactionsRecentes(int userId, {int limit = 5}) async {
-    final all = await getTransactions(userId);
-    return all.take(limit).toList();
+  Future<List<TransactionModel>> getTransactionsRecentes(int userId,
+      {int limit = 5}) async {
+    final uri = Uri.parse('$_base/transactions').replace(queryParameters: {
+      'user_id': userId.toString(),
+      'limit': limit.toString(),
+    });
+    final res = await http.get(uri);
+    if (res.statusCode == 200) {
+      final list = jsonDecode(res.body) as List<dynamic>;
+      return list
+          .map((e) => TransactionModel.fromMap(e as Map<String, dynamic>))
+          .toList();
+    }
+    return [];
   }
 
-  // --- Favoris (destinataires fréquents) ---
+  // ── Favoris ────────────────────────────────────────────────────────────────
 
-  /// Retourne la liste des IDs utilisateurs favoris pour [userId].
   Future<List<int>> getFavoris(int userId) async {
-    final prefs = await _prefs;
-    final json = prefs.getString('${_keyFavorites}_$userId');
-    if (json == null) return [];
-    return List<int>.from(jsonDecode(json));
+    final res =
+        await http.get(Uri.parse('$_base/users/$userId/favoris'));
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      return List<int>.from(data['favoris'] as List);
+    }
+    return [];
   }
 
   Future<void> toggleFavori(int userId, int destinataireId) async {
-    final prefs = await _prefs;
-    final favoris = await getFavoris(userId);
-    if (favoris.contains(destinataireId)) {
-      favoris.remove(destinataireId);
-    } else {
-      favoris.add(destinataireId);
-    }
-    await prefs.setString('${_keyFavorites}_$userId', jsonEncode(favoris));
+    await http.post(
+        Uri.parse('$_base/users/$userId/favoris/$destinataireId/toggle'));
   }
 
   Future<bool> estFavori(int userId, int destinataireId) async {
-    final favoris = await getFavoris(userId);
-    return favoris.contains(destinataireId);
+    final res = await http
+        .get(Uri.parse('$_base/users/$userId/favoris/$destinataireId'));
+    if (res.statusCode == 200) {
+      return (jsonDecode(res.body) as Map<String, dynamic>)['favori'] as bool;
+    }
+    return false;
   }
 
-  // --- Objectifs d'épargne ---
-
-  Future<List<Map<String, dynamic>>> _getGoalsRaw() async {
-    final prefs = await _prefs;
-    final json = prefs.getString(_keyGoals);
-    if (json == null) return [];
-    return List<Map<String, dynamic>>.from(jsonDecode(json));
-  }
-
-  Future<void> _saveGoals(List<Map<String, dynamic>> goals) async {
-    final prefs = await _prefs;
-    await prefs.setString(_keyGoals, jsonEncode(goals));
-  }
+  // ── Objectifs d'épargne ────────────────────────────────────────────────────
 
   Future<int> creerObjectif(GoalModel goal) async {
-    final prefs = await _prefs;
-    final goals = await _getGoalsRaw();
-    final id = prefs.getInt(_keyNextGoalId) ?? 1;
-    final map = goal.toMap();
-    map['id'] = id;
-    goals.add(map);
-    await _saveGoals(goals);
-    await prefs.setInt(_keyNextGoalId, id + 1);
-    return id;
+    final res = await http.post(
+      Uri.parse('$_base/objectifs'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(goal.toMap()),
+    );
+    if (res.statusCode == 200 || res.statusCode == 201) {
+      return (jsonDecode(res.body) as Map<String, dynamic>)['id'] as int;
+    }
+    throw Exception('Erreur création objectif: ${res.statusCode}');
   }
 
   Future<List<GoalModel>> getObjectifs(int userId) async {
-    final all = await _getGoalsRaw();
-    return all
-        .where((g) => g['utilisateur_id'] == userId)
-        .map(GoalModel.fromMap)
-        .toList();
+    final uri = Uri.parse('$_base/objectifs')
+        .replace(queryParameters: {'user_id': userId.toString()});
+    final res = await http.get(uri);
+    if (res.statusCode == 200) {
+      final list = jsonDecode(res.body) as List<dynamic>;
+      return list
+          .map((e) => GoalModel.fromMap(e as Map<String, dynamic>))
+          .toList();
+    }
+    return [];
   }
 
   Future<void> mettreAJourObjectif(int goalId, double nouveauMontant) async {
-    final goals = await _getGoalsRaw();
-    for (final g in goals) {
-      if (g['id'] == goalId) {
-        g['montant_actuel'] = nouveauMontant;
-        break;
-      }
-    }
-    await _saveGoals(goals);
+    await http.patch(
+      Uri.parse('$_base/objectifs/$goalId'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'montant_actuel': nouveauMontant}),
+    );
   }
 
   Future<void> supprimerObjectif(int goalId) async {
-    final goals = await _getGoalsRaw();
-    goals.removeWhere((g) => g['id'] == goalId);
-    await _saveGoals(goals);
+    await http.delete(Uri.parse('$_base/objectifs/$goalId'));
   }
 }

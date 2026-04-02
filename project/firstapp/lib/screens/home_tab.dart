@@ -32,33 +32,38 @@ class _HomeTabState extends State<HomeTab> {
   }
 
   Future<void> _charger() async {
-    final user = AuthService.utilisateurConnecte!;
-    final recentes = await DatabaseService.instance
-        .getTransactionsRecentes(user.id!, limit: 5);
-    final balVis = await PreferencesService.instance.getBalanceVisible();
-    final alerte = await PreferencesService.instance.getAlerteSolde(user.id!.toString());
+    try {
+      final user = AuthService.utilisateurConnecte!;
+      final recentes = await DatabaseService.instance
+          .getTransactionsRecentes(user.id!, limit: 5);
+      final balVis = await PreferencesService.instance.getBalanceVisible();
+      final alerte = await PreferencesService.instance.getAlerteSolde(user.id!.toString());
 
-    // Calcul résumé du mois en cours
-    final toutes = await DatabaseService.instance.getTransactions(user.id!);
-    final now = DateTime.now();
-    double depense = 0, recu = 0;
-    for (final t in toutes) {
-      if (t.statut != 'succes') continue;
-      final dt = DateTime.parse(t.dateHeure);
-      if (dt.year != now.year || dt.month != now.month) continue;
-      if (t.type == 'envoi') depense += t.montant;
-      if (t.type == 'reception') recu += t.montant;
+      // Calcul résumé du mois en cours
+      final toutes = await DatabaseService.instance.getTransactions(user.id!);
+      final now = DateTime.now();
+      double depense = 0, recu = 0;
+      for (final t in toutes) {
+        if (t.statut != 'succes') continue;
+        final dt = DateTime.parse(t.dateHeure);
+        if (dt.year != now.year || dt.month != now.month) continue;
+        if (t.type == 'envoi') depense += t.montant;
+        if (t.type == 'reception') recu += t.montant;
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _recentes = recentes;
+        _isLoading = false;
+        _balanceVisible = balVis;
+        _alerteSolde = alerte;
+        _depenseMois = depense;
+        _recuMois = recu;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
     }
-
-    if (!mounted) return;
-    setState(() {
-      _recentes = recentes;
-      _isLoading = false;
-      _balanceVisible = balVis;
-      _alerteSolde = alerte;
-      _depenseMois = depense;
-      _recuMois = recu;
-    });
   }
 
   Future<void> _toggleBalance() async {
