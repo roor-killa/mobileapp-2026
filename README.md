@@ -6,6 +6,32 @@ Je présente ici **mon travail** dans le cadre du dépôt [mobileapp-2026](https
 
 ---
 
+## Documentation complète : rapport + présentation
+
+**Pour comprendre tout le projet en détail** (architecture, API, code expliqué, captures d’écran, sitographie, annexes), va lire le **rapport de rendu** :
+
+| Fichier | Rôle |
+|:--------|:-----|
+| [`project/crypto-wallet/RAPPORT_RENDU_NODEX.md`](project/crypto-wallet/RAPPORT_RENDU_NODEX.md) | Version Markdown (lisible sur GitHub, sommaire cliquable). |
+| [`project/crypto-wallet/RAPPORT_RENDU_NODEX.pdf`](project/crypto-wallet/RAPPORT_RENDU_NODEX.pdf) | Version PDF (mise en page pour impression ou rendu au prof). |
+| [`project/crypto-wallet/docs/NodEX.pptx`](project/crypto-wallet/docs/NodEX.pptx) | **Présentation PowerPoint** NodEX (oral / Gamma / cours). |
+
+Pour régénérer le PDF après modification du `.md` : `cd project/crypto-wallet && ./genere-rapport-pdf.sh`.
+
+---
+
+## Comment ça marche (vue d’ensemble)
+
+1. **Backend Laravel** tourne sur ton Mac (`php artisan serve`) et expose une **API** sous `/api` (portefeuilles, virements, carte virtuelle, assistant Groq, etc.).  
+2. **Appwrite** gère **connexion / inscription** : l’app obtient un **JWT** que Laravel utilise pour savoir quel utilisateur appelle l’API.  
+3. **Application Flutter** affiche les écrans ; elle envoie des requêtes HTTP vers l’URL de l’API (souvent `http://127.0.0.1:8000/api` en local, ou l’IP du Mac depuis un téléphone).  
+4. Les **prix des cryptos** à l’écran viennent en grande partie de l’**API CoinGecko** (appel depuis l’app).  
+5. **Stripe** est prévu pour les paiements côté app ; **Groq** alimente l’assistant (via Laravel de préférence, pour garder la clé côté serveur).
+
+Les étapes d’installation et les commandes exactes sont dans les sections **plus bas** de ce README ; le **rapport** ci-dessus explique le **fonctionnement technique** fichier par fichier.
+
+---
+
 ## Ce que j’ai réalisé
 
 J’ai développé **NodEX**, une application de **portefeuille crypto** avec les éléments suivants :

@@ -696,6 +696,8 @@ Guide détaillé : [README du dépôt](https://github.com/roor-killa/mobileapp-2
 | Dépôt | [github.com/roor-killa/mobileapp-2026](https://github.com/roor-killa/mobileapp-2026) |
 | Dossier crypto-wallet | […/tree/meranville/project/crypto-wallet](https://github.com/roor-killa/mobileapp-2026/tree/meranville/project/crypto-wallet) |
 | Ce rapport (.md) | […/RAPPORT_RENDU_NODEX.md](https://github.com/roor-killa/mobileapp-2026/blob/meranville/project/crypto-wallet/RAPPORT_RENDU_NODEX.md) |
+| Rapport PDF | […/RAPPORT_RENDU_NODEX.pdf](https://github.com/roor-killa/mobileapp-2026/blob/meranville/project/crypto-wallet/RAPPORT_RENDU_NODEX.pdf) |
+| Présentation PowerPoint | […/docs/NodEX.pptx](https://github.com/roor-killa/mobileapp-2026/blob/meranville/project/crypto-wallet/docs/NodEX.pptx) |
 | Captures PNG | […/docs/rapport-captures](https://github.com/roor-killa/mobileapp-2026/tree/meranville/project/crypto-wallet/docs/rapport-captures) |
 
 *Fin des annexes. [↑ Sommaire](#sommaire)*

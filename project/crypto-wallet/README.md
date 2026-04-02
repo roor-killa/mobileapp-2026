@@ -2,7 +2,9 @@
 
 Je regroupe ici **mon application Flutter** et **mon backend Laravel** pour NodEX.
 
-**La documentation complète** (installation, lancement, Git, dépannage) est dans le fichier [`README.md`](../../README.md) à la racine du dépôt.
+**À lire pour le rendu / le prof :** le [**rapport complet**](RAPPORT_RENDU_NODEX.md) (ou la version [**PDF**](RAPPORT_RENDU_NODEX.pdf)) : architecture, API, code expliqué, sitographie, annexes, captures dans `docs/rapport-captures/`. La [**présentation PowerPoint**](docs/NodEX.pptx) est dans `docs/`.
+
+**La documentation d’installation** (lancement, Git, dépannage) est dans le [`README.md`](../../README.md) à la racine du dépôt.
 
 En résumé, ce que j’utilise au quotidien :
 
