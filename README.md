@@ -1,4 +1,4 @@
-# UAPay
+# UAPay 
 
 UAPay est une application mobile de type **wallet / application bancaire** développée dans le cadre d’un projet de programmation mobile.  
 Le projet repose sur une architecture **full-stack** combinant :
