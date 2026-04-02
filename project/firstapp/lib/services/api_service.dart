@@ -1,63 +1,146 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/transfer_response.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://localhost:8001/api/products';
+  static const String baseUrl = 'https://unobviously-multilamellar-keiko.ngrok-free.dev/api';
 
-  /// Appel réel à l'API Laravel pour récupérer le prix du premier produit
-  /// et l'utiliser comme nouveau solde du wallet
-  Future<TransferResponse> transfererMontant(double montant) async {
-    print('📤 ÉTAPE 2 : Envoi de la requête API...');
-    print('💰 Montant à transférer : $montant €');
+  final String? token;
+  final FlutterSecureStorage storage = const FlutterSecureStorage();
+
+  ApiService({this.token});
+
+  // -------------------------------
+  // LOGIN: récupère le token JWT (corrigé)
+  // -------------------------------
+  Future<Map<String, dynamic>> login(String email, String password) async {
+    final response = await http.post(
+      Uri.parse("$baseUrl/login"),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({"email": email, "password": password}),
+    );
 
     try {
-      print('⚙️  ÉTAPE 3 : Appel GET $baseUrl...');
-      final response = await http.get(Uri.parse(baseUrl));
+      return jsonDecode(response.body); // Parse JSON côté API
+    } catch (_) {
+      return {
+        "success": false,
+        "message": "Erreur login : réponse API non JSON",
+      };
+    }
+  }
 
-      if (response.statusCode != 200) {
-        return TransferResponse(
-          success: false,
-          montantTotal: 0,
-          montantTransfere: 0,
-          nouveauSolde: 0,
-          message: 'Erreur API : status ${response.statusCode}',
-        );
+  // -------------------------------
+  // REGISTER: créer un utilisateur (CORRIGÉ)
+  // -------------------------------
+  Future<Map<String, dynamic>> register({
+    required String name,
+    required String email,
+    required String password,
+  }) async {
+    final url = Uri.parse('$baseUrl/register');
+
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'name': name,
+        'email': email,
+        'password': password,
+      }),
+    );
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return jsonDecode(response.body);
+    } else {
+      return {
+        "success": false,
+        "message": "Erreur inscription",
+      };
+    }
+  }
+
+  // -------------------------------
+  // Récupérer l'ID de l'utilisateur connecté
+  // -------------------------------
+  Future<int> getCurrentUserId() async {
+    try {
+      String? jwtToken = token ?? await storage.read(key: 'jwt');
+      if (jwtToken == null) return 0;
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/users/me'),
+        headers: {'Authorization': 'Bearer $jwtToken'},
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final user = data['user'] ?? {};
+        return (user['id'] ?? 0) as int;
       }
+      return 0;
+    } catch (e) {
+      print('Erreur getCurrentUserId: $e');
+      return 0;
+    }
+  }
 
-      print('📥 ÉTAPE 4 : Réception du JSON :');
-      print(response.body);
+  // -------------------------------
+  // Récupérer le solde actuel
+  // -------------------------------
+  Future<double> getSolde() async {
+    try {
+      String? jwtToken = token ?? await storage.read(key: 'jwt');
 
-      final data = json.decode(response.body);
+      final response = await http.get(
+        Uri.parse('$baseUrl/users/me'),
+        headers: {'Authorization': 'Bearer ${jwtToken ?? ''}'},
+      );
 
-      // Récupérer la liste de produits (gère les deux formats possibles)
-      final List<dynamic> products = data is List ? data : (data['data'] ?? data['products'] ?? []);
-
-      if (products.isEmpty) {
-        return TransferResponse(
-          success: false,
-          montantTotal: 0,
-          montantTransfere: 0,
-          nouveauSolde: 0,
-          message: 'Aucun produit trouvé',
-        );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return (data['solde'] ?? 0).toDouble();
       }
+      return 0;
+    } catch (e) {
+      print('Erreur getSolde : $e');
+      return 0;
+    }
+  }
 
-      // Récupérer le product_price du premier produit
-      final premierProduit = products[0];
-      final double productPrice = double.parse(premierProduit['product_price'].toString());
+  // -------------------------------
+  // Transfert d'argent
+  // -------------------------------
+  Future<TransferResponse> transfererVersUtilisateur(double montant, int recepteurId) async {
+    try {
+      String? jwtToken = token ?? await storage.read(key: 'jwt');
 
-      print('🔄 ÉTAPE 5 : product_price du premier produit = $productPrice');
+      final response = await http.post(
+        Uri.parse('$baseUrl/transfert'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ${jwtToken ?? ''}',
+        },
+        body: jsonEncode({
+          'recepteur_id': recepteurId,
+          'montant': montant,
+        }),
+      );
+
+      final data = jsonDecode(response.body);
+      double nouveauSolde = (data['solde_emetteur'] ?? 0).toDouble();
 
       return TransferResponse(
-        success: true,
-        montantTotal: productPrice,
+        success: data['success'] ?? false,
+        montantTotal: 0,
         montantTransfere: montant,
-        nouveauSolde: productPrice,
-        message: 'Solde mis à jour depuis l\'API (prix du 1er produit)',
+        nouveauSolde: nouveauSolde,
+        message: data['message'] ?? '',
       );
     } catch (e) {
-      print('❌ Erreur lors de l\'appel API : $e');
       return TransferResponse(
         success: false,
         montantTotal: 0,
@@ -68,20 +151,35 @@ class ApiService {
     }
   }
 
-  /// Récupérer le solde actuel depuis l'API (prix du premier produit)
-  Future<double> getSoldeActuel() async {
+  // -------------------------------
+  // Alias pour TransferScreen
+  // -------------------------------
+  Future<double> getSoldeActuel() => getSolde();
+
+  // -------------------------------
+  // Stripe: créer une session de paiement pour recharger le wallet
+  // -------------------------------
+  Future<String?> createStripeSession(double montant) async {
     try {
-      final response = await http.get(Uri.parse(baseUrl));
+      String? jwtToken = token ?? await storage.read(key: 'jwt');
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/stripe/checkout'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ${jwtToken ?? ''}',
+        },
+        body: jsonEncode({'montant': montant}),
+      );
+
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final List<dynamic> products = data is List ? data : (data['data'] ?? data['products'] ?? []);
-        if (products.isNotEmpty) {
-          return double.parse(products[0]['product_price'].toString());
-        }
+        final data = jsonDecode(response.body);
+        return data['url'];
       }
+      return null;
     } catch (e) {
-      print('❌ Erreur getSoldeActuel : $e');
+      print('Erreur createStripeSession : $e');
+      return null;
     }
-    return 0;
   }
 }
