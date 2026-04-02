@@ -1,231 +1,371 @@
-================================================================================
-                         RAPPORT DE PROJET ECOBANK
-                    Application Bancaire Mobile - Licence Informatique
-================================================================================
+# 🏦 ECOBANK - Application Bancaire Mobile
 
-TITRE DU PROJET : ECOBANK - Gestion Bancaire Digitale
+> Une application bancaire moderne et complète développée avec **Flutter**, **Node.js** et **PostgreSQL**
 
-ÉTUDIANTE : Fatoumata SAVANE
-DURÉE : Projet Complet (Backend + Frontend + Docker + Base de données)
-CLASSE : Licence Informatique
+![Status](https://img.shields.io/badge/Status-Complète-brightgreen)
+![License](https://img.shields.io/badge/License-MIT-blue)
+![Version](https://img.shields.io/badge/Version-1.0.0-orange)
 
-================================================================================
-                              TABLE DES MATIÈRES
-================================================================================
+---
 
-1. INTRODUCTION
-2. PROBLÉMATIQUE & OBJECTIFS
-3. PRÉSENTATION DU PROJET
-4. FONCTIONNALITÉS PRINCIPALES
-5. ARCHITECTURE TECHNIQUE
-6. TECHNOLOGIES UTILISÉES
-7. IMPLÉMENTATION
-8. RÉSULTATS & DÉMONSTRATION
-9. AVANTAGES DU PROJET
-10. AMÉLIORATIONS FUTURES
-11. CONCLUSION
+## 📋 Table des matières
 
-================================================================================
-1. INTRODUCTION
-================================================================================
+- [Vue d'ensemble](#vue-densemble)
+- [Fonctionnalités](#fonctionnalités)
+- [Architecture](#architecture)
+- [Technologies](#technologies)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Lancer l'application](#lancer-lapplication)
+- [Structure du projet](#structure-du-projet)
+- [API Endpoints](#api-endpoints)
+- [Résultats](#résultats)
+- [Améliorations futures](#améliorations-futures)
+- [Auteur](#auteur)
 
-Ecobank est une application bancaire mobile complète développée avec Flutter
-pour le frontend et Node.js + PostgreSQL pour le backend. Ce projet démontre
-une architecture professionnelle avec Docker, une API REST sécurisée et une
-base de données robuste.
+---
 
-L'application permet aux utilisateurs de gérer leurs finances en temps réel
-avec une interface intuitive et moderne en couleurs Or/Doré premium.
+## 🎯 Vue d'ensemble
 
-================================================================================
-2. PROBLÉMATIQUE & OBJECTIFS
-================================================================================
+**Ecobank** est une application bancaire mobile complète qui permet aux utilisateurs de gérer leurs finances en temps réel avec une interface intuitive et moderne.
 
-PROBLÉMATIQUE :
-─────────────
-Créer une application bancaire mobile moderne et sécurisée permettant aux
-utilisateurs de :
-- Gérer leurs comptes et soldes
-- Effectuer des transactions (virements, dépôts, retraits)
-- Suivre leurs dépenses et revenus
-- Consulter leurs objectifs d'épargne
-- Accéder à un profil personnalisé
+### Utilisateur Principal
+- **Nom:** Mariam Cissé
+- **Email:** mariam@ecobank.com
+- **Solde Initial:** 4.250,85 €
+- **Compte:** •••• •••• •••• 4829
 
-Tout cela avec une architecture professionnelle, scalable et facilement
-déployable en production.
+### Points forts du projet
+✅ Architecture professionnelle 3-tiers  
+✅ API REST sécurisée avec JWT  
+✅ Base de données optimisée  
+✅ Infrastructure Docker  
+✅ Interface Or/Doré premium  
+✅ Production-ready  
 
-OBJECTIFS :
-──────────
-✓ Développer une interface utilisateur intuitive et attrayante
-✓ Créer une API backend robuste avec authentification JWT
-✓ Implémenter une base de données PostgreSQL optimisée
-✓ Orchestrer les services avec Docker Compose
-✓ Assurer la sécurité des données et des transactions
-✓ Fournir une expérience utilisateur fluide et réactive
-✓ Démontrer les bonnes pratiques de développement
-✓ Créer une architecture scalable et maintenable
+---
 
-================================================================================
-3. PRÉSENTATION DU PROJET
-================================================================================
+## ✨ Fonctionnalités
 
-NOM : ECOBANK - Gestion Bancaire Digitale
+### 🔐 Authentification & Profil
+- ✓ Login/Register avec JWT
+- ✓ Profil utilisateur personnalisé
+- ✓ Modification des informations
+- ✓ Gestion sécurisée des sessions
+- ✓ Tokens expirables
 
-UTILISATEUR PRINCIPAL :
-─────────────────────
-Nom : Fatoumata 
-Email : fatoumata@ecobank.com
-Compte : •••• •••• •••• 4829
-Solde Initial : 4.250,85 €
-Devise : Euro (€)
+### 📊 Tableau de bord
+- ✓ Affichage du solde en temps réel
+- ✓ Historique des transactions récentes
+- ✓ Actions rapides (Virement, Dépôt)
+- ✓ Numéro de compte sécurisé
+- ✓ Mise à jour automatique
 
-CARACTÉRISTIQUES GÉNÉRALES :
-───────────────────────────
-• Type : Application Mobile/Web
-• Plateforme : Flutter (multi-plateforme)
-• Frontend : Google Edge / Navigateur Web
-• Backend : Node.js + Express.js
-• Base de données : PostgreSQL 15
-• Infrastructure : Docker Compose
-• Authentification : JWT (JSON Web Tokens)
-• Design : Or/Doré premium (Couleur primaire: #D4AF37)
+### 💳 Gestion des comptes
+- ✓ Consultation du solde
+- ✓ Informations IBAN
+- ✓ Historique complet des opérations
+- ✓ Gestion de plusieurs comptes
+- ✓ Statistiques par compte
 
-================================================================================
-4. FONCTIONNALITÉS PRINCIPALES
-================================================================================
+### 💰 Transactions
+- ✓ Virements interbancaires
+- ✓ Dépôts d'argent
+- ✓ Retraits
+- ✓ Historique détaillé avec catégories
+- ✓ Filtrage et recherche avancée
+- ✓ Dates et montants précis
 
-AUTHENTIFICATION ET PROFIL :
-──────────────────────────
-✓ Login/Register avec JWT
-✓ Profil utilisateur personnalisé
-✓ Modification des informations personnelles
-✓ Sécurité avec tokens expirables
-✓ Gestion des sessions
+### 💳 Cartes bancaires
+- ✓ Affichage des cartes actives
+- ✓ Numéro de carte sécurisé
+- ✓ Date d'expiration
+- ✓ Informations du titulaire
+- ✓ Statut de la carte
 
-TABLEAU DE BORD :
-───────────────
-✓ Affichage du solde disponible
-✓ Historique des transactions récentes
-✓ Numéro de compte sécurisé
-✓ Actions rapides (Virement, Dépôt)
-✓ Mise à jour en temps réel
+### 📈 Statistiques & Analytics
+- ✓ Dépenses par catégorie
+- ✓ Revenus vs Dépenses
+- ✓ Évolution mensuelle du solde
+- ✓ Graphiques et visualisations
+- ✓ Prévisions et tendances
 
-GESTION DES COMPTES :
-───────────────────
-✓ Consultation du solde
-✓ Informations IBAN
-✓ Historique complet
-✓ Gestion de plusieurs comptes
-✓ Statistiques par compte
+### 🎯 Objectifs d'épargne
+- ✓ Créer des objectifs personnalisés
+- ✓ Suivi du progrès en temps réel
+- ✓ Barres de progression visuelles
+- ✓ Conseils d'épargne automatisés
+- ✓ Notifications de jalons
 
-TRANSACTIONS :
-──────────────
-✓ Virements interbancaires
-✓ Dépôts d'argent
-✓ Retraits
-✓ Historique détaillé avec catégories
-✓ Filtrage et recherche
-✓ Dates et montants précis
+### ⚙️ Paramètres
+- ✓ Sécurité et confidentialité
+- ✓ Notifications
+- ✓ Préférences utilisateur
+- ✓ Gestion du compte
+- ✓ Déconnexion sécurisée
 
-CARTES BANCAIRES :
-──────────────────
-✓ Affichage des cartes
-✓ Numéro de carte sécurisé
-✓ Date d'expiration
-✓ Titulaire du compte
-✓ Informations détaillées
+---
 
-STATISTIQUES & ANALYTICS :
-─────────────────────────
-✓ Dépenses par catégorie
-✓ Revenus vs Dépenses
-✓ Évolution mensuelle du solde
-✓ Graphiques et visualisations
-✓ Prévisions et trends
+## 🏗️ Architecture
 
-OBJECTIFS D'ÉPARGNE :
-──────────────────
-✓ Créer des objectifs personnalisés
-✓ Suivi du progrès en temps réel
-✓ Barres de progression
-✓ Conseils d'épargne automatisés
-✓ Notifications de jalons atteints
+### Architecture 3-tiers
 
-PARAMÈTRES :
-────────────
-✓ Sécurité et confidentialité
-✓ Notifications
-✓ Préférences de langue
-✓ Gestion du compte
-✓ Déconnexion sécurisée
-
-================================================================================
-5. ARCHITECTURE TECHNIQUE
-================================================================================
-
-ARCHITECTURE GÉNÉRALE :
-──────────────────────
-
+```
 ┌─────────────────────────────────┐
-│   Flutter App (Frontend)        │
-│   - Interface utilisateur       │
-│   - Gestion locale des données  │
-│   - Google Edge Browser         │
+│   Frontend (Flutter)             │
+│   - Interface utilisateur        │
+│   - Gestion des données locales  │
+│   - Google Edge Browser          │
 └──────────────┬──────────────────┘
                │
                │ HTTP REST API
-               │ Requests/Responses JSON
+               │ JSON Requests/Responses
                │
 ┌──────────────▼──────────────────┐
-│   Node.js + Express (Backend)   │
-│   - Routes API                  │
+│   Backend (Node.js + Express)   │
+│   - Routes API RESTful          │
 │   - Logique métier              │
 │   - Authentification JWT        │
 │   - Validation des données      │
+│   - Port: 3000                  │
 └──────────────┬──────────────────┘
                │
                │ SQL Queries
                │ Transactions ACID
                │
 ┌──────────────▼──────────────────┐
-│   PostgreSQL (Base de Données)  │
+│   Database (PostgreSQL)         │
 │   - 8 tables normalisées        │
 │   - Contraintes d'intégrité     │
 │   - Indexes optimisés           │
-│   - Transactions sécurisées     │
+│   - Port: 5432                  │
 └─────────────────────────────────┘
+```
 
-DOCKER COMPOSE :
-───────────────
-Le tout est orchestré avec Docker Compose :
-- Container 1 : API Node.js (Port 3000)
-- Container 2 : PostgreSQL (Port 5432)
-- Network bridge pour communication inter-conteneurs
-- Volumes persistants pour la base de données
+### Orchestration avec Docker Compose
+```yaml
+Services:
+  ✓ ecobank_api (Node.js)        - Port 3000
+  ✓ ecobank_db (PostgreSQL)      - Port 5432
+  ✓ Network: ecobank_network     - Communication interne
+  ✓ Volumes: postgres_data       - Persistance BD
+```
 
-STRUCTURE DU BACKEND :
-────────────────────
+---
+
+## 🛠️ Technologies
+
+### Frontend
+- **Flutter 3.x** - Framework UI multi-plateforme
+- **Dart** - Langage de programmation moderne
+- **Material Design 3** - Système de design Google
+- **http package** - Requêtes HTTP/REST
+- **Google Edge** - Navigateur Web
+
+### Backend
+- **Node.js 18+** - Runtime JavaScript côté serveur
+- **Express.js 4.x** - Framework web minimaliste
+- **bcrypt** - Hachage sécurisé des mots de passe
+- **jsonwebtoken (JWT)** - Authentification par tokens
+- **pg (node-postgres)** - Driver PostgreSQL
+- **cors** - Gestion des requêtes cross-origin
+- **helmet** - Middleware de sécurité
+- **dotenv** - Variables d'environnement
+
+### Base de données
+- **PostgreSQL 15** - Base de données relationnelle
+- **SQL avancé** - Transactions, triggers, indexes
+- **8 tables normalisées** - Schéma optimisé
+
+### Infrastructure
+- **Docker** - Containerisation
+- **Docker Compose** - Orchestration des services
+- **Alpine Linux** - Image légère
+
+### Outils de développement
+- **Antigravity IDE** - Éditeur Flutter web-based
+- **VS Code** - Éditeur de code
+- **Git** - Gestion de version
+- **Postman** - Tests des API
+- **LibreOffice** - Suite bureautique
+
+---
+
+## 🚀 Installation
+
+### Prérequis
+```bash
+✓ Docker & Docker Compose installés
+✓ Flutter 3.x
+✓ Node.js 18+
+✓ PostgreSQL 15 (optionnel si Docker)
+✓ Git
+```
+
+### Étape 1: Cloner le projet
+```bash
+git clone https://github.com/fatoumata/ecobank.git
+cd ecobank
+```
+
+### Étape 2: Préparer la structure
+```bash
+# Structure attendue
+ecobank/
+├── backend/              # API Node.js
+│   ├── src/
+│   │   ├── server.js
+│   │   ├── database.js
+│   │   └── routes/
+│   ├── package.json
+│   ├── .env
+│   └── Dockerfile
+├── docker-compose.yml
+├── init.sql
+└── fatoubank/            # App Flutter
+    ├── lib/
+    ├── pubspec.yaml
+    └── ...
+```
+
+### Étape 3: Installer les dépendances
+
+**Backend:**
+```bash
+cd backend
+npm install
+```
+
+**Frontend:**
+```bash
+cd fatoubank
+flutter pub get
+```
+
+---
+
+## ⚙️ Configuration
+
+### Variables d'environnement (backend/.env)
+```env
+# Database
+DB_HOST=db
+DB_PORT=5432
+DB_NAME=ecobank_db
+DB_USER=ecobank_user
+DB_PASSWORD=ecobank_password
+
+# Server
+NODE_ENV=production
+PORT=3000
+
+# Security
+JWT_SECRET=ecobank_super_secret_key_2024
+
+# CORS
+CORS_ORIGIN=*
+```
+
+### Configuration Docker Compose
+```yaml
+version: '3.8'
+
+services:
+  api:
+    build: ./backend
+    ports:
+      - "3000:3000"
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+    depends_on:
+      - db
+    networks:
+      - ecobank_network
+
+  db:
+    image: postgres:15-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=ecobank_db
+      - POSTGRES_USER=ecobank_user
+      - POSTGRES_PASSWORD=ecobank_password
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - ecobank_network
+
+volumes:
+  postgres_data:
+
+networks:
+  ecobank_network:
+    driver: bridge
+```
+
+---
+
+## 🎯 Lancer l'application
+
+### 1️⃣ Démarrer Docker Compose
+```bash
+docker-compose up
+```
+
+Attendez le message:
+```
+✅ Serveur Ecobank démarré sur http://localhost:3000
+✅ Base de données PostgreSQL connectée
+```
+
+### 2️⃣ Lancer l'application Flutter
+```bash
+cd fatoubank
+flutter run -d edge
+```
+
+### 3️⃣ Se connecter
+```
+Email: mariam
+Mot de passe: 1234
+```
+
+### 4️⃣ Accéder à l'API
+```
+Base URL: http://localhost:3000
+Health Check: http://localhost:3000/api/health
+```
+
+---
+
+## 📁 Structure du projet
+
+### Backend
+```
 backend/
 ├── src/
-│   ├── server.js              (Point d'entrée)
-│   ├── database.js            (Connexion PostgreSQL)
+│   ├── server.js              # Point d'entrée
+│   ├── database.js            # Connexion PostgreSQL
 │   ├── routes/
-│   │   ├── auth.js            (Authentification)
-│   │   ├── accounts.js        (Gestion des comptes)
-│   │   ├── transactions.js    (Transactions)
-│   │   └── users.js           (Profils utilisateurs)
+│   │   ├── auth.js            # Authentification
+│   │   ├── accounts.js        # Gestion des comptes
+│   │   ├── transactions.js    # Transactions
+│   │   └── users.js           # Profils utilisateurs
 │   └── middleware/
-│       └── auth.js            (Authentification JWT)
-├── package.json               (Dépendances)
-├── .env                       (Variables d'environnement)
-└── Dockerfile                 (Configuration Docker)
+│       └── auth.js            # Authentification JWT
+├── package.json               # Dépendances
+├── .env                       # Variables d'environnement
+└── Dockerfile                 # Configuration Docker
+```
 
-STRUCTURE DU FRONTEND :
-─────────────────────
+### Frontend
+```
 fatoubank/lib/
-├── main.dart                  (Point d'entrée)
+├── main.dart                  # Point d'entrée
 ├── app/
-│   └── app.dart              (Configuration de l'app)
+│   └── app.dart              # Configuration de l'app
 ├── models/
 │   ├── transaction.dart
 │   └── transaction_type.dart
@@ -245,272 +385,349 @@ fatoubank/lib/
 │   ├── transaction_card.dart
 │   └── settings_tile.dart
 ├── services/
-│   └── api_service.dart       (Connexion API)
+│   └── api_service.dart       # Connexion API
 └── utils/
-    └── colors.dart            (Palette Or/Doré)
+    └── colors.dart            # Palette Or/Doré
+```
 
-================================================================================
-6. TECHNOLOGIES UTILISÉES
-================================================================================
+### Base de données
+```
+Tables:
+✓ users             - Utilisateurs du système
+✓ accounts          - Comptes bancaires
+✓ transactions      - Historique des opérations
+✓ cards             - Cartes bancaires
+✓ savings_goals     - Objectifs d'épargne
+✓ notifications     - Notifications utilisateur
+✓ categories        - Catégories de transactions
+✓ audit_logs        - Journalisation des opérations
+```
 
-FRONTEND :
-──────────
-• Flutter 3.x         - Framework UI multi-plateforme
-• Dart                - Langage de programmation
-• Material Design 3   - Système de design Google
-• http package        - Requêtes HTTP/REST
+---
 
-BACKEND :
-─────────
-• Node.js 18+         - Runtime JavaScript côté serveur
-• Express.js 4.x      - Framework web minimaliste
-• PostgreSQL 15       - Base de données relationnelle
-• bcrypt              - Hachage sécurisé des mots de passe
-• jsonwebtoken (JWT)  - Authentification par tokens
-• pg (node-postgres)  - Driver PostgreSQL pour Node.js
-• cors                - Gestion des requêtes cross-origin
-• helmet              - Middleware de sécurité
-• dotenv              - Gestion des variables d'environnement
+## 🔌 API Endpoints
 
-INFRASTRUCTURE :
-────────────────
-• Docker              - Containerisation
-• Docker Compose      - Orchestration des services
-• Alpine Linux        - Image de base légère
+### Authentification
+```bash
+POST   /api/auth/login          # Connexion
+POST   /api/auth/register       # Inscription
+GET    /api/auth/verify         # Vérifier token
+POST   /api/auth/logout         # Déconnexion
+```
 
-OUTILS DE DÉVELOPPEMENT :
-──────────────────────
-• Antigravity IDE     - Éditeur Flutter web-based
-• VS Code             - Éditeur de code
-• Git/GitHub          - Gestion de version
-• Postman             - Test des API
-• LibreOffice         - Suite bureautique
+### Comptes
+```bash
+GET    /api/accounts/:id        # Récupérer compte
+GET    /api/accounts/user/:userId  # Comptes de l'utilisateur
+POST   /api/accounts            # Créer compte
+PUT    /api/accounts/:id        # Mettre à jour compte
+```
 
-================================================================================
-7. IMPLÉMENTATION
-================================================================================
+### Transactions
+```bash
+GET    /api/transactions/account/:accountId  # Historique
+GET    /api/transactions/:id                 # Détails
+POST   /api/transactions                     # Créer transaction
+POST   /api/transactions/transfer            # Virement
+```
 
-ÉTAPE 1 : PRÉPARATION
-────────────────────
-✓ Configuration du projet Flutter
-✓ Structure de dossiers professionnelle
-✓ Installation des dépendances
+### Utilisateurs
+```bash
+GET    /api/users/:id           # Profil utilisateur
+PUT    /api/users/:id           # Mettre à jour profil
+GET    /api/users/:id/statistics # Statistiques
+```
 
-ÉTAPE 2 : DÉVELOPPEMENT DU FRONTEND
-────────────────────────────────────
-✓ Écran de connexion avec validation
-✓ Dashboard avec 5 onglets :
-  - Tableau de bord (solde, transactions, actions)
-  - Statistiques (dépenses, revenus, graphiques)
-  - Objectifs d'épargne (suivi, conseils)
-  - Cartes bancaires
-  - Profil utilisateur
-✓ Design moderne avec couleurs Or/Doré
-✓ Navigation fluide
+### Santé
+```bash
+GET    /api/health              # État de l'API
+```
 
-ÉTAPE 3 : DÉVELOPPEMENT DU BACKEND
-───────────────────────────────────
-✓ Serveur Express avec routes RESTful
-✓ 4 modules API :
-  - /api/auth (Login, Register, Verify)
-  - /api/accounts (Gestion des comptes)
-  - /api/transactions (Transactions CRUD)
-  - /api/users (Profils utilisateurs)
-✓ Authentification JWT sécurisée
-✓ Validation des données
-✓ Gestion des erreurs
+---
 
-ÉTAPE 4 : BASE DE DONNÉES
-─────────────────────────
-✓ 8 tables normalisées :
-  1. users (utilisateurs)
-  2. accounts (comptes bancaires)
-  3. transactions (historique)
-  4. cards (cartes bancaires)
-  5. savings_goals (objectifs)
-  6. notifications (notifications)
-  + indexes et contraintes
-✓ Schéma optimisé pour performances
-✓ Intégrité référentielle garantie
+## ✅ Résultats
 
-ÉTAPE 5 : DOCKER & ORCHESTRATION
-─────────────────────────────────
-✓ Dockerfile pour l'API
-✓ docker-compose.yml avec 2 services
-✓ Configuration des volumes persistants
-✓ Réseau bridge pour communication
-✓ Variables d'environnement
+### Démonstration réussie
+- ✅ Connexion sécurisée avec JWT
+- ✅ Tableau de bord avec solde en temps réel: **4.250,85 €**
+- ✅ Transactions fonctionnelles (virements, dépôts)
+- ✅ Statistiques avec graphiques
+- ✅ Objectifs d'épargne avec suivi
+- ✅ Profil utilisateur personnalisé
+- ✅ Paramètres de sécurité
 
-ÉTAPE 6 : INTÉGRATION API-FRONTEND
-──────────────────────────────────
-✓ Service ApiService.dart
-✓ Méthodes pour chaque endpoint
-✓ Gestion des tokens JWT
-✓ Gestion des erreurs et timeouts
-✓ Requêtes async/await
+### Performances
+- ⚡ Temps de chargement: **< 2 secondes**
+- ⚡ Temps de réponse API: **< 500ms**
+- ⚡ Transactions simultanées supportées: **100+**
+- ⚡ Capacité BD: **jusqu'à 1 million de transactions**
 
-ÉTAPE 7 : TESTS & VALIDATION
-────────────────────────────
-✓ Tests de l'API avec Postman
-✓ Tests UI de l'application
-✓ Vérification de la synchronisation données
-✓ Vérification de la sécurité
+### Avantages
+- 🎯 **Architecture professionnelle** - Séparation frontend/backend, code modulaire
+- 🔒 **Sécurité** - JWT robuste, bcrypt, ACID transactions
+- 📈 **Scalabilité** - Docker, stateless API, PostgreSQL optimisée
+- 🛠️ **Maintenabilité** - Code structuré, commenté, gestion d'erreurs
+- 👤 **UX** - Interface intuitive, design premium Or/Doré
+- 🚀 **Production-ready** - Déploiement Docker simple
 
-================================================================================
-8. RÉSULTATS & DÉMONSTRATION
-================================================================================
+---
 
-FONCTIONNALITÉS DÉMONTRÉES :
-───────────────────────────
+## 🔮 Améliorations futures
 
-1. CONNEXION
-   - Authentification avec JWT
-   - Redirection vers tableau de bord
-   - Sécurité des données
+### Court terme (1-3 mois)
+- [ ] Intégration APIs bancaires réelles
+- [ ] Authentification biométrique (Face ID, empreinte)
+- [ ] Code QR pour virements
+- [ ] Notifications push en temps réel
+- [ ] Chat support client
 
-2. TABLEAU DE BORD
-   - Affichage du solde : 4.250,85 €
-   - Transactions récentes
-   - Actions rapides : Virement, Dépôt
+### Moyen terme (3-6 mois)
+- [ ] Application mobile native (iOS)
+- [ ] Investissements et portefeuille
+- [ ] Épargne automatisée
+- [ ] Analyse prédictive des dépenses
+- [ ] Paiements mobiles (Apple Pay, Google Pay)
 
-3. TRANSACTIONS
-   - Création de virement
-   - Mise à jour du solde
-   - Affichage en temps réel
+### Long terme (6+ mois)
+- [ ] Agrégateur financier multi-banques
+- [ ] Machine Learning pour recommandations
+- [ ] Blockchain pour sécurité
+- [ ] Déploiement AWS/Google Cloud
+- [ ] Internationale (multi-langues, multi-devises)
+- [ ] API tierce pour partenaires
 
-4. STATISTIQUES
-   - Dépenses par catégorie
-   - Évolution mensuelle
-   - Top transactions
+---
 
-5. OBJECTIFS
-   - Vacances : 1.500 € / 2.000 € (75%)
-   - Ordinateur : 750 € / 1.500 € (50%)
-   - Fonds urgence : 4.250,85 € / 5.000 € (85%)
+## 📸 Captures d'écran
 
-6. PROFIL
-   - Informations de Fatoumata
-   - Statistiques de compte
-   - Modification possible
+### 1️⃣ Écran de connexion
+L'application s'ouvre avec un écran de connexion moderne aux couleurs Or/Doré.
 
-7. PARAMÈTRES
-   - Déconnexion sécurisée
-   - Retour à l'écran de connexion
+![Login Screen](screenshots/01_login_screen.png)
 
-PERFORMANCES :
-──────────────
-✓ Temps de chargement : < 2 secondes
-✓ Temps de réponse API : < 500ms
-✓ Transactions simultanées : 100+ supportées
-✓ Base de données : jusqu'à 1 million de transactions
+**Caractéristiques:**
+- Design premium Or/Doré
+- Logo ECOBANK en évidence
+- Champs Email et Mot de passe
+- Bouton "Se connecter" sécurisé
+- Authentification JWT
 
-================================================================================
-9. AVANTAGES DU PROJET
-================================================================================
+---
 
-ARCHITECTURE PROFESSIONNELLE :
-────────────────────────────
-✓ Séparation nette frontend/backend
-✓ Respect du pattern MVC
-✓ Code modulaire et réutilisable
-✓ Facilement extensible
+### 2️⃣ Tableau de bord
+Après connexion, les utilisateurs voient leur solde et transactions récentes.
 
-SÉCURITÉ :
-──────────
-✓ Authentification JWT robuste
-✓ Validation des données côté serveur
-✓ Hachage des mots de passe avec bcrypt
-✓ CORS configuré
-✓ Transactions ACID garanties
+![Dashboard Screen](screenshots/02_dashboard_screen.png)
 
-PERFORMANCES :
-──────────────
-✓ Base de données indexée
-✓ Queries optimisées
-✓ Caching des données
-✓ Chargement asynchrone
-✓ API rapide < 500ms
+**Contenu du tableau de bord:**
+- Solde disponible en temps réel: **4.250,85 €**
+- Numéro de compte sécurisé
+- IBAN: FR1420041010050500013M02606
+- Transactions récentes avec catégories
+- Boutons d'action (Virement, Dépôt)
 
-SCALABILITÉ :
-──────────────
-✓ Architecture horizontalement scalable
-✓ Docker pour déploiement facile
-✓ PostgreSQL supporte 100 000+ utilisateurs
-✓ API stateless
-✓ Load balancing possible
+---
 
-MAINTENABILITÉ :
-────────────────
-✓ Code bien structuré
-✓ Commentaires explicites
-✓ Noms de variables clairs
-✓ Gestion d'erreurs complète
-✓ Logs détaillés
+### 3️⃣ Statistiques
+Analyse complète des dépenses et revenus.
 
-EXPÉRIENCE UTILISATEUR :
-────────────────────────
-✓ Interface intuitive
-✓ Réactivité rapide
-✓ Design premium Or/Doré
-✓ Navigation fluide
-✓ Feedback utilisateur clair
+![Statistics Screen](screenshots/03_statistics_screen.png)
 
-================================================================================
-10. AMÉLIORATIONS FUTURES
-================================================================================
+**Fonctionnalités:**
+- Résumé mensuel (Revenus, Dépenses, Bilan)
+- Dépenses par catégorie (Netflix, Supermarché, Transport)
+- Barres de progression visuelles
+- Montants détaillés pour chaque catégorie
+- Données mises à jour en temps réel
 
-COURT TERME (1-3 mois) :
-────────────────────────
-□ Intégration avec APIs bancaires réelles
-□ Authentification biométrique (Face ID, empreinte)
-□ Code QR pour virements
-□ Notifications push en temps réel
-□ Chat support client
+---
 
-MOYEN TERME (3-6 mois) :
-────────────────────────
-□ Application mobile native (iOS)
-□ Investissements et portefeuille
-□ Épargne automatisée
-□ Analyse prédictive des dépenses
-□ Paiements mobiles (Apple Pay, Google Pay)
+### 4️⃣ Objectifs d'épargne
+Suivi des objectifs avec barres de progression.
 
-LONG TERME (6+ mois) :
-──────────────────────
-□ Agrégateur financier multi-banques
-□ Machine Learning pour recommandations
-□ Blockchain pour sécurité accrue
-□ Déploiement AWS/Google Cloud
-□ Internationale (multi-langues, multi-devises)
-□ API tierce pour partenaires
+![Goals Screen](screenshots/04_goals_screen.png)
 
-================================================================================
-11. CONCLUSION
-================================================================================
+**Objectifs implémentés:**
+- 🏖️ Vacances: 1.500 € / 2.000 € (75%)
+- 💻 Ordinateur: 750 € / 1.500 € (50%)
+- 🛡️ Fonds urgence: 4.250,85 € / 5.000 € (85%)
+- Conseils d'épargne automatisés
+- Notifications de jalons atteints
 
-Ecobank est une démonstration complète et professionnelle d'une application
-bancaire moderne. Ce projet intègre :
+---
 
-✓ Frontend Flutter moderne et réactif
-✓ Backend Node.js robuste et sécurisé
-✓ Base de données PostgreSQL optimisée
-✓ Infrastructure Docker scalable
-✓ Architecture professionnelle
-✓ Bonnes pratiques de développement
+### 5️⃣ Profil utilisateur
+Informations personnelles et statistiques de compte.
 
-Le projet démontre la capacité à :
-- Concevoir une architecture complète
-- Implémenter une API REST complète
-- Créer une UI professionnelle
-- Gérer une base de données complexe
-- Utiliser des outils modernes (Docker)
-- Sécuriser une application
-- Déployer en production
+![Profile Screen](screenshots/05_profile_screen.png)
 
-Ecobank est prête pour une présentation en classe et peut servir de base
-pour un véritable service bancaire digital.
+**Informations affichées:**
+- Avatar avec initiales (FC)
+- Nom: **Mariam Cissé**
+- Email: mariam@ecobank.com
+- Compte principal avec solde
+- IBAN complet
+- Statistiques de transactions:
+  - Virements effectués: 15
+  - Transactions totales: 47
+  - Dépenses totales: 2.458,32 €
+  - Revenus totaux: 5.000,00 €
+- Bouton "Modifier le profil"
 
-================================================================================
-FIN DU RAPPORT
-================================================================================
+---
 
+## 📊 Schéma BD
+
+### Exemple de données
+```sql
+-- Users
+mariam | mariam@ecobank.com | BCRYPT_HASH
+
+-- Accounts
+FR1420041010050500013M02606 | 4250.85 | EUR
+
+-- Transactions
+2024-04-01 | Salaire | +2500.00
+2024-04-02 | Netflix | -12.99
+2024-04-03 | Supermarché | -45.50
+
+-- Cards
+4824 **** **** 7392 | MARIAM CISSE | 03/26
+
+-- Savings Goals
+Vacances | 1500 / 2000 | 75%
+Ordinateur | 750 / 1500 | 50%
+Fonds urgence | 4250.85 / 5000 | 85%
+```
+
+---
+
+## 🔒 Sécurité
+
+### Mesures implémentées
+- ✅ **JWT Authentication** - Tokens sécurisés et expirables
+- ✅ **Bcrypt** - Hachage sécurisé des mots de passe avec salt
+- ✅ **CORS** - Validation des origines
+- ✅ **Helmet.js** - Headers HTTP sécurisés
+- ✅ **HTTPS Ready** - Prêt pour SSL/TLS
+- ✅ **Input Validation** - Validation côté serveur
+- ✅ **SQL Injection Prevention** - Prepared statements
+- ✅ **Rate Limiting** - (À implémenter)
+
+---
+
+## 🧪 Tests
+
+### API Testing avec Postman
+```bash
+# Import la collection Postman
+# Tests: auth, accounts, transactions, users
+
+# Exemple de test
+POST http://localhost:3000/api/auth/login
+{
+  "email": "fatoumata",
+  "password": "password123"
+}
+
+Response:
+{
+  "success": true,
+  "token": "eyJhbGc...",
+  "user": { ... }
+}
+```
+
+### Test de l'application Flutter
+```bash
+flutter test
+flutter run -d edge
+```
+
+---
+
+## 📞 Support
+
+### Problèmes courants
+
+**Docker ne démarre pas**
+```bash
+docker-compose down
+docker-compose up --build
+```
+
+**API ne répond pas**
+```bash
+# Vérifier que Docker fonctionne
+docker ps
+# Vérifier les logs
+docker-compose logs api
+```
+
+**Flutter n'accède pas à l'API**
+```bash
+# Vérifier que l'API est accessible
+curl http://localhost:3000/api/health
+```
+
+---
+
+
+---
+
+
+---
+
+## 🙏 Remerciements
+
+- Flutter & Dart teams
+- Express.js community
+- PostgreSQL for reliability
+- Docker for containerization
+- Professeur et institution
+
+---
+
+## 📅 Statut du projet
+
+| Aspect | Statut |
+|--------|--------|
+| Frontend Flutter | ✅ Complète |
+| Backend API | ✅ Complète |
+| Base de données | ✅ Complète |
+| Docker | ✅ Complète |
+| Authentification JWT | ✅ Complète |
+| Fonctionnalités | ✅ Toutes implémentées |
+| Tests | ⚠️ En cours |
+| Documentation | ✅ Complète |
+| Déploiement Production | 🔄 Prêt |
+
+---
+
+## 🚀 Démarrage rapide (TL;DR)
+
+```bash
+# 1. Cloner et installer
+git clone <repo>
+cd ecobank
+
+# 2. Démarrer Docker
+docker-compose up
+
+# 3. Lancer Flutter
+cd fatoubank && flutter run -d edge
+
+# 4. Se connecter
+Email: mariam
+Password: 1234
+
+# 5. Enjoy! 🎉
+```
+
+---
+
+**Développé avec ❤️ par Fatoumata SAVANE**
+
+
+
+---
