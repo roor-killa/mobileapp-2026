@@ -1,34 +1,38 @@
 # Mon projet : NodEX (portefeuille crypto) — branche `meranville`
 
-Je présente ici **mon travail** dans le cadre du dépôt [mobileapp-2026](https://github.com/roor-killa/mobileapp-2026). Mon code se trouve sur la branche Git **`meranville`** (ce n’est pas forcément la branche par défaut sur GitHub : il faut la sélectionner dans le menu des branches pour voir mes fichiers).
+**À l’attention de mon professeur —** je documente ici mon travail pour le rendu. Je vous remercie par avance pour la relecture.
+
+Je présente **NodEX** dans le cadre du dépôt [mobileapp-2026](https://github.com/roor-killa/mobileapp-2026). **Mon code est sur la branche Git `meranville`** : sur GitHub, il faut choisir cette branche dans le menu déroulant (ce n’est pas toujours la branche affichée par défaut), sinon vous ne verrez pas mon dossier à jour.
 
 **Lien du dépôt :** [https://github.com/roor-killa/mobileapp-2026.git](https://github.com/roor-killa/mobileapp-2026.git)
 
 ---
 
-## Documentation complète : rapport + présentation
+## Ce que je vous invite à consulter en priorité (rapport + oral)
 
-**Pour comprendre tout le projet en détail** (architecture, API, code expliqué, captures d’écran, sitographie, annexes), va lire le **rapport de rendu** :
+Pour **juger l’ensemble du projet** (architecture, API, code expliqué ligne par ligne, captures d’écran, sitographie, annexes), **je vous demande de lire mon rapport de rendu** :
 
 | Fichier | Rôle |
 |:--------|:-----|
 | [`project/crypto-wallet/RAPPORT_RENDU_NODEX.md`](project/crypto-wallet/RAPPORT_RENDU_NODEX.md) | Version Markdown (lisible sur GitHub, sommaire cliquable). |
-| [`project/crypto-wallet/RAPPORT_RENDU_NODEX.pdf`](project/crypto-wallet/RAPPORT_RENDU_NODEX.pdf) | Version PDF (mise en page pour impression ou rendu au prof). |
+| [`project/crypto-wallet/RAPPORT_RENDU_NODEX.pdf`](project/crypto-wallet/RAPPORT_RENDU_NODEX.pdf) | Version PDF (impression ou correction). |
 | [`project/crypto-wallet/docs/NodEX.pptx`](project/crypto-wallet/docs/NodEX.pptx) | **Présentation PowerPoint** NodEX (oral / Gamma / cours). |
 
-Pour régénérer le PDF après modification du `.md` : `cd project/crypto-wallet && ./genere-rapport-pdf.sh`.
+Si vous régénérez le PDF après une modification du `.md` : `cd project/crypto-wallet && ./genere-rapport-pdf.sh`.
 
 ---
 
-## Comment ça marche (vue d’ensemble)
+## Comment mon application fonctionne (résumé pour vous)
 
-1. **Backend Laravel** tourne sur ton Mac (`php artisan serve`) et expose une **API** sous `/api` (portefeuilles, virements, carte virtuelle, assistant Groq, etc.).  
-2. **Appwrite** gère **connexion / inscription** : l’app obtient un **JWT** que Laravel utilise pour savoir quel utilisateur appelle l’API.  
-3. **Application Flutter** affiche les écrans ; elle envoie des requêtes HTTP vers l’URL de l’API (souvent `http://127.0.0.1:8000/api` en local, ou l’IP du Mac depuis un téléphone).  
-4. Les **prix des cryptos** à l’écran viennent en grande partie de l’**API CoinGecko** (appel depuis l’app).  
-5. **Stripe** est prévu pour les paiements côté app ; **Groq** alimente l’assistant (via Laravel de préférence, pour garder la clé côté serveur).
+Voici **comment j’ai conçu le flux**, de façon synthétique :
 
-Les étapes d’installation et les commandes exactes sont dans les sections **plus bas** de ce README ; le **rapport** ci-dessus explique le **fonctionnement technique** fichier par fichier.
+1. **J’ai un backend Laravel** que je lance en local avec `php artisan serve` : il expose une **API** sous `/api` (portefeuilles, virements, carte virtuelle, assistant Groq, etc.).  
+2. **J’utilise Appwrite** pour la **connexion et l’inscription** : l’application obtient un **JWT** que mon API Laravel lit pour identifier l’utilisateur.  
+3. **Mon application Flutter** affiche les écrans et envoie des requêtes HTTP vers l’URL de cette API (chez moi : souvent `http://127.0.0.1:8000/api` ; depuis un téléphone sur le même réseau, l’adresse IP de mon ordinateur).  
+4. **J’affiche les prix des cryptos** grâce à l’**API CoinGecko** (appelée depuis l’app).  
+5. **J’ai intégré Stripe** pour les paiements côté application ; **Groq** sert à l’assistant conversationnel (idéalement via Laravel pour ne pas exposer ma clé API dans l’app).
+
+Les **commandes pour reproduire** l’environnement chez vous sont dans les sections **plus bas**. Le **détail technique** (fichiers, contrôleurs, sécurité) est dans **mon rapport**, que je vous prie de consulter pour la correction.
 
 ---
 
@@ -99,7 +103,7 @@ Ensuite j’édite le fichier **`.env`** (copié depuis l’exemple) pour y mett
 - **`GROQ_API_KEY=`** ma clé Groq ;
 - éventuellement **`GROQ_MODEL=llama-3.1-8b-instant`** (ou le modèle prévu dans l’exemple).
 
-**Important :** je **ne commite jamais** le fichier `.env` : il est dans `.gitignore` pour ne pas publier mes mots de passe et clés sur GitHub. Pour corriger ou noter, le professeur peut partir de **`.env.example`** et recréer un `.env` local.
+**Important :** je **ne commite jamais** le fichier `.env` : il est dans `.gitignore` pour ne pas publier mes clés sur GitHub. **Si vous voulez exécuter le projet chez vous**, vous pouvez partir de **`.env.example`** et créer un `.env` local avec vos propres paramètres.
 
 Pour démarrer le serveur :
 
@@ -199,3 +203,7 @@ git remote -v
 - [Documentation Laravel](https://laravel.com/docs)
 - [Groq — modèles](https://console.groq.com/docs/models)
 - [Appwrite](https://appwrite.io/docs)
+
+---
+
+*Je reste disponible si vous avez des questions sur mon implémentation ou sur la façon dont j’ai structuré le dépôt.*

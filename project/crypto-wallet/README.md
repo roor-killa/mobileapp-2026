@@ -2,9 +2,9 @@
 
 Je regroupe ici **mon application Flutter** et **mon backend Laravel** pour NodEX.
 
-**À lire pour le rendu / le prof :** le [**rapport complet**](RAPPORT_RENDU_NODEX.md) (ou la version [**PDF**](RAPPORT_RENDU_NODEX.pdf)) : architecture, API, code expliqué, sitographie, annexes, captures dans `docs/rapport-captures/`. La [**présentation PowerPoint**](docs/NodEX.pptx) est dans `docs/`.
+**Pour mon professeur :** je vous indique que mon **rapport de rendu** est le fichier [**RAPPORT_RENDU_NODEX.md**](RAPPORT_RENDU_NODEX.md) (version [**PDF**](RAPPORT_RENDU_NODEX.pdf) pour la correction). J’y détaille l’architecture, les API, le code, la sitographie et les annexes ; les captures sont dans `docs/rapport-captures/`. Ma [**présentation orale (PowerPoint)**](docs/NodEX.pptx) est dans `docs/`.
 
-**La documentation d’installation** (lancement, Git, dépannage) est dans le [`README.md`](../../README.md) à la racine du dépôt.
+**Pour installer et lancer** le projet (commandes, Git, dépannage), je vous renvoie au [`README.md`](../../README.md) à la racine du dépôt, rédigé aussi **en je** pour vous guider.
 
 En résumé, ce que j’utilise au quotidien :
 
