@@ -2,7 +2,7 @@
 
 ## Problèmes principaux identifiés
 
-### 1) `backend/.env.example` contenait `CREDIT_ON_STATUS=false`
+### 1) `backend/.env.example` contenait `CREDIT_ON_STATUS=false`  
 **Résultat :** un paiement Stripe pouvait réussir alors que le wallet restait inchangé lorsque le webhook n’était pas configuré ou pas reçu.
 
 ### 2) Les lignes wallet manquantes n’étaient pas réparées de façon cohérente
