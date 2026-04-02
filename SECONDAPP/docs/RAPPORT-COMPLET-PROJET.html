@@ -1,0 +1,1654 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Rapport technique — mobileapp-2026</title>
+  <style>
+    :root { color-scheme: light; }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      line-height: 1.65;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2.5rem 2rem 5rem;
+      color: #1a1a2e;
+      font-size: 10.5pt;
+      background: #fff;
+    }
+
+    /* ── Page de couverture ── */
+    h1:first-of-type {
+      font-size: 2rem;
+      font-weight: 800;
+      color: #0f172a;
+      border-bottom: 3px solid #3b82f6;
+      padding-bottom: 0.5rem;
+      margin-top: 0;
+      margin-bottom: 0.25rem;
+    }
+
+    /* ── Titres ── */
+    h1 { font-size: 1.8rem; font-weight: 700; color: #0f172a; margin-top: 2.5rem; }
+    h2 {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #1e40af;
+      margin-top: 2.2rem;
+      border-bottom: 2px solid #bfdbfe;
+      padding-bottom: 0.3rem;
+    }
+    h3 {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: #1d4ed8;
+      margin-top: 1.6rem;
+    }
+    h4 {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #374151;
+      margin-top: 1.2rem;
+    }
+
+    /* ── Paragraphes & texte ── */
+    p { margin: 0.5rem 0 0.75rem; }
+    strong { color: #111827; }
+
+    /* ── Tableaux ── */
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 1rem 0 1.4rem;
+      font-size: 0.92rem;
+    }
+    th {
+      background: #1e40af;
+      color: #fff;
+      font-weight: 600;
+      padding: 0.5rem 0.75rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    td {
+      border: 1px solid #dbeafe;
+      padding: 0.45rem 0.75rem;
+      vertical-align: top;
+    }
+    tr:nth-child(even) td { background: #f0f7ff; }
+    tr:hover td { background: #dbeafe; }
+
+    /* ── Code inline ── */
+    code {
+      font-family: "Cascadia Code", "Fira Code", ui-monospace, Consolas, monospace;
+      font-size: 0.85em;
+      background: #f1f5f9;
+      color: #0f172a;
+      padding: 0.12em 0.4em;
+      border-radius: 4px;
+      border: 1px solid #e2e8f0;
+    }
+
+    /* ── Blocs de code ── */
+    pre {
+      background: #0f172a;
+      color: #e2e8f0;
+      padding: 1rem 1.25rem;
+      overflow-x: auto;
+      border-radius: 8px;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.82em;
+      line-height: 1.55;
+    }
+    pre code {
+      background: none;
+      color: inherit;
+      padding: 0;
+      border: none;
+      font-size: inherit;
+    }
+
+    /* ── Listes ── */
+    ul, ol { padding-left: 1.5rem; margin: 0.4rem 0 0.8rem; }
+    li { margin: 0.2rem 0; }
+
+    /* ── Séparateurs ── */
+    hr {
+      border: none;
+      border-top: 2px solid #e2e8f0;
+      margin: 2.5rem 0;
+    }
+
+    /* ── Blockquote ── */
+    blockquote {
+      border-left: 4px solid #3b82f6;
+      background: #eff6ff;
+      margin: 1rem 0;
+      padding: 0.6rem 1rem;
+      border-radius: 0 6px 6px 0;
+      color: #1e3a8a;
+    }
+
+    /* ── Badges d'état (simulation) ── */
+    .badge-draft  { background:#fef9c3; color:#854d0e; padding:2px 8px; border-radius:9999px; font-size:0.8em; }
+    .badge-posted { background:#dbeafe; color:#1e40af; padding:2px 8px; border-radius:9999px; font-size:0.8em; }
+    .badge-paid   { background:#dcfce7; color:#166534; padding:2px 8px; border-radius:9999px; font-size:0.8em; }
+
+    /* ── Métadonnées du rapport (après le h1) ── */
+    h1 + p strong { color: #374151; }
+
+    /* ── Table des matières ── */
+    h2:first-of-type + ul a,
+    p + ul a {
+      color: #2563eb;
+      text-decoration: none;
+    }
+
+    /* ── Liens ── */
+    a { color: #2563eb; text-decoration: underline; }
+
+    /* ── Impression PDF ── */
+    @media print {
+      body {
+        max-width: none;
+        padding: 0.8cm 1.2cm 1cm;
+        font-size: 9.5pt;
+        color: #000;
+      }
+
+      h1 { font-size: 20pt; page-break-after: avoid; }
+      h2 { font-size: 13pt; page-break-after: avoid; color: #1e40af; }
+      h3 { font-size: 11pt; page-break-after: avoid; }
+
+      pre {
+        background: #f8fafc;
+        color: #0f172a;
+        border: 1px solid #cbd5e1;
+        page-break-inside: avoid;
+        font-size: 7.5pt;
+      }
+
+      table { page-break-inside: avoid; font-size: 8.5pt; }
+      tr    { page-break-inside: avoid; }
+
+      th { background: #1e40af !important; color: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      tr:nth-child(even) td { background: #f0f7ff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+      hr { border-top: 1px solid #94a3b8; }
+
+      a { color: #1d4ed8; text-decoration: none; }
+
+      /* Saut de page avant chaque grande section numérotée */
+      h2 { page-break-before: auto; }
+    }
+  </style>
+</head>
+<body>
+<h1>Rapport technique — mobileapp-2026</h1>
+<p><strong>Auteur :</strong> CLAPIER Titouan<br><strong>Date :</strong> Avril 2026<br><strong>Dépôt :</strong> <code>mobileapp-2026</code><br><strong>Statut :</strong> Document de synthèse — toutes applications</p>
+<hr>
+<h2>Table des matières</h2>
+<ol>
+<li><a href="#1-contexte-et-pr%C3%A9sentation-g%C3%A9n%C3%A9rale">Contexte et présentation générale</a></li>
+<li><a href="#2-architecture-globale-du-d%C3%A9p%C3%B4t">Architecture globale du dépôt</a></li>
+<li><a href="#3-application-1--mybank-flutter--laravel">Application 1 — MyBank (Flutter + Laravel)</a><ul>
+<li>3.1 Vue d&#39;ensemble</li>
+<li>3.2 Stack technique</li>
+<li>3.3 Architecture backend (Laravel)</li>
+<li>3.4 API REST — endpoints détaillés</li>
+<li>3.5 Base de données — modèle de données</li>
+<li>3.6 Application mobile Flutter</li>
+<li>3.7 Sécurité</li>
+<li>3.8 Démarrage et comptes de test</li>
+</ul>
+</li>
+<li><a href="#4-application-2--secondapp-react--vite">Application 2 — SECONDAPP (React + Vite)</a><ul>
+<li>4.1 Vue d&#39;ensemble</li>
+<li>4.2 Stack technique</li>
+<li>4.3 Architecture frontend</li>
+<li>4.4 Module Dashboard</li>
+<li>4.5 Module Facturation</li>
+<li>4.6 Module Crypto</li>
+<li>4.7 NexBank Chain — blockchain de démonstration</li>
+<li>4.8 Données mock (Docker + json-server)</li>
+<li>4.9 Démarrage</li>
+</ul>
+</li>
+<li><a href="#5-infrastructure-et-devops">Infrastructure et DevOps</a></li>
+<li><a href="#6-comparatif-des-deux-applications">Comparatif des deux applications</a></li>
+<li><a href="#7-probl%C3%A8mes-rencontr%C3%A9s-et-solutions">Problèmes rencontrés et solutions</a></li>
+<li><a href="#8-perspectives-d%C3%A9volution">Perspectives d&#39;évolution</a></li>
+<li><a href="#9-conclusion">Conclusion</a></li>
+</ol>
+<hr>
+<h2>1. Contexte et présentation générale</h2>
+<h3>1.1 Genèse du projet</h3>
+<p>Le projet <strong>mobileapp-2026</strong> est un monorepo centré sur le thème <strong>banque / finance numérique</strong>. Il a été développé en plusieurs phases successives :</p>
+<ol>
+<li><p><strong>Première itération (MyBank)</strong> : application bancaire mobile Flutter associée à une API REST Laravel complète. Cette version a fait l&#39;objet d&#39;une présentation, validant les choix techniques fondamentaux (authentification par token, gestion multi-comptes, virements temps réel).</p>
+</li>
+<li><p><strong>Deuxième itération (SECONDAPP)</strong> : refonte volontaire depuis zéro après la première présentation. L&#39;objectif était d&#39;aller plus loin sur l&#39;expérience utilisateur (design premium issu de Figma), d&#39;intégrer un module de facturation inspiré d&#39;Odoo, et d&#39;explorer des concepts plus avancés comme une blockchain de démonstration.</p>
+</li>
+</ol>
+<h3>1.2 Objectifs pédagogiques</h3>
+<table>
+<thead>
+<tr>
+<th>Objectif</th>
+<th>Moyen</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Maîtrise d&#39;une stack mobile complète</td>
+<td>Flutter (Dart) + API REST</td>
+</tr>
+<tr>
+<td>Conception d&#39;une API REST sécurisée</td>
+<td>Laravel 12 + Sanctum</td>
+</tr>
+<tr>
+<td>Développement web moderne</td>
+<td>React 18 + TypeScript + Vite</td>
+</tr>
+<tr>
+<td>Design system et composants</td>
+<td>Tailwind CSS + Radix UI + shadcn</td>
+</tr>
+<tr>
+<td>Gestion de données mock</td>
+<td>Docker + json-server</td>
+</tr>
+<tr>
+<td>Concepts blockchain</td>
+<td>SHA-256, Proof of Work, mempool</td>
+</tr>
+<tr>
+<td>Module métier type ERP</td>
+<td>Facturation inspirée d&#39;Odoo</td>
+</tr>
+<tr>
+<td>Containerisation</td>
+<td>Docker + Docker Compose</td>
+</tr>
+</tbody></table>
+<h3>1.3 Structure du monorepo</h3>
+<pre><code>mobileapp-2026/
+├── project/firstapp/          → App mobile Flutter (MyBank)
+├── project/secondapp/         → App Flutter légère (mock)
+├── SECONDAPP/                 → App web React (refonte premium)
+├── infrastructure/
+│   ├── back-laravel/          → API REST Laravel (MyBank)
+│   ├── transfer-api/          → Micro-service Node.js
+│   ├── front-next/            → Frontend Next.js (infra)
+│   └── infra/                 → Docker Compose (prod)
+├── docs/                      → Documentation et guides
+├── scripts/                   → Automatisation PowerShell
+└── README.md
+</code></pre>
+<hr>
+<h2>2. Architecture globale du dépôt</h2>
+<h3>2.1 Schéma d&#39;ensemble</h3>
+<pre><code>┌────────────────────────────────────────────────────────────┐
+│                 SYSTÈME MYBANK                             │
+│                                                            │
+│  ┌──────────────────┐      ┌───────────────────────────┐  │
+│  │  Flutter (Dart)  │ HTTP │  Laravel 12 (PHP 8.2+)    │  │
+│  │  project/firstapp│─────▶│  infrastructure/back-     │  │
+│  │                  │      │  laravel                   │  │
+│  │  Plateformes :   │      │  Port : 8000               │  │
+│  │  Android / iOS   │      │  Auth : Sanctum (tokens)   │  │
+│  │  Web / Desktop   │      │  DB   : SQLite / PostgreSQL│  │
+│  └──────────────────┘      └───────────────────────────┘  │
+└────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────┐
+│                 SYSTÈME SECONDAPP                          │
+│                                                            │
+│  ┌──────────────────┐      ┌───────────────────────────┐  │
+│  │  React 18 + Vite │ HTTP │  json-server (Docker)     │  │
+│  │  SECONDAPP/src/  │─────▶│  Port : 3001              │  │
+│  │                  │      │  Data : docker/db.json    │  │
+│  │  TypeScript      │      └───────────────────────────┘  │
+│  │  Tailwind CSS    │                                      │
+│  │  Port : 5173     │      ┌───────────────────────────┐  │
+│  │                  │─────▶│  localStorage              │  │
+│  └──────────────────┘      │  Factures + NexBank Chain  │  │
+│                             └───────────────────────────┘  │
+└────────────────────────────────────────────────────────────┘
+</code></pre>
+<h3>2.2 Ports et services réseau</h3>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>Port</th>
+<th>Protocole</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Laravel API</td>
+<td>8000</td>
+<td>HTTP</td>
+<td>API REST MyBank</td>
+</tr>
+<tr>
+<td>SECONDAPP Vite</td>
+<td>5173</td>
+<td>HTTP</td>
+<td>Dev server React</td>
+</tr>
+<tr>
+<td>json-server Docker</td>
+<td>3001</td>
+<td>HTTP</td>
+<td>Mock API SECONDAPP</td>
+</tr>
+<tr>
+<td>PostgreSQL</td>
+<td>5432</td>
+<td>TCP</td>
+<td>Base de données prod</td>
+</tr>
+<tr>
+<td>Next.js (infra)</td>
+<td>3000</td>
+<td>HTTP</td>
+<td>Frontend infrastructure</td>
+</tr>
+<tr>
+<td>Nginx proxy</td>
+<td>8000</td>
+<td>HTTP</td>
+<td>Reverse proxy (Docker prod)</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>3. Application 1 — MyBank (Flutter + Laravel)</h2>
+<h3>3.1 Vue d&#39;ensemble</h3>
+<p><strong>MyBank</strong> est une application bancaire mobile complète et fonctionnelle. Elle permet à plusieurs utilisateurs de gérer leurs comptes, consulter leur historique de transactions, effectuer des virements et interagir avec un chatbot IA. L&#39;application est entièrement connectée à un backend Laravel via une API REST sécurisée.</p>
+<h3>3.2 Stack technique</h3>
+<table>
+<thead>
+<tr>
+<th>Couche</th>
+<th>Technologie</th>
+<th>Version</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>App mobile</td>
+<td>Flutter / Dart</td>
+<td>SDK ^3.4.4</td>
+</tr>
+<tr>
+<td>Framework API</td>
+<td>Laravel</td>
+<td>12.x</td>
+</tr>
+<tr>
+<td>Langage backend</td>
+<td>PHP</td>
+<td>8.2+</td>
+</tr>
+<tr>
+<td>Authentification</td>
+<td>Laravel Sanctum</td>
+<td>4.3</td>
+</tr>
+<tr>
+<td>Base de données (dev)</td>
+<td>SQLite</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Base de données (prod)</td>
+<td>PostgreSQL</td>
+<td>16</td>
+</tr>
+<tr>
+<td>ORM</td>
+<td>Eloquent (Laravel)</td>
+<td>—</td>
+</tr>
+<tr>
+<td>État Flutter</td>
+<td>Provider</td>
+<td>6.x</td>
+</tr>
+<tr>
+<td>Persistance locale</td>
+<td>flutter_secure_storage</td>
+<td>9.x</td>
+</tr>
+<tr>
+<td>Préférences</td>
+<td>shared_preferences</td>
+<td>2.x</td>
+</tr>
+<tr>
+<td>Internationalisation</td>
+<td>intl</td>
+<td>0.19</td>
+</tr>
+<tr>
+<td>HTTP client Flutter</td>
+<td>http</td>
+<td>1.2.x</td>
+</tr>
+<tr>
+<td>Tests backend</td>
+<td>PHPUnit</td>
+<td>11.x</td>
+</tr>
+<tr>
+<td>Données de test</td>
+<td>Faker (PHP)</td>
+<td>1.23</td>
+</tr>
+</tbody></table>
+<p><strong>Plateformes Flutter supportées :</strong> Android, iOS, Web (Chrome), Windows, Linux, macOS</p>
+<h3>3.3 Architecture backend (Laravel)</h3>
+<pre><code>infrastructure/back-laravel/
+├── app/
+│   ├── Http/
+│   │   └── Controllers/Api/
+│   │       ├── AuthController.php          ← Inscription, connexion, tokens
+│   │       ├── AccountController.php       ← Comptes bancaires CRUD
+│   │       ├── TransactionController.php   ← Transactions et virements
+│   │       ├── PaymentRequestController.php← Demandes de paiement
+│   │       └── ChatController.php          ← Chatbot IA
+│   ├── Models/
+│   │   ├── User.php
+│   │   ├── Account.php
+│   │   ├── Transaction.php
+│   │   ├── Transfer.php
+│   │   ├── PaymentRequest.php
+│   │   └── Product.php
+│   └── Notifications/
+├── routes/
+│   └── api.php                             ← Définition des routes REST
+├── database/
+│   ├── migrations/                         ← 12 fichiers de migration
+│   ├── seeders/                            ← Données de test
+│   └── database.sqlite                     ← Fichier SQLite (dev)
+└── config/                                 ← Configuration Laravel
+</code></pre>
+<h4>Middlewares appliqués</h4>
+<ul>
+<li>Routes publiques (register, login, forgot/reset password) : <strong>aucun middleware</strong></li>
+<li>Routes protégées : middleware <strong><code>auth:sanctum</code></strong> → vérification du Bearer token à chaque requête</li>
+</ul>
+<h3>3.4 API REST — endpoints détaillés</h3>
+<h4>Authentification</h4>
+<table>
+<thead>
+<tr>
+<th>Méthode</th>
+<th>Endpoint</th>
+<th>Protection</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>POST</td>
+<td><code>/api/auth/register</code></td>
+<td>Public</td>
+<td>Inscription nouveau compte</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/auth/login</code></td>
+<td>Public</td>
+<td>Connexion → retourne un token Sanctum</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/auth/logout</code></td>
+<td>Sanctum</td>
+<td>Révocation du token courant</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/auth/forgot-password</code></td>
+<td>Public</td>
+<td>Envoi email de réinitialisation</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/auth/reset-password</code></td>
+<td>Public</td>
+<td>Réinitialisation avec le token email</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/auth/change-password</code></td>
+<td>Sanctum</td>
+<td>Changement du mot de passe authentifié</td>
+</tr>
+</tbody></table>
+<h4>Comptes bancaires</h4>
+<table>
+<thead>
+<tr>
+<th>Méthode</th>
+<th>Endpoint</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>GET</td>
+<td><code>/api/accounts</code></td>
+<td>Liste tous les comptes de l&#39;utilisateur</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/accounts/{id}</code></td>
+<td>Détail d&#39;un compte (solde, type)</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/accounts</code></td>
+<td>Créer un nouveau compte</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/accounts/{id}/debit</code></td>
+<td>Débiter un compte</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/accounts/{id}/credit</code></td>
+<td>Créditer un compte</td>
+</tr>
+<tr>
+<td>DELETE</td>
+<td><code>/api/accounts/{id}</code></td>
+<td>Supprimer un compte</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/beneficiaries</code></td>
+<td>Liste des bénéficiaires disponibles</td>
+</tr>
+</tbody></table>
+<h4>Transactions</h4>
+<table>
+<thead>
+<tr>
+<th>Méthode</th>
+<th>Endpoint</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>GET</td>
+<td><code>/api/transactions</code></td>
+<td>Historique complet de l&#39;utilisateur</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/transactions/transfer</code></td>
+<td>Effectuer un virement</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/accounts/{id}/transactions</code></td>
+<td>Transactions d&#39;un compte précis</td>
+</tr>
+</tbody></table>
+<h4>Demandes de paiement</h4>
+<table>
+<thead>
+<tr>
+<th>Méthode</th>
+<th>Endpoint</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>GET</td>
+<td><code>/api/payment-requests</code></td>
+<td>Liste des demandes</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/payment-requests</code></td>
+<td>Créer une demande</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/payment-requests/{id}/accept</code></td>
+<td>Accepter une demande</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/payment-requests/{id}/decline</code></td>
+<td>Refuser une demande</td>
+</tr>
+</tbody></table>
+<h4>Chatbot IA</h4>
+<table>
+<thead>
+<tr>
+<th>Méthode</th>
+<th>Endpoint</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>POST</td>
+<td><code>/api/chat</code></td>
+<td>Envoyer un message au chatbot</td>
+</tr>
+</tbody></table>
+<h3>3.5 Base de données — modèle de données</h3>
+<h4>Schéma des tables principales</h4>
+<pre><code>users
+├── id (PK)
+├── first_name, last_name
+├── email (unique)
+├── password (bcrypt)
+├── phone, address
+└── avatar_url
+
+accounts
+├── id (PK)
+├── user_id (FK → users)
+├── account_number (unique, généré)
+├── account_type (checking | savings)
+└── balance (decimal)
+
+transactions
+├── id (PK)
+├── from_account_id (FK → accounts, nullable)
+├── to_account_id (FK → accounts, nullable)
+├── amount (decimal)
+├── type (debit | credit | transfer)
+└── description
+
+transfers
+├── id (PK)
+├── source_account_id (FK → accounts)
+├── destination_account_id (FK → accounts)
+├── amount (decimal)
+└── status (pending | completed | failed)
+
+payment_requests
+├── id (PK)
+├── requester_id (FK → users)
+├── target_id (FK → users)
+├── amount (decimal)
+└── status (pending | accepted | declined)
+
+personal_access_tokens (Laravel Sanctum)
+├── tokenable_type, tokenable_id
+├── name, token (hash SHA-256)
+└── expires_at
+</code></pre>
+<h4>Données de test (Seeder)</h4>
+<p>Après <code>php artisan migrate:fresh --seed</code> :</p>
+<table>
+<thead>
+<tr>
+<th>Utilisateur</th>
+<th>Email</th>
+<th>Mot de passe</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Jean Dupont</td>
+<td><a href="mailto:jean.dupont@example.com">jean.dupont@example.com</a></td>
+<td>password123</td>
+</tr>
+<tr>
+<td>Marie Martin</td>
+<td><a href="mailto:marie.martin@example.com">marie.martin@example.com</a></td>
+<td>password123</td>
+</tr>
+<tr>
+<td>Pierre Bernard</td>
+<td><a href="mailto:pierre.bernard@example.com">pierre.bernard@example.com</a></td>
+<td>password123</td>
+</tr>
+<tr>
+<td>Sophie Lefebvre</td>
+<td><a href="mailto:sophie.lefebvre@example.com">sophie.lefebvre@example.com</a></td>
+<td>password123</td>
+</tr>
+</tbody></table>
+<p>Chaque utilisateur possède plusieurs comptes (courant + épargne) avec des transactions pré-existantes.</p>
+<h3>3.6 Application mobile Flutter</h3>
+<h4>Structure de l&#39;application</h4>
+<pre><code>project/firstapp/lib/
+├── main.dart                  ← Point d&#39;entrée, initialisation Provider
+├── config/                    ← Configuration API (base URL, headers)
+├── models/                    ← Modèles Dart (User, Account, Transaction…)
+├── screens/                   ← 17 écrans de l&#39;application
+│   ├── login_screen.dart
+│   ├── dashboard_screen.dart
+│   ├── account_detail_screen.dart
+│   ├── transfer_screen.dart
+│   ├── transactions_screen.dart
+│   ├── payment_request_screen.dart
+│   ├── chat_screen.dart
+│   └── profile_screen.dart
+├── services/                  ← Services HTTP (appels API)
+└── theme/                     ← Thème visuel Material Design
+</code></pre>
+<h4>Gestion de l&#39;état</h4>
+<p>L&#39;application utilise <strong>Provider</strong> comme solution de gestion d&#39;état :</p>
+<ul>
+<li><code>AuthProvider</code> : état de connexion, token Sanctum, données utilisateur</li>
+<li><code>AccountProvider</code> : liste des comptes, soldes actuels</li>
+<li><code>TransactionProvider</code> : historique des transactions</li>
+<li>Chaque provider communique avec son service HTTP correspondant</li>
+</ul>
+<h4>Sécurité Flutter</h4>
+<ul>
+<li><strong>Token Sanctum</strong> : stocké dans <code>flutter_secure_storage</code> (keychain iOS / keystore Android)</li>
+<li>Jamais dans <code>SharedPreferences</code> (stockage non chiffré)</li>
+<li>Toutes les requêtes authentifiées incluent <code>Authorization: Bearer {token}</code></li>
+<li>Déconnexion = révocation côté Laravel + suppression locale du token</li>
+</ul>
+<h4>Configuration réseau</h4>
+<pre><code class="language-dart">// En développement local (Web / Desktop) :
+const String baseUrl = &#39;http://127.0.0.1:8000/api&#39;;
+
+// Sur émulateur Android :
+const String baseUrl = &#39;http://10.0.2.2:8000/api&#39;;
+</code></pre>
+<h3>3.7 Sécurité</h3>
+<table>
+<thead>
+<tr>
+<th>Mécanisme</th>
+<th>Implémentation</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Hachage mots de passe</td>
+<td>Bcrypt, 12 rounds (configurable dans <code>.env</code>)</td>
+</tr>
+<tr>
+<td>Authentification API</td>
+<td>Laravel Sanctum — Bearer tokens</td>
+</tr>
+<tr>
+<td>Stockage token mobile</td>
+<td>flutter_secure_storage (chiffré OS)</td>
+</tr>
+<tr>
+<td>Validation des données</td>
+<td>Laravel Form Requests (côté serveur)</td>
+</tr>
+<tr>
+<td>Protection CSRF</td>
+<td>N/A (API stateless, token-based)</td>
+</tr>
+<tr>
+<td>Expiration tokens</td>
+<td>Configurable via Sanctum</td>
+</tr>
+</tbody></table>
+<h3>3.8 Démarrage et commandes</h3>
+<h4>Backend Laravel</h4>
+<pre><code class="language-powershell">cd infrastructure\back-laravel
+
+# Installation des dépendances
+composer install
+
+# Configuration
+copy .env.example .env
+php artisan key:generate
+
+# Base de données et données de test
+php artisan migrate:fresh --seed
+
+# Démarrage du serveur
+php artisan serve --host=127.0.0.1 --port=8000
+</code></pre>
+<h4>Application Flutter</h4>
+<pre><code class="language-powershell">cd project\firstapp
+
+# Récupération des dépendances
+flutter pub get
+
+# Lancement en mode Web (Chrome)
+flutter run -d chrome
+
+# Lancement sur émulateur Android
+flutter run
+
+# Lancement sur le bureau Windows
+flutter run -d windows
+</code></pre>
+<h4>Scripts automatisés (PowerShell)</h4>
+<pre><code class="language-powershell"># Depuis la racine du dépôt :
+
+# MyBank complet (Laravel + Flutter Web)
+.\scripts\run_web.ps1
+
+# MyBank sur émulateur Android
+.\scripts\run_emulator.ps1
+
+# Réinitialisation base de données
+.\scripts\reset_db.ps1
+</code></pre>
+<hr>
+<h2>4. Application 2 — SECONDAPP (React + Vite)</h2>
+<h3>4.1 Vue d&#39;ensemble</h3>
+<p><strong>SECONDAPP</strong> est la deuxième application du projet, développée depuis zéro après la première présentation de MyBank. Elle est orientée <strong>interface premium</strong> (design issu d&#39;une maquette Figma), fonctionne entièrement dans le navigateur, et utilise Docker pour servir ses données de démonstration.</p>
+<p>Ses trois piliers fonctionnels sont :</p>
+<ol>
+<li><strong>Dashboard bancaire</strong> avec graphiques et analyses financières</li>
+<li><strong>Module de facturation</strong> inspiré d&#39;Odoo</li>
+<li><strong>NexBank Chain</strong> — blockchain de démonstration locale</li>
+</ol>
+<h3>4.2 Stack technique</h3>
+<table>
+<thead>
+<tr>
+<th>Catégorie</th>
+<th>Bibliothèque</th>
+<th>Version</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Framework</td>
+<td>React</td>
+<td>18.3.1</td>
+</tr>
+<tr>
+<td>Build tool</td>
+<td>Vite</td>
+<td>6.4.1</td>
+</tr>
+<tr>
+<td>Langage</td>
+<td>TypeScript</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Styles</td>
+<td>Tailwind CSS</td>
+<td>4.1.12</td>
+</tr>
+<tr>
+<td>Composants UI</td>
+<td>Radix UI (shadcn)</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Composants Material</td>
+<td>MUI + MUI Icons</td>
+<td>7.3.5</td>
+</tr>
+<tr>
+<td>Icônes</td>
+<td>Lucide React</td>
+<td>0.487.0</td>
+</tr>
+<tr>
+<td>Animations</td>
+<td>Motion (ex-Framer)</td>
+<td>12.x</td>
+</tr>
+<tr>
+<td>Graphiques</td>
+<td>Recharts</td>
+<td>2.15.2</td>
+</tr>
+<tr>
+<td>Routing</td>
+<td>React Router</td>
+<td>7.13.0</td>
+</tr>
+<tr>
+<td>Formulaires</td>
+<td>React Hook Form</td>
+<td>7.55.0</td>
+</tr>
+<tr>
+<td>Dates</td>
+<td>date-fns</td>
+<td>3.6.0</td>
+</tr>
+<tr>
+<td>Drag &amp; Drop</td>
+<td>react-dnd</td>
+<td>16.x</td>
+</tr>
+<tr>
+<td>Toast/notifications</td>
+<td>Sonner</td>
+<td>2.x</td>
+</tr>
+<tr>
+<td>Carrousel</td>
+<td>embla-carousel-react</td>
+<td>8.x</td>
+</tr>
+<tr>
+<td>OTP</td>
+<td>input-otp</td>
+<td>1.x</td>
+</tr>
+<tr>
+<td>Confettis</td>
+<td>canvas-confetti</td>
+<td>1.9.4</td>
+</tr>
+<tr>
+<td>Mock API</td>
+<td>clue/json-server (Docker)</td>
+<td>0.12</td>
+</tr>
+<tr>
+<td>Persistance locale</td>
+<td>localStorage</td>
+<td>—</td>
+</tr>
+</tbody></table>
+<h3>4.3 Architecture frontend</h3>
+<pre><code>SECONDAPP/src/app/
+├── App.tsx                         ← Composant racine, providers
+├── routes.tsx                      ← 12 routes définies (React Router)
+├── contexts/
+│   ├── AuthContext.tsx              ← Contexte d&#39;authentification
+│   └── ThemeContext.tsx             ← Thème clair/sombre
+├── components/
+│   ├── Dashboard.tsx               ← Tableau de bord principal
+│   ├── Transfers.tsx               ← Virements
+│   ├── Cards.tsx                   ← Cartes bancaires
+│   ├── Investments.tsx             ← Investissements
+│   ├── Analytics.tsx               ← Analytiques financières
+│   ├── Crypto.tsx                  ← Cryptomonnaies
+│   ├── Invoicing.tsx               ← Facturation (module principal)
+│   ├── Blockchain.tsx              ← NexBank Chain (blockchain)
+│   ├── Login.tsx / SignUp.tsx      ← Authentification
+│   ├── Profile.tsx / Security.tsx  ← Profil et sécurité
+│   ├── charts/                     ← Composants Recharts dédiés
+│   ├── effects/                    ← Effets visuels premium
+│   │   ├── GlowCard.tsx
+│   │   ├── HolographicCard.tsx
+│   │   └── AnimatedBorder.tsx
+│   ├── modals/                     ← Boîtes de dialogue
+│   ├── ui/                         ← Composants UI réutilisables (shadcn)
+│   └── figma/                      ← Composants issus de la maquette Figma
+└── services/
+    ├── dashboardApi.ts             ← Appels API dashboard
+    ├── invoicingApi.ts             ← Appels API facturation
+    ├── invoicingCalculations.ts    ← Calculs HT/TVA/TTC
+    ├── invoicingPersistence.ts     ← Lecture/écriture localStorage
+    └── nexbank-chain/
+        ├── engine.ts               ← Moteur blockchain (SHA-256, PoW)
+        ├── types.ts                ← Types TypeScript (Block, Chain…)
+        ├── storage.ts              ← Persistance localStorage
+        ├── walletSync.ts           ← Sync avec module Crypto
+        └── index.ts                ← Export public
+</code></pre>
+<h4>Routes de l&#39;application</h4>
+<table>
+<thead>
+<tr>
+<th>Route</th>
+<th>Composant</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>/login</code></td>
+<td>Login</td>
+<td>Page de connexion</td>
+</tr>
+<tr>
+<td><code>/signup</code></td>
+<td>SignUp</td>
+<td>Inscription</td>
+</tr>
+<tr>
+<td><code>/</code></td>
+<td>Dashboard</td>
+<td>Tableau de bord (protégé)</td>
+</tr>
+<tr>
+<td><code>/transfers</code></td>
+<td>Transfers</td>
+<td>Virements</td>
+</tr>
+<tr>
+<td><code>/crypto</code></td>
+<td>Crypto</td>
+<td>Cryptomonnaies</td>
+</tr>
+<tr>
+<td><code>/investments</code></td>
+<td>Investments</td>
+<td>Investissements</td>
+</tr>
+<tr>
+<td><code>/cards</code></td>
+<td>Cards</td>
+<td>Cartes bancaires</td>
+</tr>
+<tr>
+<td><code>/analytics</code></td>
+<td>Analytics</td>
+<td>Analytiques</td>
+</tr>
+<tr>
+<td><code>/security</code></td>
+<td>Security</td>
+<td>Sécurité et 2FA</td>
+</tr>
+<tr>
+<td><code>/profile</code></td>
+<td>Profile</td>
+<td>Profil utilisateur</td>
+</tr>
+<tr>
+<td><code>/invoices</code></td>
+<td>Invoicing</td>
+<td>Facturation</td>
+</tr>
+<tr>
+<td><code>/blockchain</code></td>
+<td>Blockchain</td>
+<td>NexBank Chain</td>
+</tr>
+</tbody></table>
+<h4>Flux de données</h4>
+<pre><code>Navigateur (React)
+     │
+     ▼  fetch(&quot;/json-api/*&quot;)
+Proxy Vite (vite.config.ts)
+     │
+     ▼  http://127.0.0.1:3001/*
+Docker json-server
+     │
+     ▼  lecture fichier
+docker/db.json
+</code></pre>
+<p>Pour les factures et la blockchain, la persistance passe par le <strong>localStorage</strong> du navigateur.</p>
+<h3>4.4 Module Dashboard</h3>
+<p>Le dashboard (<code>/</code>) est le point d&#39;entrée principal de l&#39;application après connexion.</p>
+<h4>Composants</h4>
+<ul>
+<li><strong>Solde</strong> : affichage du solde courant avec option masquer/afficher</li>
+<li><strong>Graphique d&#39;évolution</strong> : courbe Recharts alimentée par <code>balanceData</code> (janvier à juin)</li>
+<li><strong>Transactions récentes</strong> : liste avec catégorie, montant et horodatage</li>
+<li><strong>Insights</strong> : cartes informatives (taux d&#39;épargne, alertes dépenses, croissance)</li>
+</ul>
+<h4>Résilience</h4>
+<p>Si Docker est arrêté ou si json-server ne répond pas, le dashboard affiche un message explicite plutôt qu&#39;une erreur silencieuse. L&#39;application reste navigable.</p>
+<h3>4.5 Module Facturation</h3>
+<p>Le module de facturation (<code>/invoices</code>) implémente les concepts fondamentaux du module comptable d&#39;Odoo.</p>
+<h4>Modèle de données</h4>
+<pre><code class="language-typescript">interface Partner {
+  id: number;
+  name: string;
+  vat: string;            // Numéro de TVA intracommunautaire
+  email: string;
+  phone: string;
+  address: string;
+  city: string;
+  country: string;
+}
+
+interface InvoiceLine {
+  id: number;
+  description: string;
+  quantity: number;
+  unit_price: number;
+  tax_rate: number;       // En pourcentage (ex: 20 pour 20%)
+}
+
+interface Invoice {
+  id: number;
+  partner_id: number;
+  state: &#39;draft&#39; | &#39;posted&#39; | &#39;paid&#39;;
+  date: string;
+  lines: InvoiceLine[];
+  amount_untaxed: number; // Total HT
+  amount_tax: number;     // Total TVA
+  amount_total: number;   // Total TTC
+}
+</code></pre>
+<h4>Fonctionnement par état</h4>
+<table>
+<thead>
+<tr>
+<th>État</th>
+<th>Affichage</th>
+<th>Actions disponibles</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>draft</code></td>
+<td>Badge « Brouillon »</td>
+<td>Modifier, supprimer (si créé en local), annuler modifications</td>
+</tr>
+<tr>
+<td><code>posted</code></td>
+<td>Badge « À encaisser »</td>
+<td>Lecture seule</td>
+</tr>
+<tr>
+<td><code>paid</code></td>
+<td>Badge « Payée »</td>
+<td>Lecture seule</td>
+</tr>
+</tbody></table>
+<h4>Persistance localStorage</h4>
+<ul>
+<li>Clé utilisée : <code>secondapp-invoicing-drafts-v1</code></li>
+<li><strong>Fusion au chargement</strong> : les brouillons locaux écrasent les entrées de même <code>id</code> venant du JSON</li>
+<li><strong>Identifiants négatifs</strong> pour les factures créées dans l&#39;app (évite les collisions avec le JSON)</li>
+<li>Possibilité de « Reprendre la version serveur » pour un brouillon <code>id</code> positif</li>
+</ul>
+<h4>Calculs automatiques</h4>
+<p>Le service <code>invoicingCalculations.ts</code> recalcule en temps réel :</p>
+<ul>
+<li>Sous-total HT par ligne : <code>quantité × prix_unitaire</code></li>
+<li>TVA par ligne : <code>sous-total × (taux_tva / 100)</code></li>
+<li>Total HT global : somme des sous-totaux</li>
+<li>Total TVA global : somme des TVA par ligne</li>
+<li>Total TTC : <code>HT + TVA</code></li>
+</ul>
+<h3>4.6 Module Crypto</h3>
+<p>L&#39;écran Crypto (<code>/crypto</code>) présente une interface de trading avec :</p>
+<ul>
+<li>Liste des cryptomonnaies disponibles avec prix simulés</li>
+<li>Graphiques d&#39;évolution de cours (Recharts)</li>
+<li>Formulaire d&#39;achat</li>
+<li><strong>Intégration NexBank Chain</strong> : chaque achat enregistre automatiquement une transaction de type <code>wallet</code> dans le mempool de la blockchain, via <code>walletSync.ts</code></li>
+</ul>
+<h3>4.7 NexBank Chain — blockchain de démonstration</h3>
+<p>NexBank Chain est une implémentation pédagogique complète d&#39;une blockchain fonctionnelle, entièrement locale dans le navigateur.</p>
+<h4>Concepts implémentés</h4>
+<table>
+<thead>
+<tr>
+<th>Concept</th>
+<th>Implémentation</th>
+<th>Fichier</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Hachage</td>
+<td>SHA-256 via Web Crypto API</td>
+<td><code>engine.ts</code></td>
+</tr>
+<tr>
+<td>Bloc</td>
+<td><code>{ index, timestamp, data, previousHash, hash, nonce }</code></td>
+<td><code>types.ts</code></td>
+</tr>
+<tr>
+<td>Bloc genèse</td>
+<td>Premier bloc fixe, <code>previousHash = &quot;0&quot;</code></td>
+<td><code>engine.ts</code></td>
+</tr>
+<tr>
+<td>Proof of Work</td>
+<td><code>hash.startsWith(&quot;0&quot;.repeat(difficulty))</code></td>
+<td><code>engine.ts</code></td>
+</tr>
+<tr>
+<td>Difficulté</td>
+<td>Configurable (défaut N=2 zéros hexadécimaux)</td>
+<td><code>engine.ts</code></td>
+</tr>
+<tr>
+<td>Mempool</td>
+<td>File d&#39;attente <code>Transaction[]</code> avant minage</td>
+<td><code>engine.ts</code></td>
+</tr>
+<tr>
+<td>Validation</td>
+<td>Vérification <code>previousHash</code> + hash PoW chaîne entière</td>
+<td><code>engine.ts</code></td>
+</tr>
+<tr>
+<td>Persistance</td>
+<td><code>localStorage</code> — clé <code>secondapp-nexbank-chain-v1</code></td>
+<td><code>storage.ts</code></td>
+</tr>
+<tr>
+<td>Sync externe</td>
+<td>Transactions Crypto → mempool</td>
+<td><code>walletSync.ts</code></td>
+</tr>
+</tbody></table>
+<h4>Flux de traitement complet</h4>
+<pre><code>1. Utilisateur ajoute une transaction (ou achat Crypto)
+              ↓
+2. Transaction enregistrée dans le Mempool
+   { from, to, amount, timestamp, type }
+              ↓
+3. Clic &quot;Miner un bloc&quot;
+              ↓
+4. Algorithme PoW :
+   nonce = 0
+   while (!hash.startsWith(&quot;0&quot;.repeat(difficulty))) {
+     nonce++
+     hash = SHA256(index + data + previousHash + nonce)
+   }
+              ↓
+5. Bloc créé et ajouté à la chaîne
+   { index, timestamp, transactions: [...mempool], previousHash, hash, nonce }
+              ↓
+6. Mempool vidé
+              ↓
+7. &quot;Vérifier la chaîne&quot; :
+   - Bloc genèse = bloc[0]
+   - Pour chaque bloc i &gt; 0 :
+       bloc[i].previousHash == bloc[i-1].hash ?
+       recalcul SHA256 == bloc[i].hash ?
+       hash commence par N zéros ?
+</code></pre>
+<h4>Interface utilisateur</h4>
+<ul>
+<li>Visualisation de la chaîne complète (liste de blocs avec leurs transactions)</li>
+<li>Formulaire d&#39;ajout de transaction au mempool</li>
+<li>Bouton &quot;Miner&quot; avec animation de progression</li>
+<li>Bouton &quot;Vérifier l&#39;intégrité&quot; avec résultat visuel</li>
+<li>Statistiques : nombre de blocs, transactions totales, dernier hash</li>
+<li>Persistance automatique après chaque minage</li>
+</ul>
+<h3>4.8 Données mock (Docker + json-server)</h3>
+<h4>Docker Compose</h4>
+<pre><code class="language-yaml">services:
+  json-server:
+    image: clue/json-server:latest
+    container_name: secondapp-db
+    ports:
+      - &quot;3001:80&quot;
+    volumes:
+      - ./docker/db.json:/data/db.json:ro   # Lecture seule
+    restart: unless-stopped
+</code></pre>
+<h4>Structure de db.json</h4>
+<pre><code class="language-json">{
+  &quot;dashboard&quot;: {
+    &quot;balanceData&quot;: [
+      { &quot;month&quot;: &quot;Jan&quot;, &quot;balance&quot;: 4200 },
+      { &quot;month&quot;: &quot;Fév&quot;, &quot;balance&quot;: 4850 },
+      { &quot;month&quot;: &quot;Mar&quot;, &quot;balance&quot;: 4100 },
+      { &quot;month&quot;: &quot;Avr&quot;, &quot;balance&quot;: 5200 },
+      { &quot;month&quot;: &quot;Mai&quot;, &quot;balance&quot;: 4900 },
+      { &quot;month&quot;: &quot;Juin&quot;, &quot;balance&quot;: 5650 }
+    ],
+    &quot;transactions&quot;: [
+      { &quot;id&quot;: 1, &quot;label&quot;: &quot;Loyer&quot;, &quot;amount&quot;: -950, &quot;category&quot;: &quot;Logement&quot;, ... },
+      ...
+    ],
+    &quot;insights&quot;: [
+      { &quot;type&quot;: &quot;savings_rate&quot;, &quot;value&quot;: 18, &quot;label&quot;: &quot;Taux d&#39;épargne ce mois&quot; },
+      ...
+    ],
+    &quot;invoicing&quot;: {
+      &quot;partners&quot;: [
+        { &quot;id&quot;: 1, &quot;name&quot;: &quot;ACME Corp&quot;, &quot;vat&quot;: &quot;FR123456789&quot;, ... },
+        ...
+      ],
+      &quot;invoices&quot;: [
+        { &quot;id&quot;: 1, &quot;state&quot;: &quot;posted&quot;, &quot;partner_id&quot;: 1, &quot;lines&quot;: [...], ... },
+        ...
+      ]
+    }
+  }
+}
+</code></pre>
+<p><strong>Note technique</strong> : Avec <code>clue/json-server</code> (version 0.12), les routes <code>/partners</code> et <code>/invoices</code> en racine JSON retournaient des 404. La solution adoptée a été d&#39;imbriquer toutes les données sous la clé <code>dashboard</code> et d&#39;effectuer un seul <code>GET /dashboard</code>.</p>
+<h4>Proxy Vite (vite.config.ts)</h4>
+<pre><code class="language-typescript">server: {
+  proxy: {
+    &#39;/json-api&#39;: {
+      target: &#39;http://127.0.0.1:3001&#39;,
+      changeOrigin: true,
+      rewrite: (path) =&gt; path.replace(/^\/json-api/, &#39;&#39;)
+    }
+  }
+}
+</code></pre>
+<p>Le proxy évite les erreurs <strong>CORS</strong> en développement : le navigateur envoie ses requêtes au serveur Vite (même origine), qui les transfère au container Docker.</p>
+<h3>4.9 Démarrage</h3>
+<pre><code class="language-powershell">cd SECONDAPP
+
+# Installation des dépendances
+npm install
+
+# Démarrage du container json-server
+npm run docker:up
+
+# Lancement du serveur de développement
+npm run dev
+# → http://localhost:5173
+
+# Arrêt du container
+npm run docker:down
+</code></pre>
+<hr>
+<h2>5. Infrastructure et DevOps</h2>
+<h3>5.1 Docker Compose — Stack de production complète</h3>
+<p>Le fichier <code>infrastructure/infra/docker-compose.yml</code> définit une stack complète pour le déploiement de MyBank en environnement conteneurisé :</p>
+<pre><code>infrastructure/infra/
+├── docker-compose.yml
+└── nginx.conf
+</code></pre>
+<h4>Services</h4>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>Image</th>
+<th>Port</th>
+<th>Rôle</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>db</code></td>
+<td>postgres:16</td>
+<td>5432</td>
+<td>Base de données PostgreSQL</td>
+</tr>
+<tr>
+<td><code>backend</code></td>
+<td>Dockerfile local</td>
+<td>8001</td>
+<td>API Laravel (PHP-FPM)</td>
+</tr>
+<tr>
+<td><code>frontend</code></td>
+<td>Dockerfile local</td>
+<td>3000</td>
+<td>Frontend Next.js</td>
+</tr>
+<tr>
+<td><code>nginx</code></td>
+<td>nginx:alpine</td>
+<td>8000</td>
+<td>Reverse proxy (point d&#39;entrée)</td>
+</tr>
+</tbody></table>
+<p><strong>Network :</strong> <code>app_network</code> (driver bridge)<br><strong>Volumes :</strong> <code>db_data</code> (persistance PostgreSQL)</p>
+<h4>Commandes Docker</h4>
+<pre><code class="language-powershell">cd infrastructure\infra
+
+# Démarrage complet
+docker compose up -d
+
+# Accès principal via Nginx
+# http://localhost:8000
+
+# Arrêt
+docker compose down
+
+# Logs
+docker compose logs -f backend
+</code></pre>
+<h3>5.2 Micro-service Transfer API</h3>
+<p>Le dossier <code>infrastructure/transfer-api/</code> contient un micro-service Node.js minimal basé sur Express :</p>
+<table>
+<thead>
+<tr>
+<th>Dépendance</th>
+<th>Rôle</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>express</td>
+<td>Serveur HTTP</td>
+</tr>
+<tr>
+<td>cors</td>
+<td>Gestion des headers CORS</td>
+</tr>
+<tr>
+<td>uuid</td>
+<td>Génération d&#39;identifiants uniques</td>
+</tr>
+</tbody></table>
+<p>Ce service sert de démonstration d&#39;architecture micro-services pour les transferts, indépendamment du backend Laravel principal.</p>
+<h3>5.3 Scripts PowerShell (Windows)</h3>
+<table>
+<thead>
+<tr>
+<th>Script</th>
+<th>Dossier cible</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>run_web.ps1</code></td>
+<td><code>scripts/</code></td>
+<td>Démarre Laravel (port 8000) + Flutter Web (Chrome)</td>
+</tr>
+<tr>
+<td><code>run_emulator.ps1</code></td>
+<td><code>scripts/</code></td>
+<td>Démarre Laravel + émulateur Android + Flutter</td>
+</tr>
+<tr>
+<td><code>reset_db.ps1</code></td>
+<td><code>scripts/</code></td>
+<td>Réinitialise la base de données SQLite + reseed</td>
+</tr>
+<tr>
+<td><code>test_transfer.ps1</code></td>
+<td><code>scripts/</code></td>
+<td>Teste l&#39;API de transfert avec des requêtes HTTP</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>6. Comparatif des deux applications</h2>
+<table>
+<thead>
+<tr>
+<th>Critère</th>
+<th>MyBank</th>
+<th>SECONDAPP</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Type</strong></td>
+<td>Application mobile + API</td>
+<td>Application web</td>
+</tr>
+<tr>
+<td><strong>Frontend</strong></td>
+<td>Flutter (Dart)</td>
+<td>React 18 (TypeScript)</td>
+</tr>
+<tr>
+<td><strong>Backend</strong></td>
+<td>Laravel 12 (PHP)</td>
+<td>json-server (Docker, mock)</td>
+</tr>
+<tr>
+<td><strong>Base de données</strong></td>
+<td>SQLite / PostgreSQL (réelle)</td>
+<td>Fichier JSON statique</td>
+</tr>
+<tr>
+<td><strong>Authentification</strong></td>
+<td>Réelle (tokens Sanctum)</td>
+<td>Simulée (UI uniquement)</td>
+</tr>
+<tr>
+<td><strong>Persistance</strong></td>
+<td>Base de données relationnelle</td>
+<td>localStorage + JSON Docker</td>
+</tr>
+<tr>
+<td><strong>Plateformes</strong></td>
+<td>Android, iOS, Web, Desktop</td>
+<td>Navigateur uniquement</td>
+</tr>
+<tr>
+<td><strong>Données</strong></td>
+<td>Réelles, créées par l&#39;utilisateur</td>
+<td>Mock, pré-définies en JSON</td>
+</tr>
+<tr>
+<td><strong>Graphiques</strong></td>
+<td>Non (v1)</td>
+<td>Recharts (courbes, secteurs)</td>
+</tr>
+<tr>
+<td><strong>Facturation</strong></td>
+<td>Non</td>
+<td>Oui (inspiré Odoo)</td>
+</tr>
+<tr>
+<td><strong>Blockchain</strong></td>
+<td>Non</td>
+<td>Oui (NexBank Chain, démo)</td>
+</tr>
+<tr>
+<td><strong>Crypto</strong></td>
+<td>Non</td>
+<td>Interface démo</td>
+</tr>
+<tr>
+<td><strong>Design</strong></td>
+<td>Material Design (Flutter)</td>
+<td>Premium, Figma-based</td>
+</tr>
+<tr>
+<td><strong>Animations</strong></td>
+<td>Flutter transitions</td>
+<td>Motion (ex-Framer)</td>
+</tr>
+<tr>
+<td><strong>Conteneurisation</strong></td>
+<td>Docker Compose (prod)</td>
+<td>Docker (json-server seul)</td>
+</tr>
+<tr>
+<td><strong>Tests</strong></td>
+<td>PHPUnit (Laravel)</td>
+<td>Non implémentés</td>
+</tr>
+<tr>
+<td><strong>Complexité codebase</strong></td>
+<td>Moyenne</td>
+<td>Élevée (20+ composants)</td>
+</tr>
+</tbody></table>
+<h3>Points forts de MyBank</h3>
+<ul>
+<li><strong>Backend complet et fonctionnel</strong> : toute la logique métier bancaire est implémentée</li>
+<li><strong>Sécurité robuste</strong> : authentification réelle, hachage, stockage sécurisé</li>
+<li><strong>Multi-plateforme</strong> : une seule base de code Flutter pour toutes les plateformes</li>
+<li><strong>Données persistantes</strong> : les actions ont un effet réel en base de données</li>
+</ul>
+<h3>Points forts de SECONDAPP</h3>
+<ul>
+<li><strong>UI premium</strong> : design soigné, effets visuels, animations fluides</li>
+<li><strong>Autonomie</strong> : fonctionne sans backend propre grâce à Docker + json-server</li>
+<li><strong>Fonctionnalités avancées</strong> : blockchain, facturation, analytics</li>
+<li><strong>Modern stack</strong> : React 18, Vite 6, Tailwind 4, TypeScript strict</li>
+</ul>
+<hr>
+<h2>7. Problèmes rencontrés et solutions</h2>
+<h3>MyBank</h3>
+<table>
+<thead>
+<tr>
+<th>Problème</th>
+<th>Cause</th>
+<th>Solution retenue</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>CORS sur émulateur Android</td>
+<td>L&#39;adresse <code>127.0.0.1</code> ne résout pas vers l&#39;hôte depuis l&#39;émulateur</td>
+<td>Utiliser <code>10.0.2.2</code> pour l&#39;adresse de l&#39;hôte Android</td>
+</tr>
+<tr>
+<td>Symlinks Flutter sous Windows</td>
+<td>Windows demande des privilèges pour créer des jonctions</td>
+<td>Activer le mode développeur ou lancer en administrateur</td>
+</tr>
+<tr>
+<td>SQLite en multi-connexions</td>
+<td>Limitations SQLite pour les tests concurrents</td>
+<td>Utiliser PostgreSQL pour les environnements de test</td>
+</tr>
+</tbody></table>
+<h3>SECONDAPP</h3>
+<table>
+<thead>
+<tr>
+<th>Problème</th>
+<th>Cause</th>
+<th>Solution retenue</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>CORS entre Vite (5173) et json-server (3001)</td>
+<td>Origines différentes bloquées par le navigateur</td>
+<td>Proxy Vite <code>/json-api</code> → <code>http://127.0.0.1:3001</code></td>
+</tr>
+<tr>
+<td>Données absentes sur <code>/partners</code> et <code>/invoices</code></td>
+<td>json-server 0.12 (image clue) — comportement différent des versions récentes</td>
+<td>Imbrication sous <code>dashboard</code> → un seul <code>GET /dashboard</code></td>
+</tr>
+<tr>
+<td>Impossibilité d&#39;écrire dans <code>db.json</code></td>
+<td>Volume Docker monté en lecture seule (<code>:ro</code>)</td>
+<td>Persistance des modifications dans <code>localStorage</code></td>
+</tr>
+<tr>
+<td>Perte de données factures au rechargement</td>
+<td>localStorage vide si cache effacé</td>
+<td>Fusion au chargement : JSON serveur + localStorage</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>8. Perspectives d&#39;évolution</h2>
+<h3>Pour MyBank</h3>
+<ul>
+<li><strong>Tests automatisés</strong> : extension de la suite PHPUnit, ajout de tests d&#39;intégration</li>
+<li><strong>Interface web Next.js</strong> : le dossier <code>front-next</code> offre une base pour une version web de MyBank</li>
+<li><strong>Notifications push</strong> : Laravel Notifications (email, SMS) pour les virements reçus</li>
+<li><strong>Authentification 2FA</strong> : intégration d&#39;un second facteur (TOTP, SMS)</li>
+<li><strong>Export de relevés</strong> : génération de PDF de relevés bancaires</li>
+</ul>
+<h3>Pour SECONDAPP</h3>
+<ul>
+<li><strong>Backend réel</strong> : remplacer json-server par une API Laravel ou Node.js avec PostgreSQL</li>
+<li><strong>Authentification</strong> : implémenter une vraie authentification (JWT ou session)</li>
+<li><strong>NexBank Chain</strong> : connecter à un vrai réseau (testnets Ethereum, Polygon)</li>
+<li><strong>Facturation</strong> : persistance serveur, génération PDF de factures, envoi par email</li>
+<li><strong>Tests</strong> : Vitest pour les services, Playwright pour les tests E2E</li>
+<li><strong>Internationalisation</strong> : i18n (français / anglais)</li>
+</ul>
+<h3>Infrastructure commune</h3>
+<ul>
+<li><strong>CI/CD</strong> : GitHub Actions pour tests, build et déploiement automatisés</li>
+<li><strong>Monitoring</strong> : intégration d&#39;observabilité (Grafana, Sentry)</li>
+<li><strong>Hébergement</strong> : Docker Compose de production vers Kubernetes ou un PaaS</li>
+</ul>
+<hr>
+<h2>9. Conclusion</h2>
+<p>Le projet <strong>mobileapp-2026</strong> démontre la maîtrise d&#39;un spectre technique large et cohérent autour du domaine bancaire :</p>
+<p><strong>MyBank</strong> illustre comment concevoir une <strong>application mobile professionnelle</strong> avec une architecture backend solide. La combinaison Flutter + Laravel respecte les bonnes pratiques de sécurité (tokens Sanctum, bcrypt, stockage sécurisé) et offre une expérience cross-plateforme native.</p>
+<p><strong>SECONDAPP</strong> démontre la capacité à construire une <strong>interface web premium</strong> avec les technologies modernes React / TypeScript, tout en intégrant des fonctionnalités avancées comme une blockchain fonctionnelle (NexBank Chain) et un module de facturation inspiré d&#39;un ERP réel (Odoo). La résolution des contraintes techniques (CORS, json-server 0.12, volume Docker lecture seule) témoigne d&#39;une capacité d&#39;adaptation et de prise de décision d&#39;architecture.</p>
+<p>L&#39;ensemble du projet est <strong>documenté, reproductible et présentable</strong> : guides débutants, README détaillés, scripts d&#39;automatisation, et ce présent rapport qui en constitue la synthèse complète.</p>
+<hr>
+<p><em>mobileapp-2026 · CLAPIER Titouan · Avril 2026</em></p>
+
+<hr/>
+<p style="margin-top:2.5rem;font-size:0.82rem;color:#64748b;text-align:center;">
+  <em>Document généré automatiquement · mobileapp-2026 · CLAPIER Titouan · Avril 2026</em>
+</p>
+</body>
+</html>

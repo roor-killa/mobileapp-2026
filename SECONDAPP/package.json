@@ -9,7 +9,9 @@
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
     "report:html": "node scripts/build-report-html.mjs",
-    "report:pdf": "node scripts/build-report-pdf.mjs"
+    "report:pdf": "node scripts/build-report-pdf.mjs",
+    "report:full:html": "node scripts/build-full-report-html.mjs",
+    "report:full:pdf": "node scripts/build-full-report-pdf.mjs"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",
