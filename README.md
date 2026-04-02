@@ -174,6 +174,19 @@ flutter build apk --release
 ```
 
 ---
+ En cas de bug, veuillez utiliser ces ligne de code pour lancer le serveur tout d'abord :
+
+```bash
+py -m uvicorn main:app --reload --host 127.0.0.1 --port 8000       (ou python a la place de py tous depend de votre terminal)
+```
+
+puis pour lancer l'application flutter run  :
+
+```bash
+flutter run -d chrome       
+```
+
+
 
 ## 📦 Dépendances
 
