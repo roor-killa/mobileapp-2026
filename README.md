@@ -223,3 +223,6 @@ flutter run -d chrome
 
 **Valentin** — Projet mobile 2026  
 Version `2.0.0`
+
+#(si l'aperçu GitHub ne fonctionne pas: cliquer sur Download en haut a droite )
+Le document fonctionne correctement aprés téléchargement.
