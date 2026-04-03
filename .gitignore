@@ -118,3 +118,7 @@ app.*.symbols
 !/packages/flutter_tools/test/data/dart_dependencies_test/**/.packages
 !/dev/ci/**/Gemfile.lock
 .DS_Store
+
+02_APPLICATION_FLUTTER/build/
+01_SERVEUR_PHP_DB/front-next/.next/
+01_SERVEUR_PHP_DB/front-next/node_modules/
