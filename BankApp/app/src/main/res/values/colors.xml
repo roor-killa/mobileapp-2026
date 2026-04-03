@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="bank_primary">#0C3C78</color>
+    <color name="bank_accent">#1A6FDB</color>
+    <color name="bank_light">#E8F1FB</color>
+    <color name="bank_green">#1A7A4A</color>
+    <color name="bank_surface">#F7F9FC</color>
+    <color name="bank_border">#DDE4EF</color>
+    <color name="bank_text">#0D1B2A</color>
+    <color name="bank_muted">#6B7A90</color>
+    <color name="bank_danger">#C0392B</color>
+    <color name="bank_card">#FFFFFF</color>
+</resources>
