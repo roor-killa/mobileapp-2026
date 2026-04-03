@@ -1,9 +1,0 @@
-{
-  "terminal.integrated.cwd": "${workspaceFolder}",
-  "python.defaultInterpreterPath": "${workspaceFolder}",
-  "files.exclude": {
-    "**/.git": true,
-    "**/node_modules": true,
-    "**/vendor": true
-  }
-}
