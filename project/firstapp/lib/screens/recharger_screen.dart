@@ -1,4 +1,4 @@
-*import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../services/stripe_service.dart';
 
 class RechargerScreen extends StatefulWidget {
@@ -61,6 +61,7 @@ class _RechargerScreenState extends State<RechargerScreen> {
         montant: montant,
         userId: widget.userId,
         token: widget.token,
+        context: context,
       );
 
       ScaffoldMessenger.of(context).showSnackBar(

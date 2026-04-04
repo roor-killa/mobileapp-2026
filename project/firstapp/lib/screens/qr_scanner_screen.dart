@@ -32,24 +32,38 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
     );
   }
 
-  void _onQRViewCreated(QRViewController controller) {
-    this.controller = controller;
+  void _onQRViewCreated(QRViewController controller) async {
+  this.controller = controller;
 
-    controller.scannedDataStream.listen((scanData) {
-      final code = scanData.code;
-      if (code != null) {
-        try {
-          final data = jsonDecode(code);
-          final userId = data['user_id'];
-          if (userId != null && userId is int) {
-            Navigator.pop(context, userId);
-          }
-        } catch (e) {
-          print('QR invalide : $e');
-        }
-      }
-    });
+  controller.scannedDataStream.listen((scanData) async {
+    final code = scanData.code;
+
+    if (code != null) {
+      print("QR SCANNÉ: $code");
+
+      
+
+      try {
+  // 1️⃣ Décoder le JSON
+  final data = jsonDecode(code);
+
+  // 2️⃣ Récupérer l'user_id
+  final userId = (data['user_id'] ?? 0) as int;
+
+  if (userId == 0) {
+    print("QR invalide");
+    return;
   }
+
+  // 3️⃣ Pause caméra avant de fermer
+  await controller.pauseCamera();
+  Navigator.pop(context, userId);
+} catch (e) {
+  print("QR invalide : $e");
+}
+    }
+  });
+}
 
   @override
   void dispose() {

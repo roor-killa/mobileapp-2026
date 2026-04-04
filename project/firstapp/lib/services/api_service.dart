@@ -125,13 +125,15 @@ class ApiService {
           'Authorization': 'Bearer ${jwtToken ?? ''}',
         },
         body: jsonEncode({
-          'recepteur_id': recepteurId,
-          'montant': montant,
+          'receiver_id': recepteurId,
+          'amount': montant,
         }),
+      
       );
+      print('Réponse brute transfert: ${response.body}');
 
       final data = jsonDecode(response.body);
-      double nouveauSolde = (data['solde_emetteur'] ?? 0).toDouble();
+      double nouveauSolde = (data['sender_balance'] ?? 0).toDouble();
 
       return TransferResponse(
         success: data['success'] ?? false,

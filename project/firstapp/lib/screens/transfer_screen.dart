@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../services/api_service.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'qr_scanner_screen.dart'; // QR Scanner
+import 'recharger_screen.dart'; // Nouveau écran pour Stripe
 
 class TransferScreen extends StatefulWidget {
   final String token;
@@ -51,9 +52,7 @@ class _TransferScreenState extends State<TransferScreen> {
     if (idRecepteur != null && idRecepteur > 0) {
       _effectuerTransfert(montant, idRecepteur);
     } else {
-      // 🔹 Stripe retiré / commenté
-      //_rechargerStripe(montant);
-      _afficherErreur('Recharge Stripe désactivée pour le moment');
+      _afficherErreur('ID destinataire invalide');
     }
   }
 
@@ -179,6 +178,27 @@ class _TransferScreenState extends State<TransferScreen> {
             ),
 
             const SizedBox(height: 20),
+
+            // 🔹 Nouveau bouton Recharger mon compte
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => RechargerScreen(
+                      userId: widget.currentUserId,
+                      token: widget.token,
+                    ),
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange,
+                padding: const EdgeInsets.symmetric(vertical: 15),
+              ),
+              child: const Text('Recharger mon compte'),
+            ),
+            const SizedBox(height: 10),
 
             ElevatedButton(
               onPressed: _isLoading ? null : _onBoutonPressed,

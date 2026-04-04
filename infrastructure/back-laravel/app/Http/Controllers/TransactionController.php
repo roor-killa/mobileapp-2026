@@ -4,60 +4,42 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\User;
-use App\Models\Transaction;
-use Illuminate\Support\Facades\DB;
-
-
-
-namespace App\Http\Controllers;
-
-use Illuminate\Http\Request;
-use App\Models\User;
-use App\Models\Transaction;
-use Illuminate\Support\Facades\DB;
 
 class TransactionController extends Controller
 {
-    public function transfert(Request $requete)
+    public function transfert(Request $request)
     {
-        $requete->validate([
-            'recepteur_id' => 'required|exists:users,id',
-            'montant' => 'required|numeric|min:0.01',
-        ]);
+        $sender = $request->user();
+        $receiverId = $request->input('receiver_id');
+        $amount = $request->input('amount');
 
-        // TEMPORAIRE pour test (sans JWT)
-        $emetteur = User::find(1);
-
-        $recepteur = User::find($requete->recepteur_id);
-        $montant = $requete->montant;
-
-        if ($emetteur->wallet_balance < $montant) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Solde insuffisant'
-            ], 400);
+        if (!$receiverId || !$amount || $amount <= 0) {
+            return response()->json(['message' => 'Données invalides'], 400);
         }
 
-        DB::transaction(function() use ($emetteur, $recepteur, $montant) {
-            $emetteur->wallet_balance -= $montant;
-            $emetteur->save();
+        $receiver = User::find($receiverId);
 
-            $recepteur->wallet_balance += $montant;
-            $recepteur->save();
+        if (!$receiver) {
+            return response()->json(['message' => 'Utilisateur introuvable'], 404);
+        }
 
-            Transaction::create([
-                'emetteur_id' => $emetteur->id,
-                'recepteur_id' => $recepteur->id,
-                'montant' => $montant,
-                'statut' => 'effectue',
-                'type' => 'fiat'
-            ]);
-        });
+        if ($sender->wallet_balance < $amount) {
+            return response()->json(['message' => 'Solde insuffisant'], 400);
+        }
+
+        // 🔥 mise à jour
+        $sender->wallet_balance -= $amount;
+        $receiver->wallet_balance += $amount;
+
+        $senderSaved = $sender->save();
+        $receiverSaved = $receiver->save(); 
 
         return response()->json([
-            'success' => true,
-            'message' => 'Transfert effectué',
-            'solde_emetteur' => $emetteur->wallet_balance
+            'message' => 'Transfert réussi',
+            'sender_balance' => $sender->wallet_balance,
+            'receiver_balance' => $receiver->wallet_balance,
+            'debug_sender' => $senderSaved,
+            'debug_receiver' => $receiverSaved,
         ]);
     }
 }
