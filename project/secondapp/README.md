@@ -1,5 +1,4 @@
-<<<<<<< HEAD
-# transfert_app
+# secondapp
 
 A new Flutter project.
 
@@ -15,10 +14,3 @@ A few resources to get you started if this is your first Flutter project:
 For help getting started with Flutter development, view the
 [online documentation](https://docs.flutter.dev/), which offers tutorials,
 samples, guidance on mobile development, and a full API reference.
-=======
-# mobileapp-2026
-Création application mobile L3 2026
-
-Sujet : 
-Créer une application mobile qui référence toutes les entreprises de Martinique
->>>>>>> 1a0ae1ddeee2d448e169845444d61aa1bbdbb5ae
