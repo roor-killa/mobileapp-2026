@@ -1,0 +1,56 @@
+name: transfert_app
+description: Application mobile de transfert d'argent
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.6
+
+  # Client HTTP
+  dio: ^5.4.3+1
+
+  # Gestion d'état
+  provider: ^6.1.2
+
+  # Stockage sécurisé du token
+  flutter_secure_storage: ^9.2.2
+
+  # QR Code - Génération
+  qr_flutter: ^4.1.0
+
+  # QR Code - Scanner
+  mobile_scanner: ^5.2.3
+
+  # Images réseau avec cache
+  cached_network_image: ^3.3.1
+
+  # Effet de chargement shimmer
+  shimmer: ^3.0.0
+
+  # Sélection d'image (avatar)
+  image_picker: ^1.1.2
+
+  # Formatage dates et montants
+  intl: ^0.19.0
+
+  # Icônes supplémentaires
+  font_awesome_flutter: ^10.7.0
+
+  # Stripe Payment Sheet
+  flutter_stripe: ^10.1.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
