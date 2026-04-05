@@ -1,7 +1,272 @@
-<html>
-<head></head>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<title>MayApp - Captures d'écran</title>
+<style>
+  :root {
+    --primary: #5B4FE8;
+    --accent: #00D4AA;
+    --dark: #0F0E1A;
+    --dark2: #1A1830;
+    --dark3: #252340;
+    --text: #E8E6FF;
+    --muted: #9B99C0;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--dark);
+    color: var(--text);
+    padding: 48px 32px;
+  }
+  h1 {
+    font-size: 2rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, #fff, var(--primary));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 8px;
+  }
+  .subtitle { color: var(--muted); font-size: .9rem; margin-bottom: 48px; }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 28px;
+  }
+  .card {
+    background: var(--dark2);
+    border: 1px solid rgba(91,79,232,.25);
+    border-radius: 18px;
+    overflow: hidden;
+    transition: transform .2s, border-color .2s;
+  }
+  .card:hover {
+    transform: translateY(-4px);
+    border-color: var(--primary);
+  }
+  .img-wrapper {
+    background: var(--dark3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 420px;
+    overflow: hidden;
+    position: relative;
+  }
+  .img-wrapper img {
+    max-height: 100%;
+    max-width: 100%;
+    object-fit: contain;
+    border-radius: 4px;
+  }
+  .img-wrapper .placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    color: var(--muted);
+    font-size: .85rem;
+  }
+  .img-wrapper .placeholder .icon { font-size: 2.5rem; }
+  .img-wrapper .placeholder code {
+    background: rgba(91,79,232,.2);
+    padding: 4px 12px;
+    border-radius: 8px;
+    font-size: .78rem;
+    color: var(--accent);
+    font-family: 'Consolas', monospace;
+  }
+  .card-body { padding: 20px 22px; }
+  .card-num {
+    font-size: .72rem;
+    font-weight: 700;
+    color: var(--primary);
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .card-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 8px;
+  }
+  .card-desc {
+    font-size: .83rem;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+  .tag {
+    display: inline-block;
+    margin-top: 12px;
+    padding: 3px 12px;
+    border-radius: 20px;
+    font-size: .72rem;
+    font-weight: 600;
+    background: rgba(91,79,232,.15);
+    color: #a5a0ff;
+    border: 1px solid rgba(91,79,232,.3);
+  }
+  .tag.green { background: rgba(0,212,170,.1); color: var(--accent); border-color: rgba(0,212,170,.3); }
+  .tag.stripe { background: rgba(99,91,255,.1); color: #a5a0ff; border-color: rgba(99,91,255,.3); }
+</style>
+</head>
 <body>
-	Hello World L3 Mobile App
-	<br><a href="https://www.perplexity.com">Aller sur le site de Perplexity</a>
+
+<h1>PayApp - Captures d'écran</h1>
+<p class="subtitle">Galerie des fonctionnalités de l'application · L3 Info - Programmation Mobile</p>
+
+<div class="grid">
+
+  <!-- 1 - Docker -->
+  <div class="card">
+    <div class="img-wrapper">
+      <img src="01_docker.png" alt="Docker Desktop" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" />
+      <div class="placeholder" style="display:none;">
+        <span class="icon">🐳</span>
+        <span>Enregistrer sous</span>
+        <code>01_docker.png</code>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="card-num">Infrastructure · 01</div>
+      <div class="card-title">Docker Desktop - 6 conteneurs actifs</div>
+      <div class="card-desc">
+        Vue Docker Desktop montrant les 6 services de l'application en cours d'exécution :
+        <strong>nginx</strong> (port 8000), <strong>app</strong> Laravel, <strong>postgres</strong>,
+        <strong>redis</strong>, <strong>pgadmin</strong> (port 5050) et <strong>ollama</strong> (port 11434).
+        Tous les conteneurs sont en état <em>Running</em> et communiquent sur le réseau bridge interne <code>transfert_network</code>.
+      </div>
+      <span class="tag">Docker Compose</span>
+    </div>
+  </div>
+
+  <!-- 2 - Dashboard -->
+  <div class="card">
+    <div class="img-wrapper">
+      <img src="02_dashboard.png" alt="Dashboard" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" />
+      <div class="placeholder" style="display:none;">
+        <span class="icon">🏠</span>
+        <span>Enregistrer sous</span>
+        <code>02_dashboard.png</code>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="card-num">Flutter · 02</div>
+      <div class="card-title">Page d'accueil - Dashboard</div>
+      <div class="card-desc">
+        Page principale de l'application après connexion. Affiche le <strong>solde disponible (10,00 €)</strong>,
+        les raccourcis vers Envoyer, Recharger et l'Historique, les <strong>statistiques mensuelles</strong>
+        (montant envoyé / reçu ce mois) et les transactions récentes. La navigation par onglets
+        est visible en bas (Accueil, Historique, QR, Chatbot, Profil).
+      </div>
+      <span class="tag green">Flutter Provider</span>
+    </div>
+  </div>
+
+  <!-- 3 - Stripe Payment Sheet -->
+  <div class="card">
+    <div class="img-wrapper">
+      <img src="03_stripe_sheet.png" alt="Stripe Payment Sheet" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" />
+      <div class="placeholder" style="display:none;">
+        <span class="icon">💳</span>
+        <span>Enregistrer sous</span>
+        <code>03_stripe_sheet.png</code>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="card-num">Stripe · 03</div>
+      <div class="card-title">Stripe Payment Sheet - Saisie de carte</div>
+      <div class="card-desc">
+        Interface de paiement Stripe native (Payment Sheet SDK) en mode TEST. L'utilisateur
+        peut payer par <strong>carte bancaire</strong>, Bancontact, Amazon Pay ou EPS.
+        Les données de carte ne transitent <em>jamais</em> par le backend Laravel - elles sont
+        envoyées directement à Stripe, garantissant la conformité <strong>PCI-DSS</strong>.
+      </div>
+      <span class="tag stripe">Stripe SDK</span>
+    </div>
+  </div>
+
+  <!-- 4 - Recharge OK -->
+  <div class="card">
+    <div class="img-wrapper">
+      <img src="04_recharge_ok.png" alt="Recharge réussie" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" />
+      <div class="placeholder" style="display:none;">
+        <span class="icon">✅</span>
+        <span>Enregistrer sous</span>
+        <code>04_recharge_ok.png</code>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="card-num">Stripe · 04</div>
+      <div class="card-title">Confirmation - Recharge réussie</div>
+      <div class="card-desc">
+        Dialogue de confirmation après une recharge de <strong>10,00 €</strong> réussie.
+        Le backend a vérifié le statut du <em>PaymentIntent</em> Stripe (<code>succeeded</code>),
+        crédité le solde de l'utilisateur, créé une entrée en base de données et
+        enregistré un <strong>bloc dans la chaîne d'audit</strong> (SHA-256).
+        Le nouveau solde est affiché instantanément.
+      </div>
+      <span class="tag green">Webhook + Confirm</span>
+    </div>
+  </div>
+
+  <!-- 5 - Profil -->
+  <div class="card">
+    <div class="img-wrapper">
+      <img src="05_profil.png" alt="Page Profil" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" />
+      <div class="placeholder" style="display:none;">
+        <span class="icon">👤</span>
+        <span>Enregistrer sous</span>
+        <code>05_profil.png</code>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="card-num">Flutter · 05</div>
+      <div class="card-title">Page Profil utilisateur</div>
+      <div class="card-desc">
+        Page de profil de l'utilisateur <strong>Nell Nell</strong>. Donne accès à :
+        modifier le profil, changer le <strong>mot de passe</strong>, changer le <strong>code PIN</strong>
+        (requis pour tout transfert), la <strong>vérification KYC</strong> (bientôt disponible)
+        et la gestion des <strong>sessions actives</strong>. Le statut KYC est actuellement
+        <em>En attente</em>.
+      </div>
+      <span class="tag">Sanctum Token</span>
+    </div>
+  </div>
+
+  <!-- 6 - QR Code -->
+  <div class="card">
+    <div class="img-wrapper">
+      <img src="06_qr_code.png" alt="QR Code" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" />
+      <div class="placeholder" style="display:none;">
+        <span class="icon">📷</span>
+        <span>Enregistrer sous</span>
+        <code>06_qr_code.png</code>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="card-num">Flutter · 06</div>
+      <div class="card-title">QR Code - Paiement 5,00 €</div>
+      <div class="card-desc">
+        L'utilisateur génère un QR code pour recevoir <strong>5,00 €</strong>.
+        Le QR encode un <em>token UUID unique</em> avec une <strong>expiration de 30 secondes</strong>
+        (visible dans le compteur). Une fois scanné par le payeur (qui entre son PIN),
+        le token est marqué comme utilisé et ne peut plus être réutilisé.
+        La transaction est ensuite enregistrée et tracée dans la chaîne d'audit.
+      </div>
+      <span class="tag green">TTL 30s · Usage unique</span>
+    </div>
+  </div>
+
+</div>
+
+<p style="margin-top:48px;text-align:center;font-size:.78rem;color:var(--muted);">
+  PayApp · L3 Informatique · Programmation Mobile · Semestre 6
+</p>
+
 </body>
 </html>
