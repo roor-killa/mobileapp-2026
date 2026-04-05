@@ -1,7 +1,9 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/glass_card.dart';
+import '../splash/splash_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -18,6 +20,7 @@ class _RegisterScreenState extends State<RegisterScreen>
   final _passwordController = TextEditingController();
   final _confirmController = TextEditingController();
   bool _obscurePassword = true;
+  String? _backgroundImage;
   late AnimationController _controller;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
@@ -44,6 +47,11 @@ class _RegisterScreenState extends State<RegisterScreen>
     ));
 
     _controller.forward();
+    SplashScreen.loadSplashImages().then((images) {
+      if (images.isNotEmpty && mounted) {
+        setState(() => _backgroundImage = images[Random().nextInt(images.length)]);
+      }
+    });
   }
 
   @override
@@ -93,22 +101,23 @@ class _RegisterScreenState extends State<RegisterScreen>
           style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
         ),
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Theme.of(context).primaryColor,
-              Theme.of(context).primaryColor.withBlue(220),
-            ],
-          ),
-        ),
-        child: SafeArea(
-          child: SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.all(24),
-            child: FadeTransition(
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (_backgroundImage != null)
+            Image.asset(
+              _backgroundImage!,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => _buildGradient(context),
+            )
+          else
+            _buildGradient(context),
+          Container(color: Colors.black.withAlpha(140)),
+          SafeArea(
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.all(24),
+              child: FadeTransition(
               opacity: _fadeAnimation,
               child: SlideTransition(
                 position: _slideAnimation,
@@ -252,6 +261,22 @@ class _RegisterScreenState extends State<RegisterScreen>
               ),
             ),
           ),
+        ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGradient(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Theme.of(context).primaryColor,
+            Theme.of(context).primaryColor.withBlue(220),
+          ],
         ),
       ),
     );

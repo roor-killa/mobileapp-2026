@@ -6,6 +6,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../services/announcement_service.dart';
 import '../../widgets/announcement_card.dart';
+import '../../widgets/qr_code_dialog.dart';
 import '../../widgets/user_avatar.dart';
 import '../announcements/announcement_detail_screen.dart';
 import 'edit_profile_screen.dart';
@@ -136,6 +137,15 @@ class _ProfileScreenState extends State<ProfileScreen>
                       ),
                     ),
                     onPressed: themeProvider.toggleTheme,
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.qr_code, color: Colors.white),
+                    onPressed: () => QrCodeDialog.show(
+                      context,
+                      data: 'campusconnect://user/${user.id}',
+                      title: user.nom,
+                      subtitle: user.filiere,
+                    ),
                   ),
                   Container(
                     margin: const EdgeInsets.only(right: 8),

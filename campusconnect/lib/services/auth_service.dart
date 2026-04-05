@@ -54,11 +54,31 @@ class AuthService {
   Future<UserModel?> getCurrentUserModel() async {
     final user = currentUser;
     if (user == null) return null;
-    final data = await _client
+
+    var data = await _client
         .from('users')
         .select()
         .eq('id', user.id)
         .maybeSingle();
+
+    // Profil absent (trigger manquant ou délai) → on le crée
+    if (data == null) {
+      final nom = user.userMetadata?['nom'] as String? ??
+          user.email?.split('@').first ??
+          'Utilisateur';
+      await _client.from('users').upsert({
+        'id': user.id,
+        'nom': nom,
+        'email': user.email ?? '',
+        'date_inscription': DateTime.now().toUtc().toIso8601String(),
+      });
+      data = await _client
+          .from('users')
+          .select()
+          .eq('id', user.id)
+          .maybeSingle();
+    }
+
     if (data == null) return null;
     return UserModel.fromJson(data);
   }
@@ -102,8 +122,12 @@ class AuthService {
     };
 
     await _client.from('users').update(updates).eq('id', userId);
-    final data =
-        await _client.from('users').select().eq('id', userId).single();
+    final data = await _client
+        .from('users')
+        .select()
+        .eq('id', userId)
+        .maybeSingle();
+    if (data == null) throw Exception('Profil introuvable après mise à jour.');
     return UserModel.fromJson(data);
   }
 

@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
+// ignore: unused_import — décommenter après `flutterfire configure`
+// import '../services/notification_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   final AuthService _authService = AuthService();
@@ -36,6 +38,8 @@ class AuthProvider extends ChangeNotifier {
           await Future.delayed(const Duration(milliseconds: 500));
         }
         _user = model;
+        // Sauvegarder le token FCM — décommenter après `flutterfire configure`
+        // if (_user != null) await NotificationService.saveToken(_user!.id);
       }
       _loading = false;
       notifyListeners();
@@ -113,9 +117,12 @@ class AuthProvider extends ChangeNotifier {
         photoFile: photoFile,
         coverPhotoFile: coverPhotoFile,
       );
+      _error = null;
       notifyListeners();
       return true;
-    } catch (_) {
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
       return false;
     } finally {
       _setLoading(false);

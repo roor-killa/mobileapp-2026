@@ -51,6 +51,7 @@ class AnnouncementModel {
         'description': description,
         'categorie': categorie,
         'user_id': userId,
+        'date_publication': datePublication.toUtc().toIso8601String(),
       };
 
   // Compatibilité avec les widgets existants

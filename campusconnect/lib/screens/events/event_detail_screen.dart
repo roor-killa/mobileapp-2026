@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../models/event_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/event_service.dart';
+import '../../widgets/qr_code_dialog.dart';
 
 class EventDetailScreen extends StatefulWidget {
   final EventModel event;
@@ -83,6 +84,22 @@ class _EventDetailScreenState extends State<EventDetailScreen>
           ),
         ),
         actions: [
+          Container(
+            margin: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Theme.of(context).cardColor.withAlpha(200),
+              shape: BoxShape.circle,
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.qr_code),
+              onPressed: () => QrCodeDialog.show(
+                context,
+                data: 'campusconnect://event/${widget.event.id}',
+                title: widget.event.titre,
+                subtitle: 'Événement',
+              ),
+            ),
+          ),
           if (isOrganisateur)
             Container(
               margin: const EdgeInsets.all(8),

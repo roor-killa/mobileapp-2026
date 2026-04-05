@@ -9,16 +9,20 @@ class SplashScreen extends StatefulWidget {
   /// Loads all image paths from assets/images/splash/ automatically.
   /// Just drop any .jpg, .jpeg, .png, or .webp files into that folder.
   static Future<List<String>> loadSplashImages() async {
-    final manifestJson = await rootBundle.loadString('AssetManifest.json');
-    final Map<String, dynamic> manifest = json.decode(manifestJson);
-    return manifest.keys
-        .where((key) =>
-            key.startsWith('assets/images/splash/') &&
-            (key.endsWith('.jpg') ||
-                key.endsWith('.jpeg') ||
-                key.endsWith('.png') ||
-                key.endsWith('.webp')))
-        .toList();
+    try {
+      final manifestJson = await rootBundle.loadString('AssetManifest.json');
+      final Map<String, dynamic> manifest = json.decode(manifestJson);
+      return manifest.keys
+          .where((key) =>
+              key.startsWith('assets/images/splash/') &&
+              (key.endsWith('.jpg') ||
+                  key.endsWith('.jpeg') ||
+                  key.endsWith('.png') ||
+                  key.endsWith('.webp')))
+          .toList();
+    } catch (_) {
+      return [];
+    }
   }
 
   @override

@@ -81,13 +81,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       );
       Navigator.pop(context);
     } else {
+      final errorMsg = context.read<AuthProvider>().error ?? 'Erreur lors de la mise à jour.';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Row(
+          content: Row(
             children: [
-              Icon(Icons.error_outline, color: Colors.white),
-              SizedBox(width: 12),
-              Text('Erreur lors de la mise à jour.'),
+              const Icon(Icons.error_outline, color: Colors.white),
+              const SizedBox(width: 12),
+              Expanded(child: Text(errorMsg)),
             ],
           ),
           backgroundColor: Colors.red,

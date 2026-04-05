@@ -1,8 +1,10 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../utils/constants.dart';
 import '../../widgets/glass_card.dart';
+import '../splash/splash_screen.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -18,6 +20,7 @@ class _LoginScreenState extends State<LoginScreen>
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  String? _backgroundImage;
   late AnimationController _controller;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
@@ -41,6 +44,11 @@ class _LoginScreenState extends State<LoginScreen>
       curve: Curves.easeOut,
     ));
     _controller.forward();
+    SplashScreen.loadSplashImages().then((images) {
+      if (images.isNotEmpty && mounted) {
+        setState(() => _backgroundImage = images[Random().nextInt(images.length)]);
+      }
+    });
   }
 
   @override
@@ -185,22 +193,23 @@ class _LoginScreenState extends State<LoginScreen>
     final auth = context.watch<AuthProvider>();
 
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Theme.of(context).primaryColor,
-              Theme.of(context).primaryColor.withBlue(220),
-            ],
-          ),
-        ),
-        child: SafeArea(
-          child: SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            child: Padding(
-              padding: const EdgeInsets.all(24),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (_backgroundImage != null)
+            Image.asset(
+              _backgroundImage!,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => _buildGradient(context),
+            )
+          else
+            _buildGradient(context),
+          Container(color: Colors.black.withAlpha(140)),
+          SafeArea(
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: Padding(
+                padding: const EdgeInsets.all(24),
               child: FadeTransition(
                 opacity: _fadeAnimation,
                 child: SlideTransition(
@@ -411,6 +420,22 @@ class _LoginScreenState extends State<LoginScreen>
               ),
             ),
           ),
+        ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGradient(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Theme.of(context).primaryColor,
+            Theme.of(context).primaryColor.withBlue(220),
+          ],
         ),
       ),
     );

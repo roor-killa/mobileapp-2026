@@ -5,6 +5,7 @@ import '../../providers/auth_provider.dart';
 import '../../services/announcement_service.dart';
 import '../../services/message_service.dart';
 import '../../utils/constants.dart';
+import '../../widgets/qr_code_dialog.dart';
 import '../../widgets/user_avatar.dart';
 import '../messages/chat_screen.dart';
 import 'package:intl/intl.dart';
@@ -86,6 +87,22 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen>
           ),
         ),
         actions: [
+          Container(
+            margin: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Theme.of(context).cardColor.withAlpha(200),
+              shape: BoxShape.circle,
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.qr_code),
+              onPressed: () => QrCodeDialog.show(
+                context,
+                data: 'campusconnect://announcement/${widget.announcement.id}',
+                title: widget.announcement.titre,
+                subtitle: 'Annonce',
+              ),
+            ),
+          ),
           if (user != null)
             Container(
               margin: const EdgeInsets.all(8),
